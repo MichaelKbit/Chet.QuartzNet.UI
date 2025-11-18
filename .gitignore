@@ -1,0 +1,26 @@
+# NuGet Packages
+*.nupkg
+nupkgs/
+
+# Build outputs
+bin/
+obj/
+
+# IDE files
+.vs/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln.docstates
+
+# Log files
+*.log
+
+# Database files
+*.db
+*.sqlite
+App_Data/
+
+# Temporary files
+*.tmp
+*.temp

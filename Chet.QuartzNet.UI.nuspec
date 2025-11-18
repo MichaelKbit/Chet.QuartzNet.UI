@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package >
+	<metadata>
+		<id>Chet.QuartzNet.UI</id>
+		<version>0.0.4</version>
+		<title>Chet.QuartzNet.UI</title>
+		<authors>Chet</authors>
+		<owners>Chet</owners>
+		<requireLicenseAcceptance>false</requireLicenseAcceptance>
+		<license type="expression">MIT</license>
+		<projectUrl>https://github.com/qiect/Chet.QuartzNet.UI</projectUrl>
+		<description>轻量级 Quartz.Net 可视化管理 UI 组件，支持文件存储和数据库存储，提供完整的任务调度管理功能</description>
+		<releaseNotes>v0.0.4: 修复数据库自动迁移问题，将EnsureCreatedAsync替换为MigrateAsync以支持自动应用迁移</releaseNotes>
+		<copyright>Copyright 2025</copyright>
+		<tags>quartz quartz.net scheduler task job cron ui management</tags>
+		<dependencies>
+			<group targetFramework="net8.0">
+				<dependency id="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" version="8.0.0" />
+				<dependency id="Quartz" version="3.8.1" />
+				<dependency id="Quartz.Extensions.Hosting" version="3.8.1" />
+				<dependency id="Microsoft.EntityFrameworkCore" version="8.0.0" />
+				<dependency id="Microsoft.EntityFrameworkCore.SqlServer" version="8.0.0" />
+				<dependency id="Microsoft.EntityFrameworkCore.Sqlite" version="8.0.0" />
+				<dependency id="Pomelo.EntityFrameworkCore.MySql" version="8.0.0" />
+				<dependency id="Npgsql.EntityFrameworkCore.PostgreSQL" version="8.0.0" />
+				<dependency id="AntDesign" version="0.17.0" />
+				<dependency id="Microsoft.Extensions.DependencyInjection.Abstractions" version="8.0.0" />
+				<dependency id="Microsoft.Extensions.Configuration.Abstractions" version="8.0.0" />
+				<dependency id="Microsoft.Extensions.Options.ConfigurationExtensions" version="8.0.0" />
+				<dependency id="Microsoft.AspNetCore.Authentication" version="2.2.0" />
+				<dependency id="Microsoft.AspNetCore.Authorization" version="8.0.0" />
+			</group>
+		</dependencies>
+	</metadata>
+	<files>
+    <!-- Chet.QuartzNet.UI -->
+    <file src="src\Chet.QuartzNet.UI\bin\Release\net8.0\Chet.QuartzNet.UI.dll" target="lib\net8.0" />
+    <file src="src\Chet.QuartzNet.UI\bin\Release\net8.0\Chet.QuartzNet.UI.pdb" target="lib\net8.0" />
+    
+    <!-- Chet.QuartzNet.Core -->
+    <file src="src\Chet.QuartzNet.Core\bin\Release\net8.0\Chet.QuartzNet.Core.dll" target="lib\net8.0" />
+    <file src="src\Chet.QuartzNet.Core\bin\Release\net8.0\Chet.QuartzNet.Core.pdb" target="lib\net8.0" />
+    
+    <!-- Chet.QuartzNet.Models -->
+    <file src="src\Chet.QuartzNet.Models\bin\Release\net8.0\Chet.QuartzNet.Models.dll" target="lib\net8.0" />
+    <file src="src\Chet.QuartzNet.Models\bin\Release\net8.0\Chet.QuartzNet.Models.pdb" target="lib\net8.0" />
+    
+    <!-- Chet.QuartzNet.EFCore -->
+    <file src="src\Chet.QuartzNet.EFCore\bin\Release\net8.0\Chet.QuartzNet.EFCore.dll" target="lib\net8.0" />
+    <file src="src\Chet.QuartzNet.EFCore\bin\Release\net8.0\Chet.QuartzNet.EFCore.pdb" target="lib\net8.0" />
+    
+  </files>
+</package>
