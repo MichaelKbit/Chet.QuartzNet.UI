@@ -38,17 +38,29 @@ public static class ServiceCollectionExtensions
             configureOptions?.Invoke(options);
         });
 
+        // 注册EmailOptions为独立服务，供EmailNotificationService使用
+        services.AddSingleton(provider =>
+        {
+            var quartzUIOptions = provider.GetRequiredService<IOptions<QuartzUIOptions>>().Value;
+            return quartzUIOptions.EmailOptions;
+        });
+
         // 注册文件存储
         services.TryAddScoped<IJobStorage, FileJobStorage>();
-
         // 注册Quartz服务
         services.TryAddScoped<IQuartzJobService, QuartzJobService>();
-
+        // 注册邮件通知服务
+        services.TryAddScoped<IEmailNotificationService, EmailNotificationService>();
         // 注册作业监听器
         services.TryAddScoped<QuartzJobListener>();
         // 注册作业类扫描器
         services.TryAddSingleton<JobClassScanner>();
-
+        // 注册邮件通知服务
+        services.TryAddScoped<IEmailNotificationService, EmailNotificationService>();
+        // 注册作业监听器
+        services.TryAddScoped<QuartzJobListener>();
+        // 注册作业类扫描器
+        services.TryAddSingleton<JobClassScanner>();
         // 注册Quartz
         services.AddQuartz(q =>
         {
@@ -74,7 +86,6 @@ public static class ServiceCollectionExtensions
         {
             options.WaitForJobsToComplete = true;
         });
-
         // 注册作业调度初始化服务，用于在应用启动时将存储中的作业重新调度到Quartz调度器
         services.AddHostedService<JobSchedulerInitializer>();
 
@@ -98,6 +109,13 @@ public static class ServiceCollectionExtensions
         services.PostConfigure<QuartzUIOptions>(options =>
         {
             configureOptions?.Invoke(options, services.BuildServiceProvider());
+        });
+
+        // 注册EmailOptions为独立服务，供EmailNotificationService使用
+        services.AddSingleton(provider =>
+        {
+            var quartzUIOptions = provider.GetRequiredService<IOptions<QuartzUIOptions>>().Value;
+            return quartzUIOptions.EmailOptions;
         });
 
         // 注册Quartz服务
@@ -387,6 +405,14 @@ public static class ServiceCollectionExtensions
                             {
                                 _logger.LogInformation("作业 {JobKey} 已存在 {TriggerCount} 个触发器，跳过调度",
                                     $"{jobInfo.JobGroup}.{jobInfo.JobName}", triggers.Count);
+                                continue;
+                            }
+
+                            // 检查作业是否被禁用，如果是禁用状态，不重新调度
+                            if (!jobInfo.IsEnabled)
+                            {
+                                _logger.LogInformation("作业 {JobKey} 处于禁用状态，跳过调度",
+                                    $"{jobInfo.JobGroup}.{jobInfo.JobName}");
                                 continue;
                             }
 

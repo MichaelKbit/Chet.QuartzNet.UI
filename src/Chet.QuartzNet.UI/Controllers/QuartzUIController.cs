@@ -16,11 +16,13 @@ public class QuartzUIController : ControllerBase
 {
     private readonly IQuartzJobService _jobService;
     private readonly ILogger<QuartzUIController> _logger;
+    private readonly IEmailNotificationService _emailService;
 
-    public QuartzUIController(IQuartzJobService jobService, ILogger<QuartzUIController> logger)
+    public QuartzUIController(IQuartzJobService jobService, ILogger<QuartzUIController> logger, IEmailNotificationService emailService)
     {
         _jobService = jobService;
         _logger = logger;
+        _emailService = emailService;
     }
 
     /// <summary>
@@ -212,21 +214,22 @@ public class QuartzUIController : ControllerBase
     /// 立即触发作业
     /// </summary>
     [HttpPost("TriggerJob")]
-    public async Task<ActionResult<ApiResponseDto<bool>>> TriggerJob(string jobName, string jobGroup)
-    {
-        try
+        public async Task<ActionResult<ApiResponseDto<bool>>> TriggerJob(string jobName, string jobGroup)
         {
-            var result = await _jobService.TriggerJobAsync(jobName, jobGroup);
-            if (result.Success)
+            try
             {
-                _logger.LogInformation("触发作业成功: {JobName}/{JobGroup}", jobName, jobGroup);
-                return Ok(ApiResponseDto<bool>.SuccessResponse(true, "触发作业成功"));
+                var result = await _jobService.TriggerJobAsync(jobName, jobGroup);
+                if (result.Success)
+                {
+                    _logger.LogInformation("触发作业成功: {JobName}/{JobGroup}", jobName, jobGroup);
+                    return Ok(result);
+                }
+                else
+                {
+                    _logger.LogError("触发作业失败: {JobName}/{JobGroup}, 错误信息: {ErrorMessage}", jobName, jobGroup, result.Message);
+                    return Ok(result);
+                }
             }
-            else
-            {
-                return Ok(ApiResponseDto<bool>.ErrorResponse("触发作业失败"));
-            }
-        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "触发作业失败: {JobName}/{JobGroup}", jobName, jobGroup);
@@ -344,6 +347,32 @@ public class QuartzUIController : ControllerBase
         {
             _logger.LogError(ex, "停止调度器失败");
             return Ok(ApiResponseDto<bool>.ErrorResponse("停止调度器失败: " + ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// 测试邮件配置
+    /// </summary>
+    [HttpPost("TestEmailConfiguration")]
+    public async Task<ActionResult<ApiResponseDto<bool>>> TestEmailConfiguration()
+    {
+        try
+        {
+            var result = await _emailService.TestEmailConfigurationAsync();
+            if (result)
+            {
+                _logger.LogInformation("邮件配置测试成功");
+                return Ok(ApiResponseDto<bool>.SuccessResponse(true, "邮件配置测试成功，请检查收件箱"));
+            }
+            else
+            {
+                return Ok(ApiResponseDto<bool>.ErrorResponse("邮件配置测试失败，请检查邮件配置"));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "邮件配置测试失败");
+            return Ok(ApiResponseDto<bool>.ErrorResponse("邮件配置测试失败: " + ex.Message));
         }
     }
 }
