@@ -214,21 +214,22 @@ public class QuartzUIController : ControllerBase
     /// 立即触发作业
     /// </summary>
     [HttpPost("TriggerJob")]
-    public async Task<ActionResult<ApiResponseDto<bool>>> TriggerJob(string jobName, string jobGroup)
-    {
-        try
+        public async Task<ActionResult<ApiResponseDto<bool>>> TriggerJob(string jobName, string jobGroup)
         {
-            var result = await _jobService.TriggerJobAsync(jobName, jobGroup);
-            if (result.Success)
+            try
             {
-                _logger.LogInformation("触发作业成功: {JobName}/{JobGroup}", jobName, jobGroup);
-                return Ok(ApiResponseDto<bool>.SuccessResponse(true, "触发作业成功"));
+                var result = await _jobService.TriggerJobAsync(jobName, jobGroup);
+                if (result.Success)
+                {
+                    _logger.LogInformation("触发作业成功: {JobName}/{JobGroup}", jobName, jobGroup);
+                    return Ok(result);
+                }
+                else
+                {
+                    _logger.LogError("触发作业失败: {JobName}/{JobGroup}, 错误信息: {ErrorMessage}", jobName, jobGroup, result.Message);
+                    return Ok(result);
+                }
             }
-            else
-            {
-                return Ok(ApiResponseDto<bool>.ErrorResponse("触发作业失败"));
-            }
-        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "触发作业失败: {JobName}/{JobGroup}", jobName, jobGroup);

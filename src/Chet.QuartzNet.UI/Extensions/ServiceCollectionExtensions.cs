@@ -408,6 +408,14 @@ public static class ServiceCollectionExtensions
                                 continue;
                             }
 
+                            // 检查作业是否被禁用，如果是禁用状态，不重新调度
+                            if (!jobInfo.IsEnabled)
+                            {
+                                _logger.LogInformation("作业 {JobKey} 处于禁用状态，跳过调度",
+                                    $"{jobInfo.JobGroup}.{jobInfo.JobName}");
+                                continue;
+                            }
+
                             // 检查作业状态，如果是暂停状态，不重新调度
                             if (jobInfo.Status == Chet.QuartzNet.Models.Entities.JobStatus.Paused)
                             {
