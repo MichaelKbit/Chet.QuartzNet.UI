@@ -4,6 +4,7 @@ using Chet.QuartzNet.Models.DTOs;
 using Chet.QuartzNet.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Chet.QuartzNet.EFCore.Services;
 
@@ -119,7 +120,7 @@ public class EFCoreJobStorage : IJobStorage
         try
         {
             return await _dbContext.QuartzJobs
-                .FirstOrDefaultAsync(j => j.JobName == jobName && j.JobGroup == jobGroup, cancellationToken);
+                .FirstOrDefaultAsync(j => j.JobName.Equals(jobName, StringComparison.CurrentCultureIgnoreCase) && j.JobGroup == jobGroup, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -272,44 +273,44 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
-    public async Task<PagedResponseDto<QuartzJobLog>> GetJobLogsAsync(string? jobName, string? jobGroup, LogStatus? status, DateTime? startTime, DateTime? endTime, int pageIndex, int pageSize, string? sortBy = null, string? sortOrder = null, CancellationToken cancellationToken = default)
+    public async Task<PagedResponseDto<QuartzJobLog>> GetJobLogsAsync(QuartzJobLogQueryDto queryDto, CancellationToken cancellationToken = default)
     {
         try
         {
             var query = _dbContext.QuartzJobLogs.AsQueryable();
 
             // 应用过滤条件
-            if (!string.IsNullOrEmpty(jobName))
+            if (!string.IsNullOrEmpty(queryDto.JobName))
             {
-                query = query.Where(l => EF.Functions.Like(l.JobName, $"%{jobName}%"));
+                query = query.Where(l => EF.Functions.Like(l.JobName, $"%{queryDto.JobName}%"));
             }
 
-            if (!string.IsNullOrEmpty(jobGroup))
+            if (!string.IsNullOrEmpty(queryDto.JobGroup))
             {
-                query = query.Where(l => EF.Functions.Like(l.JobGroup, $"%{jobGroup}%"));
+                query = query.Where(l => EF.Functions.Like(l.JobGroup, $"%{queryDto.JobGroup}%"));
             }
 
-            if (status.HasValue)
+            if (queryDto.Status.HasValue)
             {
-                query = query.Where(l => l.Status == status.Value);
+                query = query.Where(l => l.Status == queryDto.Status.Value);
             }
 
-            if (startTime.HasValue)
+            if (queryDto.StartTime.HasValue)
             {
-                query = query.Where(l => l.StartTime >= startTime.Value);
+                query = query.Where(l => l.StartTime >= queryDto.StartTime.Value);
             }
 
-            if (endTime.HasValue)
+            if (queryDto.EndTime.HasValue)
             {
-                query = query.Where(l => l.StartTime <= endTime.Value);
+                query = query.Where(l => l.StartTime <= queryDto.EndTime.Value);
             }
 
             // 应用排序
-            if (!string.IsNullOrEmpty(sortBy))
+            if (!string.IsNullOrEmpty(queryDto.SortBy))
             {
-                var isAscending = string.Equals(sortOrder, "asc", StringComparison.OrdinalIgnoreCase);
+                var isAscending = string.Equals(queryDto.SortOrder, "asc", StringComparison.OrdinalIgnoreCase);
 
-                switch (sortBy.ToLower())
+                switch (queryDto.SortBy.ToLower())
                 {
                     case "jobname":
                         query = isAscending ? query.OrderBy(l => l.JobName) : query.OrderByDescending(l => l.JobName);
@@ -347,16 +348,16 @@ public class EFCoreJobStorage : IJobStorage
             // 分页
             var totalCount = await query.CountAsync(cancellationToken);
             var pagedLogs = await query
-                .Skip((pageIndex - 1) * pageSize)
-                .Take(pageSize)
+                .Skip((queryDto.PageIndex - 1) * queryDto.PageSize)
+                .Take(queryDto.PageSize)
                 .ToListAsync(cancellationToken);
 
             return new PagedResponseDto<QuartzJobLog>
             {
                 Items = pagedLogs,
                 TotalCount = totalCount,
-                PageIndex = pageIndex,
-                PageSize = pageSize
+                PageIndex = queryDto.PageIndex,
+                PageSize = queryDto.PageSize
             };
         }
         catch (Exception ex)
