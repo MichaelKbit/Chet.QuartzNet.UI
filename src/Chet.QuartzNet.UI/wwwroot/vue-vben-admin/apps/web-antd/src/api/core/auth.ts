@@ -19,10 +19,19 @@ export namespace AuthApi {
 }
 
 /**
- * 登录
+ * 登录 - 生成Basic认证凭证
  */
 export async function loginApi(data: AuthApi.LoginParams) {
-  return requestClient.post<AuthApi.LoginResult>('/auth/login', data);
+  // 生成Basic认证凭证: Base64(username:password)
+  const { username = '', password = '' } = data;
+  const basicCredentials = `Basic ${btoa(`${username}:${password}`)}`;
+  
+  // 直接返回包含凭证的结果，不需要实际调用登录接口
+  // 后续请求拦截器会使用这个凭证进行认证
+  return Promise.resolve({
+    accessToken: basicCredentials,
+    data: { accessToken: basicCredentials }
+  });
 }
 
 /**

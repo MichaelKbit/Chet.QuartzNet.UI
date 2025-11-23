@@ -56,8 +56,10 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     return newToken;
   }
 
+  // Basic认证不需要额外格式化，直接使用凭证
   function formatToken(token: null | string) {
-    return token ? `Bearer ${token}` : null;
+    // 对于Basic认证，直接返回token，因为它已经包含了"Basic "前缀
+    return token;
   }
 
   // 请求头处理
@@ -65,7 +67,8 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     fulfilled: async (config) => {
       const accessStore = useAccessStore();
 
-      config.headers.Authorization = formatToken(accessStore.accessToken);
+      // 直接使用Basic认证凭证
+      config.headers.Authorization = accessStore.accessToken;
       config.headers['Accept-Language'] = preferences.app.locale;
       return config;
     },
@@ -80,13 +83,18 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     }),
   );
 
-  // token过期的处理
+  // 对于Basic认证，token过期处理通常不需要刷新token
+  // 而是直接跳转到登录页面重新输入凭证
   client.addResponseInterceptor(
     authenticateResponseInterceptor({
       client,
       doReAuthenticate,
-      doRefreshToken,
-      enableRefreshToken: preferences.app.enableRefreshToken,
+      // Basic认证通常不需要刷新token
+      doRefreshToken: async () => {
+        await doReAuthenticate();
+        return null;
+      },
+      enableRefreshToken: false, // 禁用token刷新
       formatToken,
     }),
   );
