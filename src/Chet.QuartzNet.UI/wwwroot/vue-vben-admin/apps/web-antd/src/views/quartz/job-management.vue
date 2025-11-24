@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive, h } from 'vue';
 import { Page } from '@vben/common-ui';
-import { Button, Input, Select, Space, Modal, Form, Switch, message, notification, Divider, Tag, Table, Card } from 'ant-design-vue';
+import { Button, Input, Select, Space, Modal, Form, Switch, message, notification, Divider, Tag, Table, Card, Alert } from 'ant-design-vue';
 import { SearchOutlined, EditOutlined, DeleteOutlined, PlusOutlined, StopOutlined, PlayCircleOutlined } from '@ant-design/icons-vue';
-import type { ColumnsType,FormInstance,PaginationProps } from 'ant-design-vue';
+import type { ColumnsType, FormInstance, PaginationProps } from 'ant-design-vue';
 
 // 导入作业API服务
 import { 
@@ -496,189 +496,203 @@ onMounted(() => {
 
 <template>
 <Page>
-<Card>
-      <Alert>
-        <template #message>
-          这是一段提示文字
-        </template>
-      </Alert>
-      <Form
-        ref="searchFormRef"
-        :model="searchForm"
-        layout="inline"
-        :label-col="{ span: 6 }"
-        :wrapper-col="{ span: 18 }"
-      >
-        <Form.Item label="作业名称" name="jobName">
-          <Input placeholder="请输入作业名称" style="width: 180px" />
-        </Form.Item>
-        <Form.Item label="作业分组" name="jobGroup">
-          <Input placeholder="请输入作业分组" style="width: 180px" />
-        </Form.Item>
-        <Form.Item label="作业状态" name="jobStatus">
-          <Select placeholder="请选择状态" allowClear style="width: 120px">
-            <Select.Option :value="JobStatusEnum.STOPPED">已停止</Select.Option>
-            <Select.Option :value="JobStatusEnum.RUNNING">运行中</Select.Option>
-          </Select>
-        </Form.Item>
-        <Form.Item label="作业类型" name="jobType">
-          <Select placeholder="请选择类型" allowClear style="width: 120px">
-            <Select.Option :value="JobTypeEnum.CLASS">CLASS</Select.Option>
-            <Select.Option :value="JobTypeEnum.HTTP">HTTP</Select.Option>
-            <Select.Option :value="JobTypeEnum.SCRIPT">SCRIPT</Select.Option>
-          </Select>
-        </Form.Item>
-        <Form.Item>
-          <Space>
-            <Button type="primary" @click="handleSearch">
-              <template #icon><SearchOutlined /></template>
-              搜索
-            </Button>
-            <Button @click="handleReset">
-              重置
-            </Button>
-            <Button type="primary" @click="handleAdd">
-              <template #icon><PlusOutlined /></template>
-              新增作业
-            </Button>
-          </Space>
-        </Form.Item>
-      </Form>
-    </Card>
-    
-<Card>
-    <!-- 作业列表 -->
-    <Table
-      :columns="columns"
-      :data-source="dataSource"
-      :pagination="pagination"
-      :loading="loading"
-      :rowKey="(record) => `${record.jobName}-${record.jobGroup}`"
-      @change="handlePageChange"
-      :expandable="expandableConfig"
-    />
+<Card style="margin-bottom: 20px;">
+  <Form
+    ref="searchFormRef"
+    :model="searchForm"
+    layout="inline"
+    :label-col="{ span: 8 }"
+    :wrapper-col="{ span: 16 }"
+    style="flex-wrap: wrap;"
+  >
+    <Form.Item label="作业名称" name="jobName" style="margin-bottom: 16px;">
+      <Input placeholder="请输入作业名称" style="width: 180px;" />
+    </Form.Item>
+    <Form.Item label="作业分组" name="jobGroup" style="margin-bottom: 16px;">
+      <Input placeholder="请输入作业分组" style="width: 180px;" />
+    </Form.Item>
+    <Form.Item label="作业状态" name="jobStatus" style="margin-bottom: 16px;">
+      <Select placeholder="请选择状态" allowClear style="width: 120px;">
+        <Select.Option :value="JobStatusEnum.STOPPED">已停止</Select.Option>
+        <Select.Option :value="JobStatusEnum.RUNNING">运行中</Select.Option>
+      </Select>
+    </Form.Item>
+    <Form.Item label="作业类型" name="jobType" style="margin-bottom: 16px;">
+      <Select placeholder="请选择类型" allowClear style="width: 120px;">
+        <Select.Option :value="JobTypeEnum.CLASS">CLASS</Select.Option>
+        <Select.Option :value="JobTypeEnum.HTTP">HTTP</Select.Option>
+        <Select.Option :value="JobTypeEnum.SCRIPT">SCRIPT</Select.Option>
+      </Select>
+    </Form.Item>
+    <Form.Item style="margin-bottom: 16px;">
+      <Space>
+        <Button type="primary" @click="handleSearch">
+          <template #icon><SearchOutlined /></template>
+          搜索
+        </Button>
+        <Button @click="handleReset">
+          重置
+        </Button>
+        <Button type="primary" @click="handleAdd">
+          <template #icon><PlusOutlined /></template>
+          新增作业
+        </Button>
+      </Space>
+    </Form.Item>
+  </Form>
 </Card>
 
+<Card>
+  <!-- 作业列表 -->
+  <Table
+    :columns="columns"
+    :data-source="dataSource"
+    :pagination="pagination"
+    :loading="loading"
+    :rowKey="(record) => `${record.jobName}-${record.jobGroup}`"
+    @change="handlePageChange"
+    :expandable="expandableConfig"
+    style="width: 100%;"
+  />
+</Card>
 
-    <!-- 编辑对话框 -->
-    <Modal
-      v-model:visible="editModalVisible"
-      :title="editModalTitle"
-      width="700px"
-      @cancel="editModalVisible = false"
+<!-- 编辑对话框 -->
+<Modal
+  v-model:visible="editModalVisible"
+  :title="editModalTitle"
+  width="700px"
+  @cancel="editModalVisible = false"
+>
+  <Form
+    ref="formRef"
+    :model="editForm"
+    layout="vertical"
+    :label-col="{ span: 6 }"
+    :wrapper-col="{ span: 18 }"
+  >
+    <Form.Item
+      label="作业名称"
+      name="jobName"
+      :rules="[{ required: true, message: '请输入作业名称' }]"
     >
-      <Form
-        ref="formRef"
-        :model="editForm"
-        layout="vertical"
-        :label-col="{ span: 6 }"
-        :wrapper-col="{ span: 18 }"
+      <Input placeholder="请输入作业名称" />
+    </Form.Item>
+    
+    <Form.Item
+      label="作业分组"
+      name="jobGroup"
+      :rules="[{ required: true, message: '请输入作业分组' }]"
+    >
+      <Input placeholder="请输入作业分组" />
+    </Form.Item>
+    
+    <Form.Item
+      label="作业类型"
+      name="jobType"
+      :rules="[{ required: true, message: '请选择作业类型' }]"
+    >
+      <Select v-model:value="editForm.jobType" @change="() => {}">
+        <Select.Option :value="JobTypeEnum.CLASS">CLASS</Select.Option>
+        <Select.Option :value="JobTypeEnum.HTTP">HTTP</Select.Option>
+        <Select.Option :value="JobTypeEnum.SCRIPT">SCRIPT</Select.Option>
+      </Select>
+    </Form.Item>
+    
+    <Form.Item
+      label="Cron表达式"
+      name="cronExpression"
+      :rules="[{ required: true, message: '请输入Cron表达式' }]"
+    >
+      <Input placeholder="例如: 0 0/1 * * * ? (每分钟执行一次)" />
+    </Form.Item>
+    
+    <Form.Item
+      label="描述"
+      name="description"
+    >
+      <Input.TextArea placeholder="请输入作业描述" :rows="3" />
+    </Form.Item>
+    
+    <Form.Item
+      label="超时时间(ms)"
+      name="timeout"
+      :rules="[{ required: true, message: '请输入超时时间' }]"
+    >
+      <Input type="number" placeholder="请输入超时时间，单位毫秒" />
+    </Form.Item>
+    
+    <Form.Item
+      label="重试次数"
+      name="retryCount"
+    >
+      <Input type="number" placeholder="请输入失败重试次数" />
+    </Form.Item>
+    
+    <Form.Item
+      label="重试间隔(ms)"
+      name="retryInterval"
+    >
+      <Input type="number" placeholder="请输入重试间隔时间" />
+    </Form.Item>
+    
+    <Form.Item
+      label="是否启用"
+      name="isActive"
+      valuePropName="checked"
+    >
+      <Switch />
+    </Form.Item>
+    
+    <Divider>作业配置详情</Divider>
+    
+    <template v-for="(item, index) in getJobTypeFormItems()" :key="`${item.name}-${index}`">
+      <Form.Item
+        :label="item.label"
+        :name="item.name"
+        :rules="item.required ? [{ required: true, message: `请输入${item.label}` }] : []"
       >
-        <Form.Item
-          label="作业名称"
-          name="jobName"
-          :rules="[{ required: true, message: '请输入作业名称' }]"
-        >
-          <Input placeholder="请输入作业名称" />
-        </Form.Item>
-        
-        <Form.Item
-          label="作业分组"
-          name="jobGroup"
-          :rules="[{ required: true, message: '请输入作业分组' }]"
-        >
-          <Input placeholder="请输入作业分组" />
-        </Form.Item>
-        
-        <Form.Item
-          label="作业类型"
-          name="jobType"
-          :rules="[{ required: true, message: '请选择作业类型' }]"
-        >
-          <Select v-model:value="editForm.jobType" @change="() => {}">
-            <Select.Option :value="JobTypeEnum.CLASS">CLASS</Select.Option>
-            <Select.Option :value="JobTypeEnum.HTTP">HTTP</Select.Option>
-            <Select.Option :value="JobTypeEnum.SCRIPT">SCRIPT</Select.Option>
-          </Select>
-        </Form.Item>
-        
-        <Form.Item
-          label="Cron表达式"
-          name="cronExpression"
-          :rules="[{ required: true, message: '请输入Cron表达式' }]"
-        >
-          <Input placeholder="例如: 0 0/1 * * * ? (每分钟执行一次)" />
-        </Form.Item>
-        
-        <Form.Item
-          label="描述"
-          name="description"
-        >
-          <Input.TextArea placeholder="请输入作业描述" :rows="3" />
-        </Form.Item>
-        
-        <Form.Item
-          label="超时时间(ms)"
-          name="timeout"
-          :rules="[{ required: true, message: '请输入超时时间' }]"
-        >
-          <Input type="number" placeholder="请输入超时时间，单位毫秒" />
-        </Form.Item>
-        
-        <Form.Item
-          label="重试次数"
-          name="retryCount"
-        >
-          <Input type="number" placeholder="请输入失败重试次数" />
-        </Form.Item>
-        
-        <Form.Item
-          label="重试间隔(ms)"
-          name="retryInterval"
-        >
-          <Input type="number" placeholder="请输入重试间隔时间" />
-        </Form.Item>
-        
-        <Form.Item
-          label="是否启用"
-          name="isActive"
-          valuePropName="checked"
-        >
-          <Switch />
-        </Form.Item>
-        
-        <Divider>作业配置详情</Divider>
-        
-        <template v-for="(item, index) in getJobTypeFormItems()" :key="`${item.name}-${index}`">
-          <Form.Item
-            :label="item.label"
-            :name="item.name"
-            :rules="item.required ? [{ required: true, message: `请输入${item.label}` }] : []"
-          >
-            <template v-if="item.type === 'input'">
-              <Input :placeholder="item.placeholder" />
-            </template>
-            <template v-else-if="item.type === 'select'">
-              <Select v-model:value="editForm[item.name]" v-if="item.options">
-                <template v-for="option in item.options" :key="option.value">
-                  <Select.Option :value="option.value">{{ option.label }}</Select.Option>
-                </template>
-              </Select>
-            </template>
-            <template v-else-if="item.type === 'textarea'">
-              <Input.TextArea :placeholder="item.placeholder" :rows="item.rows || 3" />
-            </template>
-          </Form.Item>
+        <template v-if="item.type === 'input'">
+          <Input :placeholder="item.placeholder" />
         </template>
-      </Form>
-      
-      <template #footer>
-        <Space>
-          <Button @click="editModalVisible = false">取消</Button>
-          <Button type="primary" @click="handleSave">保存</Button>
-        </Space>
-      </template>
-    </Modal>
+        <template v-else-if="item.type === 'select'">
+          <Select v-model:value="editForm[item.name]" v-if="item.options">
+            <template v-for="option in item.options" :key="option.value">
+              <Select.Option :value="option.value">{{ option.label }}</Select.Option>
+            </template>
+          </Select>
+        </template>
+        <template v-else-if="item.type === 'textarea'">
+          <Input.TextArea :placeholder="item.placeholder" :rows="item.rows || 3" />
+        </template>
+      </Form.Item>
+    </template>
+  </Form>
+  
+  <template #footer>
+    <Space>
+      <Button @click="editModalVisible = false">取消</Button>
+      <Button type="primary" @click="handleSave">保存</Button>
+    </Space>
+  </template>
+</Modal>
 </Page>
-   
 </template>
+
+<style scoped>
+/* 响应式布局调整 */
+@media (max-width: 768px) {
+  .ant-form-inline .ant-form-item {
+    margin-right: 0;
+    margin-bottom: 16px;
+    width: 100%;
+  }
+  
+  .ant-form-inline .ant-form-item-label {
+    text-align: left;
+  }
+  
+  .ant-card {
+    margin-bottom: 16px !important;
+  }
+}
+</style>

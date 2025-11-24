@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, reactive, h } from 'vue';
-import { Table } from 'ant-design-vue';
-import type { ColumnsType } from 'ant-design-vue';
+import { Page } from '@vben/common-ui';
+import { Table, Card, Form } from 'ant-design-vue';
+import type { ColumnsType, FormInstance } from 'ant-design-vue';
 import {
   Button,
   Input,
@@ -12,6 +13,7 @@ import {
   message,
   DatePicker,
   Typography,
+  Alert,
 } from 'ant-design-vue';
 import {
   SearchOutlined,
@@ -49,6 +51,8 @@ const currentPage = ref(1);
 const pageSize = ref(10);
 
 // 搜索条件
+// 添加表单实例引用
+const searchFormRef = ref<FormInstance>();
 const searchForm = reactive<Omit<LogQueryParams, 'pageNum' | 'pageSize'>>({
   jobId: '',
   jobName: '',
@@ -316,89 +320,89 @@ initData();
 </script>
 
 <template>
-  <div>
-    <!-- 搜索区域 -->
-    <Space wrap size="middle">
-      <Space>
-        <span>作业ID:</span>
-        <Input
-          v-model:value="searchForm.jobId"
-          placeholder="请输入作业ID"
-          style="width: 180px"
-        />
-      </Space>
-      <Space>
-        <span>作业名称:</span>
-        <Input
-          v-model:value="searchForm.jobName"
-          placeholder="请输入作业名称"
-          style="width: 180px"
-        />
-      </Space>
-      <Space>
-        <span>作业分组:</span>
-        <Input
-          v-model:value="searchForm.jobGroup"
-          placeholder="请输入作业分组"
-          style="width: 180px"
-        />
-      </Space>
-      <Space>
-        <span>执行状态:</span>
-        <Select
-          v-model:value="searchForm.status"
-          placeholder="请选择状态"
-          allowClear
-          style="width: 120px"
-        >
-          <Select.Option :value="LogStatusEnum.SUCCESS">成功</Select.Option>
-          <Select.Option :value="LogStatusEnum.FAILURE">失败</Select.Option>
-          <Select.Option :value="LogStatusEnum.RUNNING">运行中</Select.Option>
-          <Select.Option :value="LogStatusEnum.CANCELLED">已取消</Select.Option>
-        </Select>
-      </Space>
-      <Space>
-        <span>开始时间:</span>
-        <DatePicker
-          v-model:value="searchForm.startTime"
-          showTime
-          placeholder="选择开始时间"
-          style="width: 200px"
-        />
-      </Space>
-      <Space>
-        <span>结束时间:</span>
-        <DatePicker
-          v-model:value="searchForm.endTime"
-          showTime
-          placeholder="选择结束时间"
-          style="width: 200px"
-        />
-      </Space>
-      <Space>
-        <Button type="primary" icon="search" @click="handleSearch">
-          搜索
-        </Button>
-        <Button @click="handleReset"> 重置 </Button>
-      </Space>
-      <Space>
-        <Button type="primary" icon="download" @click="handleExport">
-          导出日志
-        </Button>
-        <Button danger icon="delete" @click="handleClear"> 清空日志 </Button>
-      </Space>
-    </Space>
-
-    <!-- 日志列表 -->
-    <Table
-      :columns="columns"
-      :data-source="dataSource"
-      :pagination="pagination"
-      :loading="loading"
-      :rowKey="(record) => record.logId"
-      @change="handlePageChange"
-      :expandable="expandableConfig"
-    />
+  <Page>
+    <Card style="margin-bottom: 20px;">
+      <Alert 
+        type="info" 
+        style="margin-bottom: 16px;"
+      >
+        <template #message>
+          日志统计信息: 共 {{ statistics.totalLogs }} 条，成功 {{ statistics.successCount }} 条，失败 {{ statistics.failureCount }} 条，运行中 {{ statistics.runningCount }} 条，已取消 {{ statistics.cancelledCount }} 条
+        </template>
+      </Alert>
+      
+      <Form
+        ref="searchFormRef"
+        :model="searchForm"
+        layout="inline"
+        :label-col="{ span: 8 }"
+        :wrapper-col="{ span: 16 }"
+        style="flex-wrap: wrap;"
+      >
+        <Form.Item label="作业ID" name="jobId" style="margin-bottom: 16px;">
+          <Input placeholder="请输入作业ID" style="width: 180px;" />
+        </Form.Item>
+        <Form.Item label="作业名称" name="jobName" style="margin-bottom: 16px;">
+          <Input placeholder="请输入作业名称" style="width: 180px;" />
+        </Form.Item>
+        <Form.Item label="作业分组" name="jobGroup" style="margin-bottom: 16px;">
+          <Input placeholder="请输入作业分组" style="width: 180px;" />
+        </Form.Item>
+        <Form.Item label="执行状态" name="status" style="margin-bottom: 16px;">
+          <Select placeholder="请选择状态" allowClear style="width: 120px;">
+            <Select.Option :value="LogStatusEnum.SUCCESS">成功</Select.Option>
+            <Select.Option :value="LogStatusEnum.FAILURE">失败</Select.Option>
+            <Select.Option :value="LogStatusEnum.RUNNING">运行中</Select.Option>
+            <Select.Option :value="LogStatusEnum.CANCELLED">已取消</Select.Option>
+          </Select>
+        </Form.Item>
+        <Form.Item label="开始时间" name="startTime" style="margin-bottom: 16px;">
+          <DatePicker
+            showTime
+            placeholder="选择开始时间"
+            style="width: 200px;"
+          />
+        </Form.Item>
+        <Form.Item label="结束时间" name="endTime" style="margin-bottom: 16px;">
+          <DatePicker
+            showTime
+            placeholder="选择结束时间"
+            style="width: 200px;"
+          />
+        </Form.Item>
+        <Form.Item style="margin-bottom: 16px;">
+          <Space>
+            <Button type="primary" @click="handleSearch">
+              <template #icon><SearchOutlined /></template>
+              搜索
+            </Button>
+            <Button @click="handleReset">重置</Button>
+          </Space>
+        </Form.Item>
+        <Form.Item style="margin-bottom: 16px;">
+          <Space>
+            <Button type="primary" icon="download" @click="handleExport">
+              导出日志
+            </Button>
+            <Button danger icon="delete" @click="handleClear">清空日志</Button>
+          </Space>
+        </Form.Item>
+      </Form>
+    </Card>
+    
+    <Card>
+      <!-- 日志列表 -->
+      <Table
+        :columns="columns"
+        :data-source="dataSource"
+        :pagination="pagination"
+        :loading="loading"
+        :rowKey="(record) => record.logId"
+        @change="handlePageChange"
+        :expandable="expandableConfig"
+        style="width: 100%;"
+      />
+    </Card>
 
     <!-- 详情对话框 -->
     <Modal
@@ -473,5 +477,24 @@ initData();
         </div>
       </div>
     </Modal>
-  </div>
+  </Page>
 </template>
+
+<style scoped>
+/* 响应式布局调整 */
+@media (max-width: 768px) {
+  .ant-form-inline .ant-form-item {
+    margin-right: 0;
+    margin-bottom: 16px;
+    width: 100%;
+  }
+  
+  .ant-form-inline .ant-form-item-label {
+    text-align: left;
+  }
+  
+  .ant-card {
+    margin-bottom: 16px !important;
+  }
+}
+</style>
