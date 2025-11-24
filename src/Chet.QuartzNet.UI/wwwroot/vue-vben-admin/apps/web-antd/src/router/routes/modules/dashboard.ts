@@ -23,12 +23,21 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
-        name: 'Workspace',
-        path: '/workspace',
-        component: () => import('#/views/dashboard/workspace/index.vue'),
+        name: 'JobManagement',
+        path: '/quartz/job-management',
+        component: () => import('#/views/quartz/job-management.vue'),
         meta: {
-          icon: 'carbon:workspace',
-          title: $t('page.dashboard.workspace'),
+          icon: 'ion:time-outline',
+          title: $t('作业管理'),
+        },
+      },
+      {
+        name: 'LogManagement',
+        path: '/quartz/log-management',
+        component: () => import('#/views/quartz/log-management.vue'),
+        meta: {
+          icon: 'lucide:logs',
+          title: $t('日志管理'),
         },
       },
     ],

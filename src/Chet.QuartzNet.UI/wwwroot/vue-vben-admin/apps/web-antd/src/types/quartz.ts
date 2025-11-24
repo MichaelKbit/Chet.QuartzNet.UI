@@ -2,7 +2,9 @@
 
 // 调度器状态
 export interface SchedulerStatus {
-  status: string; // Started, Stopped
+  running: boolean;
+  status: 'STARTED' | 'STOPPED';
+  message: string;
   runningSince?: string;
 }
 
@@ -12,14 +14,14 @@ export interface JobInfo {
   jobGroup: string;
   cronExpression: string;
   jobClassName: string;
-  jobData?: string;
-  description?: string;
   status: number; // 0: 正常, 1: 暂停, 2: 完成, 3: 错误, 4: 阻塞
+  description?: string;
+  jobData?: string;
 }
 
 // 作业列表响应
 export interface JobListResponse {
-  items: JobInfo[];
+  list: JobInfo[];
   total: number;
   page: number;
   pageSize: number;
@@ -30,15 +32,17 @@ export interface JobLog {
   id: string;
   jobName: string;
   jobGroup: string;
-  startTime: string;
-  endTime?: string;
   status: number; // 0: 运行中, 1: 成功, 2: 失败
-  errorMsg?: string;
+  startTime: string;
+  endTime: string;
+  duration: number; // 执行时长，毫秒
+  result?: string;
+  exception?: string;
 }
 
 // 日志列表响应
 export interface JobLogResponse {
-  items: JobLog[];
+  list: JobLog[];
   total: number;
   page: number;
   pageSize: number;
@@ -56,6 +60,33 @@ export interface JobSaveParams {
   jobGroup: string;
   cronExpression: string;
   jobClassName: string;
-  jobData?: string;
   description?: string;
+  jobData?: string;
+}
+
+// 任务状态枚举
+export enum JobStatus {
+  NORMAL = 0,
+  PAUSED = 1,
+  COMPLETED = 2,
+  ERROR = 3,
+  BLOCKED = 4
+}
+
+// 日志状态枚举
+export enum LogStatus {
+  RUNNING = 0,
+  SUCCESS = 1,
+  FAILURE = 2
+}
+
+// 排序方向
+export type SortOrder = 'asc' | 'desc';
+
+// 列表查询参数
+export interface ListParams {
+  page?: number;
+  pageSize?: number;
+  sortField?: string;
+  sortOrder?: SortOrder;
 }
