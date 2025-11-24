@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive, h } from 'vue';
-import { Table } from 'ant-design-vue';
-import type { ColumnsType } from 'ant-design-vue';
-import { Button, Input, Select, Space, Modal, Form, Switch, message, notification, Divider, Tag } from 'ant-design-vue';
+import { Page } from '@vben/common-ui';
+import { Button, Input, Select, Space, Modal, Form, Switch, message, notification, Divider, Tag, Table, Card } from 'ant-design-vue';
 import { SearchOutlined, EditOutlined, DeleteOutlined, PlusOutlined, StopOutlined, PlayCircleOutlined } from '@ant-design/icons-vue';
-import type { FormInstance } from 'ant-design-vue';
-import type { PaginationProps } from 'ant-design-vue';
+import type { ColumnsType,FormInstance,PaginationProps } from 'ant-design-vue';
 
 // 导入作业API服务
 import { 
@@ -42,6 +40,8 @@ const currentPage = ref(1);
 const pageSize = ref(10);
 
 // 搜索条件
+// 添加表单实例引用
+const searchFormRef = ref<FormInstance>();
 const searchForm = ref({
   jobName: '',
   jobGroup: '',
@@ -495,45 +495,58 @@ onMounted(() => {
 </script>
 
 <template>
-
-    <!-- 搜索区域 -->
-    <Space wrap size="middle">
-    <Space>
-      <span>作业名称:</span>
-      <Input v-mod"searchForm.jobName" placeholder="请输入作业名称" style="width: 180px" />
-    </Space>
-    <Space>
-      <span>作业分组:</span>
-      <Input v-model:value="searchForm.jobGroup" placeholder="请输入作业分组" style="width: 180px" />
-    </Space>
-    <Space>
-      <span>作业状态:</span>
-      <Select v-model:value="searchForm.jobStatus" placeholder="请选择状态" allowClear style="width: 120px">
-        <Select.Option :value="JobStatusEnum.STOPPED">已停止</Select.Option>
-        <Select.Option :value="JobStatusEnum.RUNNING">运行中</Select.Option>
-      </Select>
-    </Space>
-    <Space>
-      <span>作业类型:</span>
-      <Select v-model:value="searchForm.jobType" placeholder="请选择类型" allowClear style="width: 120px">
-        <Select.Option :value="JobTypeEnum.CLASS">CLASS</Select.Option>
-        <Select.Option :value="JobTypeEnum.HTTP">HTTP</Select.Option>
-        <Select.Option :value="JobTypeEnum.SCRIPT">SCRIPT</Select.Option>
-      </Select>
-    </Space>
-    <Button type="primary" @click="handleSearch">
-      <template #icon><SearchOutlined /></template>
-      搜索
-    </Button>
-    <Button @click="handleReset">
-      重置
-    </Button>
-    <Button type="primary" @click="handleAdd">
-      <template #icon><PlusOutlined /></template>
-      新增作业
-    </Button>
-  </Space>
-
+<Page>
+<Card>
+      <Alert>
+        <template #message>
+          这是一段提示文字
+        </template>
+      </Alert>
+      <Form
+        ref="searchFormRef"
+        :model="searchForm"
+        layout="inline"
+        :label-col="{ span: 6 }"
+        :wrapper-col="{ span: 18 }"
+      >
+        <Form.Item label="作业名称" name="jobName">
+          <Input placeholder="请输入作业名称" style="width: 180px" />
+        </Form.Item>
+        <Form.Item label="作业分组" name="jobGroup">
+          <Input placeholder="请输入作业分组" style="width: 180px" />
+        </Form.Item>
+        <Form.Item label="作业状态" name="jobStatus">
+          <Select placeholder="请选择状态" allowClear style="width: 120px">
+            <Select.Option :value="JobStatusEnum.STOPPED">已停止</Select.Option>
+            <Select.Option :value="JobStatusEnum.RUNNING">运行中</Select.Option>
+          </Select>
+        </Form.Item>
+        <Form.Item label="作业类型" name="jobType">
+          <Select placeholder="请选择类型" allowClear style="width: 120px">
+            <Select.Option :value="JobTypeEnum.CLASS">CLASS</Select.Option>
+            <Select.Option :value="JobTypeEnum.HTTP">HTTP</Select.Option>
+            <Select.Option :value="JobTypeEnum.SCRIPT">SCRIPT</Select.Option>
+          </Select>
+        </Form.Item>
+        <Form.Item>
+          <Space>
+            <Button type="primary" @click="handleSearch">
+              <template #icon><SearchOutlined /></template>
+              搜索
+            </Button>
+            <Button @click="handleReset">
+              重置
+            </Button>
+            <Button type="primary" @click="handleAdd">
+              <template #icon><PlusOutlined /></template>
+              新增作业
+            </Button>
+          </Space>
+        </Form.Item>
+      </Form>
+    </Card>
+    
+<Card>
     <!-- 作业列表 -->
     <Table
       :columns="columns"
@@ -544,6 +557,8 @@ onMounted(() => {
       @change="handlePageChange"
       :expandable="expandableConfig"
     />
+</Card>
+
 
     <!-- 编辑对话框 -->
     <Modal
@@ -664,4 +679,6 @@ onMounted(() => {
         </Space>
       </template>
     </Modal>
+</Page>
+   
 </template>
