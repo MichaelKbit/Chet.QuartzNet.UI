@@ -44,7 +44,7 @@ public class QuartzUIMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        var path = context.Request.Path.Value?.ToLower();
+        var path = context.Request.Path.Value;
 
         // 处理Quartz UI相关请求
         if (path?.StartsWith("/quartz-ui") == true)
@@ -167,7 +167,7 @@ public class QuartzUIMiddleware
     {
         try
         {
-            var fileInfo = _fileProvider.GetFileInfo($"quartz_ui.{filePath}");
+            var fileInfo = _fileProvider.GetFileInfo($"vbenadmin.{filePath}");
             if (!fileInfo.Exists)
             {
                 _logger.LogWarning("未找到静态文件: {FilePath}", filePath);

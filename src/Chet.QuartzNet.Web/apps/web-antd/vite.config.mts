@@ -1,9 +1,14 @@
 import { defineConfig } from '@vben/vite-config';
 
 export default defineConfig(async () => {
+  // 检查是否是构建模式
+  const isBuild = process.env.NODE_ENV === 'production';
+  
   return {
     application: {},
     vite: {
+      // 只在构建时设置base
+      base: isBuild ? '/vbenadmin/' : './',
       server: {
         proxy: {
           '/api': {
