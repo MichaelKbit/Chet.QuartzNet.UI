@@ -54,7 +54,6 @@ const pageSize = ref(10);
 const searchFormRef = ref<FormInstance>();
 // 根据API定义，确保searchForm与LogQueryParams接口匹配
 const searchForm = reactive<LogQueryParams>({
-  jobId: '',
   jobName: '',
   jobGroup: '',
   status: undefined,
@@ -72,53 +71,45 @@ const columns: ColumnsType<LogResponseDto>[] = [
   {
     title: '作业ID',
     dataIndex: 'logId',
-    width: 150,
     ellipsis: true,
+    width: 300,
   },
   {
     title: '作业名称',
     dataIndex: 'jobName',
-    width: 180,
     ellipsis: true,
   },
   {
     title: '作业分组',
     dataIndex: 'jobGroup',
-    width: 150,
     ellipsis: true,
   },
   {
     title: '状态',
     dataIndex: 'status',
-    width: 100,
     customRender: ({ record }) => {
       const status = logStatusMap[record.status];
       return h(Tag, { color: status.status }, status.text);
     },
   },
   {
-    title: '执行开始时间',
+    title: '开始时间',
     dataIndex: 'startTime',
-    width: 180,
     ellipsis: true,
   },
   {
-    title: '执行结束时间',
+    title: '结束时间',
     dataIndex: 'endTime',
-    width: 180,
     ellipsis: true,
   },
   {
     title: '执行时长(ms)',
     dataIndex: 'duration',
-    width: 120,
     ellipsis: true,
   },
   {
     title: '操作',
     key: 'action',
-    width: 120,
-    // 不使用render函数，改用更简单的配置
     slots: {
       customRender: 'action',
     },
@@ -147,14 +138,20 @@ const loadLogList = async () => {
     });
 
     console.log('API响应:', response);
-    
+
     if (response.success) {
       // 根据API定义，响应数据应该包含data字段，其中包含items和totalCount，现在还包含totalPages
-      if (response.data && response.data.items && Array.isArray(response.data.items)) {
+      if (
+        response.data &&
+        response.data.items &&
+        Array.isArray(response.data.items)
+      ) {
         dataSource.value = response.data.items;
         total.value = response.data.totalCount || 0;
         // 可以使用totalPages做额外处理
-        console.log(`成功加载日志列表: ${dataSource.value.length} 条记录，共 ${total.value} 条，总页数：${response.data.totalPages}`);
+        console.log(
+          `成功加载日志列表: ${dataSource.value.length} 条记录，共 ${total.value} 条，总页数：${response.data.totalPages}`,
+        );
       } else {
         console.warn('API响应数据格式不符合预期', response.data);
         dataSource.value = [];
@@ -162,18 +159,20 @@ const loadLogList = async () => {
       }
     } else {
       // 处理错误情况，包括可能的errorCode
-      const errorMsg = response.errorCode ? 
-        `${response.message || '获取日志列表失败'} (错误码: ${response.errorCode})` : 
-        response.message || '获取日志列表失败';
+      const errorMsg = response.errorCode
+        ? `${response.message || '获取日志列表失败'} (错误码: ${response.errorCode})`
+        : response.message || '获取日志列表失败';
       message.error(errorMsg);
       dataSource.value = [];
       total.value = 0;
     }
   } catch (error) {
     console.log('获取日志列表时发生错误:', error);
-    message.error(typeof error === 'object' && error !== null && 'message' in error 
-      ? String(error.message) 
-      : '获取日志列表失败');
+    message.error(
+      typeof error === 'object' && error !== null && 'message' in error
+        ? String(error.message)
+        : '获取日志列表失败',
+    );
     dataSource.value = [];
     total.value = 0;
   } finally {
@@ -187,7 +186,7 @@ const loadLogStatistics = async () => {
     // 根据API定义，getLogStatistics只接受开始时间和结束时间参数
     const stats = await getLogStatistics({
       startTime: searchForm.startTime,
-      endTime: searchForm.endTime
+      endTime: searchForm.endTime,
     });
     statistics.value = stats;
   } catch (error) {
@@ -196,14 +195,18 @@ const loadLogStatistics = async () => {
 };
 
 // 处理分页变化
-const handlePageChange = (page: number, pageSizeVal: number) => {
-  currentPage.value = page;
-  pageSize.value = pageSizeVal;
+const handlePageChange = (pageObj) => {
+  currentPage.value = pageObj.current;
+  pageSize.value = pageObj.pageSize;
   loadLogList();
 };
 
 // 处理搜索
-const handleSearch = () => {
+const handleSearch = async () => {
+  if (searchFormRef.value) {
+    // 触发表单验证（如果需要）
+    await searchFormRef.value.validateFields();
+  }
   currentPage.value = 1;
   loadLogList();
   loadLogStatistics();
@@ -211,12 +214,10 @@ const handleSearch = () => {
 
 // 处理重置
 const handleReset = () => {
-  searchForm.jobId = '';
-  searchForm.jobName = '';
-  searchForm.jobGroup = '';
-  searchForm.status = undefined;
-  searchForm.startTime = undefined;
-  searchForm.endTime = undefined;
+  // 使用表单的重置方法
+  if (searchFormRef.value) {
+    searchFormRef.value.resetFields();
+  }
   currentPage.value = 1;
   loadLogList();
   loadLogStatistics();
@@ -225,7 +226,7 @@ const handleReset = () => {
 // 导出日志 - 暂时禁用
 const handleExport = async () => {
   try {
-    await exportLogList({...searchForm});
+    await exportLogList({ ...searchForm });
   } catch (error: any) {
     message.error(error.message || '导出功能暂未实现');
   }
@@ -247,14 +248,13 @@ const handleClear = () => {
 };
 
 // 查看详情
-const handleDetail = async (log: LogResponseDto) => {
+const handleDetail = (log: LogResponseDto) => {
   try {
-    const detail = await getLogDetail(log.logId);
-    logDetail.value = detail;
+    logDetail.value = log;
     detailModalVisible.value = true;
   } catch (error) {
-    message.error('获取日志详情失败');
-    console.log('获取日志详情失败:', error);
+    message.error('显示详情失败');
+    console.log('显示详情失败:', error);
   }
 };
 
@@ -286,75 +286,84 @@ initData();
 
 <template>
   <Page>
-    <Card style="margin-bottom: 20px;">
-      <Alert 
-        type="info" 
-        style="margin-bottom: 16px;"
-      >
+    <Card style="margin-bottom: 20px">
+      <Alert type="info" style="margin-bottom: 20px">
         <template #message>
-          日志统计信息: 共 {{ statistics.totalLogs }} 条，成功 {{ statistics.successCount }} 条，失败 {{ statistics.failureCount }} 条，运行中 {{ statistics.runningCount }} 条
+          日志统计信息: 共 {{ statistics.totalLogs }} 条，成功
+          {{ statistics.successCount }} 条，失败
+          {{ statistics.failureCount }} 条，运行中
+          {{ statistics.runningCount }} 条
         </template>
       </Alert>
-      
+
       <Form
-        ref="searchFormRef"
         :model="searchForm"
+        ref="searchFormRef"
         layout="inline"
+        style="flex-wrap: wrap"
         :label-col="{ span: 8 }"
         :wrapper-col="{ span: 16 }"
-        style="flex-wrap: wrap;"
       >
-        <Form.Item label="作业ID" name="jobId" style="margin-bottom: 16px;">
-          <Input placeholder="请输入作业ID" style="width: 180px;" />
+        <Form.Item label="作业名称" name="jobName">
+          <Input
+            v-model:value="searchForm.jobName"
+            placeholder="请输入作业名称"
+          />
         </Form.Item>
-        <Form.Item label="作业名称" name="jobName" style="margin-bottom: 16px;">
-          <Input placeholder="请输入作业名称" style="width: 180px;" />
+        <Form.Item label="作业分组" name="jobGroup">
+          <Input
+            v-model:value="searchForm.jobGroup"
+            placeholder="请输入作业分组"
+          />
         </Form.Item>
-        <Form.Item label="作业分组" name="jobGroup" style="margin-bottom: 16px;">
-          <Input placeholder="请输入作业分组" style="width: 180px;" />
-        </Form.Item>
-        <Form.Item label="执行状态" name="status" style="margin-bottom: 16px;">
-          <Select placeholder="请选择状态" allowClear style="width: 120px;">
+        <Form.Item label="执行状态" name="status">
+          <Select
+            v-model:value="searchForm.status"
+            placeholder="请选择状态"
+            allowClear
+          >
             <Select.Option :value="LogStatusEnum.SUCCESS">成功</Select.Option>
             <Select.Option :value="LogStatusEnum.ERROR">失败</Select.Option>
             <Select.Option :value="LogStatusEnum.RUNNING">运行中</Select.Option>
           </Select>
         </Form.Item>
-        <Form.Item label="开始时间" name="startTime" style="margin-bottom: 16px;">
+        <Form.Item label="开始时间" name="startTime">
           <DatePicker
+            v-model:value="searchForm.startTime"
             showTime
             placeholder="选择开始时间"
-            style="width: 200px;"
           />
         </Form.Item>
-        <Form.Item label="结束时间" name="endTime" style="margin-bottom: 16px;">
+        <Form.Item label="结束时间" name="endTime">
           <DatePicker
+            v-model:value="searchForm.endTime"
             showTime
             placeholder="选择结束时间"
-            style="width: 200px;"
           />
         </Form.Item>
-        <Form.Item style="margin-bottom: 16px;">
-          <Space>
-            <Button type="primary" @click="handleSearch">
-              <template #icon><SearchOutlined /></template>
-              搜索
-            </Button>
-            <Button @click="handleReset">重置</Button>
-          </Space>
+        <Form.Item>
+          <Button type="primary" @click="handleSearch">
+            <template #icon><SearchOutlined /></template>
+            搜索
+          </Button>
         </Form.Item>
-        <Form.Item style="margin-bottom: 16px;">
-          <Space>
-            <Button type="primary" disabled icon="download" @click="handleExport">
-              导出日志（暂未实现）
-            </Button>
-            <Button danger disabled icon="delete" @click="handleClear">清空日志（暂未实现）</Button>
-          </Space>
+        <Form.Item>
+          <Button @click="handleReset">重置</Button>
         </Form.Item>
       </Form>
     </Card>
-    
+
     <Card>
+      <Form.Item>
+        <Space wrap>
+          <Button type="primary" disabled icon="download" @click="handleExport">
+            导出日志（暂未实现）
+          </Button>
+          <Button danger disabled icon="delete" @click="handleClear"
+            >清空日志（暂未实现）</Button
+          >
+        </Space>
+      </Form.Item>
       <!-- 日志列表 -->
       <Table
         :columns="columns"
@@ -362,15 +371,14 @@ initData();
         :pagination="pagination"
         :loading="loading"
         :rowKey="(record) => record.logId"
-        :size="small"
+        size="middle"
         @change="handlePageChange"
-        style="width: 100%;"
+        style="width: 100%"
       >
-        <!-- 添加action插槽来渲染详情按钮 -->
         <template #action="{ record }">
           <Space size="middle">
-            <Button 
-              type="link" 
+            <Button
+              type="link"
               @click="handleDetail(record)"
               :disabled="loading"
             >
@@ -402,7 +410,9 @@ initData();
                 {{ logStatusMap[logDetail.status].text }}
               </Tag>
             </div>
-            <div><strong>执行时长:</strong> {{ logDetail.duration || 0 }} ms</div>
+            <div>
+              <strong>执行时长:</strong> {{ logDetail.duration || 0 }} ms
+            </div>
             <div><strong>执行时间:</strong> {{ logDetail.startTime }}</div>
           </div>
         </div>
@@ -436,7 +446,7 @@ initData();
               {{ logDetail.errorMessage || logDetail.exception }}
             </pre>
           </div>
-          
+
           <!-- 显示新增的result字段 -->
           <div v-if="logDetail.result">
             <Typography.Title :level="5">执行结果</Typography.Title>
@@ -449,10 +459,14 @@ initData();
                 word-break: break-word;
               "
             >
-              {{ typeof logDetail.result === 'string' ? logDetail.result : JSON.stringify(logDetail.result, null, 2) }}
+              {{
+                typeof logDetail.result === 'string'
+                  ? logDetail.result
+                  : JSON.stringify(logDetail.result, null, 2)
+              }}
             </pre>
           </div>
-          
+
           <!-- 显示新增的jobData字段 -->
           <div v-if="logDetail.jobData">
             <Typography.Title :level="5">作业数据</Typography.Title>
@@ -465,7 +479,11 @@ initData();
                 word-break: break-word;
               "
             >
-              {{ typeof logDetail.jobData === 'string' ? logDetail.jobData : JSON.stringify(logDetail.jobData, null, 2) }}
+              {{
+                typeof logDetail.jobData === 'string'
+                  ? logDetail.jobData
+                  : JSON.stringify(logDetail.jobData, null, 2)
+              }}
             </pre>
           </div>
         </div>
@@ -473,22 +491,3 @@ initData();
     </Modal>
   </Page>
 </template>
-
-<style scoped>
-/* 响应式布局调整 */
-@media (max-width: 768px) {
-  .ant-form-inline .ant-form-item {
-    margin-right: 0;
-    margin-bottom: 16px;
-    width: 100%;
-  }
-  
-  .ant-form-inline .ant-form-item-label {
-    text-align: left;
-  }
-  
-  .ant-card {
-    margin-bottom: 16px !important;
-  }
-}
-</style>
