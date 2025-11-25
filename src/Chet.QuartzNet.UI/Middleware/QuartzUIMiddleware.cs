@@ -5,6 +5,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Reflection;
+using System.IO;
 
 namespace Chet.QuartzNet.UI.Middleware;
 
@@ -82,9 +83,116 @@ public class QuartzUIMiddleware
                 return;
             }
         }
+        // 处理vbenadmin请求
+        else if (path?.StartsWith("/vbenadmin") == true)
+        {
+            _logger.LogDebug("处理vbenadmin请求: {Path}", path);
+
+            // 如果启用了Basic认证，检查用户是否已认证
+            if (_options.EnableBasicAuth && (context.User?.Identity?.IsAuthenticated != true))
+            {
+                _logger.LogDebug("Basic认证已启用，但用户未认证");
+                context.Response.StatusCode = 401;
+                context.Response.Headers["WWW-Authenticate"] = "Basic realm=\"QuartzUI\"";
+                context.Response.ContentType = "text/plain; charset=utf-8";
+                await context.Response.WriteAsync("Basic认证已启用，但用户未认证");
+                return;
+            }
+
+            // 处理根路径，返回主页面
+            if (path == "/vbenadmin" || path == "/vbenadmin/")
+            {
+                await ServeVbenadminIndexPage(context);
+                return;
+            }
+
+            // 处理静态资源请求
+            if (path.StartsWith("/vbenadmin/"))
+            {
+                var filePath = path.Substring("/vbenadmin/".Length);
+                if (string.IsNullOrEmpty(filePath))
+                {
+                    await ServeVbenadminIndexPage(context);
+                    return;
+                }
+
+                await ServeVbenadminStaticFile(context, filePath);
+                return;
+            }
+        }
 
         // 其他请求继续传递
         await _next(context);
+    }
+
+    /// <summary>
+    /// 提供vbenadmin主页面
+    /// </summary>
+    private async Task ServeVbenadminIndexPage(HttpContext context)
+    {
+        try
+        {
+            var indexFile = _fileProvider.GetFileInfo("vbenadmin.index.html");
+            if (indexFile.Exists)
+            {
+                context.Response.ContentType = "text/html; charset=utf-8";
+                using var stream = indexFile.CreateReadStream();
+                using var reader = new StreamReader(stream);
+                var html = await reader.ReadToEndAsync();
+
+                // 替换基础路径
+                html = html.Replace("{{BASE_PATH}}", "/vbenadmin");
+
+                await context.Response.WriteAsync(html);
+            }
+            else
+            {
+                _logger.LogWarning("未找到vbenadmin主页文件");
+                context.Response.StatusCode = 404;
+                await context.Response.WriteAsync("VbenAdmin页面未找到");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "提供vbenadmin主页失败");
+            context.Response.StatusCode = 500;
+            await context.Response.WriteAsync("加载页面失败");
+        }
+    }
+
+    /// <summary>
+    /// 提供vbenadmin静态文件
+    /// </summary>
+    private async Task ServeVbenadminStaticFile(HttpContext context, string filePath)
+    {
+        try
+        {
+            var fileInfo = _fileProvider.GetFileInfo($"quartz_ui.{filePath}");
+            if (!fileInfo.Exists)
+            {
+                _logger.LogWarning("未找到静态文件: {FilePath}", filePath);
+                context.Response.StatusCode = 404;
+                await context.Response.WriteAsync("文件未找到");
+                return;
+            }
+
+            // 设置正确的MIME类型
+            var contentType = GetContentType(filePath);
+            context.Response.ContentType = contentType;
+
+            // 设置缓存头
+            context.Response.Headers["Cache-Control"] = "public, max-age=3600";
+            context.Response.Headers["ETag"] = $"\"{fileInfo.LastModified.Ticks}\"";
+
+            using var stream = fileInfo.CreateReadStream();
+            await stream.CopyToAsync(context.Response.Body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "提供vbenadmin静态文件失败: {FilePath}", filePath);
+            context.Response.StatusCode = 500;
+            await context.Response.WriteAsync("加载文件失败");
+        }
     }
 
     /// <summary>
