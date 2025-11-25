@@ -1,4 +1,3 @@
-import { message } from 'ant-design-vue';
 import { requestClient } from '../request';
 
 // API响应类型

@@ -1,21 +1,91 @@
-import type { Recordable } from '@vben/types';
 import { requestClient } from '../request';
+
+// API响应DTO
+export interface ApiResponse<T> {
+  /** 是否成功 */
+  success: boolean;
+  /** 消息 */
+  message: string;
+  /** 数据 */
+  data?: T;
+  /** 错误码 */
+  errorCode?: string;
+}
+
+// 分页响应DTO
+export interface PagedResponse<T> {
+  /** 数据列表 */
+  items: T[];
+  /** 总条数 */
+  totalCount: number;
+  /** 页码 */
+  pageIndex: number;
+  /** 每页条数 */
+  pageSize: number;
+  /** 总页数 */
+  totalPages: number;
+}
 
 // 作业类型枚举
 export enum JobTypeEnum {
-  CLASS = 0,
-  HTTP = 1,
-  SCRIPT = 2
+  DLL = 0,
+  API = 1
 }
 
 // 作业状态枚举
 export enum JobStatusEnum {
-  STOPPED = 0,
-  RUNNING = 1
+  /** 正常 */
+  Normal = 0,
+  /** 暂停 */
+  Paused = 1,
+  /** 完成 */
+  Completed = 2,
+  /** 错误 */
+  Error = 3,
+  /** 阻塞 */
+  Blocked = 4
 }
 
-// 作业请求DTO
-export interface JobRequestDto {
+// Quartz作业DTO
+export interface QuartzJobDto {
+  /** 作业名称 */
+  jobName: string;
+  /** 作业分组 */
+  jobGroup: string;
+  /** 触发器名称（可选，若为空则自动根据作业名称生成） */
+  triggerName?: string;
+  /** 触发器分组（可选，默认与作业分组相同） */
+  triggerGroup?: string;
+  /** Cron表达式 */
+  cronExpression: string;
+  /** 作业描述 */
+  description?: string;
+  /** 作业类型枚举 */
+  jobTypeEnum: JobTypeEnum;
+  /** 作业类型（类名或API URL） */
+  jobType: string;
+  /** 作业数据（JSON格式） */
+  jobData?: string;
+  /** API请求方法 */
+  apiMethod?: string;
+  /** API请求头（JSON格式） */
+  apiHeaders?: string;
+  /** API请求体（JSON格式） */
+  apiBody?: string;
+  /** API超时时间（毫秒） */
+  apiTimeout?: number;
+  /** 跳过SSL验证 */
+  skipSslValidation?: boolean;
+  /** 开始时间 */
+  startTime?: string;
+  /** 结束时间 */
+  endTime?: string;
+  /** 是否启用 */
+  isEnabled?: boolean;
+}
+
+// Quartz作业响应DTO
+export interface QuartzJobResponseDto {
   /** 作业名称 */
   jobName: string;
   /** 作业分组 */
@@ -39,78 +109,61 @@ export interface JobRequestDto {
   /** API请求头 */
   apiHeaders?: string;
   /** API请求体 */
-  apiRequestBody?: string;
-}
-
-// 作业响应DTO
-export interface JobResponseDto {
-  /** 作业名称 */
-  jobName: string;
-  /** 作业分组 */
-  jobGroup: string;
-  /** 触发器名称 */
-  triggerName: string;
-  /** 触发器分组 */
-  triggerGroup: string;
-  /** Cron表达式 */
-  cronExpression: string;
-  /** 作业描述 */
-  description?: string;
-  /** 作业类型枚举 */
-  jobTypeEnum: JobTypeEnum;
-  /** 作业类型（类名或API URL） */
-  jobType: string;
-  /** 作业数据（JSON格式） */
-  jobData?: string;
-  /** API请求方法 */
-  apiMethod?: string;
-  /** API请求头 */
-  apiHeaders?: string;
-  /** API请求体 */
-  apiRequestBody?: string;
+  apiBody?: string;
+  /** API请求超时时间（秒） */
+  apiTimeout: number;
+  /** 是否跳过SSL验证 */
+  skipSslValidation: boolean;
+  /** 开始时间 */
+  startTime?: string;
+  /** 结束时间 */
+  endTime?: string;
   /** 作业状态 */
-  jobStatus: JobStatusEnum;
+  status: JobStatusEnum;
+  /** 是否启用 */
+  isEnabled: boolean;
   /** 创建时间 */
-  createTime?: string;
+  createTime: string;
+  /** 更新时间 */
+  updateTime?: string;
+  /** 创建人 */
+  createBy?: string;
+  /** 更新人 */
+  updateBy?: string;
   /** 下次执行时间 */
-  nextFireTime?: string;
+  nextRunTime?: string;
   /** 上次执行时间 */
-  previousFireTime?: string;
+  previousRunTime?: string;
 }
 
-// 分页查询参数
-export interface JobPageQueryParams {
-  /** 页码 */
-  pageNum?: number;
-  /** 每页大小 */
-  pageSize?: number;
+// Quartz作业查询DTO
+export interface QuartzJobQueryDto {
   /** 作业名称 */
   jobName?: string;
   /** 作业分组 */
   jobGroup?: string;
   /** 作业状态 */
-  jobStatus?: JobStatusEnum;
-}
-
-// 分页响应
-export interface PageResponse<T> {
-  /** 总记录数 */
-  total: number;
-  /** 数据列表 */
-  list: T[];
-  /** 每页大小 */
-  pageSize: number;
+  status?: JobStatusEnum;
+  /** 是否启用 */
+  isEnabled?: boolean;
   /** 页码 */
-  pageNum: number;
+  pageIndex?: number;
+  /** 每页条数 */
+  pageSize?: number;
+  /** 排序字段 */
+  sortBy?: string;
+  /** 排序方向（asc或desc） */
+  sortOrder?: string;
 }
 
 /**
  * 获取作业列表
- * @param params 查询参数
+ * @param query 查询参数
  * @returns 作业列表分页数据
  */
-export async function getJobList(params: JobPageQueryParams): Promise<PageResponse<JobResponseDto>> {
-  return requestClient.get('/quartz/job/list', { params });
+export async function getJobs(query: QuartzJobQueryDto): Promise<ApiResponse<PagedResponse<QuartzJobResponseDto>>> {
+  const response = await requestClient.post('/api/quartz/GetJobs', query);
+  return response;
 }
 
 /**
@@ -119,28 +172,31 @@ export async function getJobList(params: JobPageQueryParams): Promise<PageRespon
  * @param jobGroup 作业分组
  * @returns 作业详情
  */
-export async function getJobDetail(jobName: string, jobGroup: string): Promise<JobResponseDto> {
-  return requestClient.get(`/quartz/job/${jobGroup}/${jobName}`);
+export async function getJob(jobName: string, jobGroup: string): Promise<ApiResponse<QuartzJobResponseDto>> {
+  const response = await requestClient.get('/api/quartz/GetJob', {
+    params: { jobName, jobGroup }
+  });
+  return response;
 }
 
 /**
- * 创建作业
- * @param data 作业数据
- * @returns 创建结果
+ * 添加作业
+ * @param jobDto 作业数据
+ * @returns 添加结果
  */
-export async function createJob(data: JobRequestDto): Promise<boolean> {
-  return requestClient.post('/quartz/job', data);
+export async function addJob(jobDto: QuartzJobDto): Promise<ApiResponse<boolean>> {
+  const response = await requestClient.post('/api/quartz/AddJob', jobDto);
+  return response;
 }
 
 /**
  * 更新作业
- * @param jobName 作业名称
- * @param jobGroup 作业分组
- * @param data 作业数据
+ * @param jobDto 作业数据
  * @returns 更新结果
  */
-export async function updateJob(jobName: string, jobGroup: string, data: JobRequestDto): Promise<boolean> {
-  return requestClient.put(`/quartz/job/${jobGroup}/${jobName}`, data);
+export async function updateJob(jobDto: QuartzJobDto): Promise<ApiResponse<boolean>> {
+  const response = await requestClient.put('/api/quartz/UpdateJob', jobDto);
+  return response;
 }
 
 /**
@@ -149,8 +205,11 @@ export async function updateJob(jobName: string, jobGroup: string, data: JobRequ
  * @param jobGroup 作业分组
  * @returns 删除结果
  */
-export async function deleteJob(jobName: string, jobGroup: string): Promise<boolean> {
-  return requestClient.delete(`/quartz/job/${jobGroup}/${jobName}`);
+export async function deleteJob(jobName: string, jobGroup: string): Promise<ApiResponse<boolean>> {
+  const response = await requestClient.delete('/api/quartz/DeleteJob', {
+    params: { jobName, jobGroup }
+  });
+  return response;
 }
 
 /**
@@ -159,8 +218,11 @@ export async function deleteJob(jobName: string, jobGroup: string): Promise<bool
  * @param jobGroup 作业分组
  * @returns 暂停结果
  */
-export async function pauseJob(jobName: string, jobGroup: string): Promise<boolean> {
-  return requestClient.post(`/quartz/job/pause/${jobGroup}/${jobName}`);
+export async function pauseJob(jobName: string, jobGroup: string): Promise<ApiResponse<boolean>> {
+  const response = await requestClient.post('/api/quartz/PauseJob', null, {
+    params: { jobName, jobGroup }
+  });
+  return response;
 }
 
 /**
@@ -169,34 +231,24 @@ export async function pauseJob(jobName: string, jobGroup: string): Promise<boole
  * @param jobGroup 作业分组
  * @returns 恢复结果
  */
-export async function resumeJob(jobName: string, jobGroup: string): Promise<boolean> {
-  return requestClient.post(`/quartz/job/resume/${jobGroup}/${jobName}`);
+export async function resumeJob(jobName: string, jobGroup: string): Promise<ApiResponse<boolean>> {
+  const response = await requestClient.post('/api/quartz/ResumeJob', null, {
+    params: { jobName, jobGroup }
+  });
+  return response;
 }
 
 /**
- * 立即执行作业
+ * 立即触发作业
  * @param jobName 作业名称
  * @param jobGroup 作业分组
- * @returns 执行结果
+ * @returns 触发结果
  */
-export async function triggerJob(jobName: string, jobGroup: string): Promise<boolean> {
-  return requestClient.post(`/quartz/job/trigger/${jobGroup}/${jobName}`);
-}
-
-/**
- * 获取作业分组列表
- * @returns 作业分组列表
- */
-export async function getJobGroups(): Promise<string[]> {
-  return requestClient.get('/quartz/job/groups');
-}
-
-/**
- * 获取系统作业类型列表（仅CLASS类型作业可用）
- * @returns 作业类型列表
- */
-export async function getSystemJobTypes(): Promise<Array<{label: string, value: string}>> {
-  return requestClient.get('/quartz/job/system-types');
+export async function triggerJob(jobName: string, jobGroup: string): Promise<ApiResponse<boolean>> {
+  const response = await requestClient.post('/api/quartz/TriggerJob', null, {
+    params: { jobName, jobGroup }
+  });
+  return response;
 }
 
 /**
@@ -204,6 +256,45 @@ export async function getSystemJobTypes(): Promise<Array<{label: string, value: 
  * @param cronExpression Cron表达式
  * @returns 验证结果
  */
-export async function validateCronExpression(cronExpression: string): Promise<{valid: boolean, description?: string}> {
-  return requestClient.get('/quartz/job/validate-cron', { params: { cronExpression } });
+export async function validateCronExpression(cronExpression: string): Promise<ApiResponse<boolean>> {
+  const response = await requestClient.get('/api/quartz/ValidateCronExpression', {
+    params: { cronExpression }
+  });
+  return response;
+}
+
+/**
+ * 获取所有实现了IJob接口的类名列表
+ * @returns 作业类列表
+ */
+export async function getJobClasses(): Promise<ApiResponse<string[]>> {
+  const response = await requestClient.get('/api/quartz/GetJobClasses');
+  return response;
+}
+
+/**
+ * 获取调度器状态
+ * @returns 调度器状态
+ */
+export async function getSchedulerStatus(): Promise<ApiResponse<any>> {
+  const response = await requestClient.get('/api/quartz/GetSchedulerStatus');
+  return response;
+}
+
+/**
+ * 启动调度器
+ * @returns 启动结果
+ */
+export async function startScheduler(): Promise<ApiResponse<boolean>> {
+  const response = await requestClient.post('/api/quartz/StartScheduler');
+  return response;
+}
+
+/**
+ * 停止调度器
+ * @returns 停止结果
+ */
+export async function stopScheduler(): Promise<ApiResponse<boolean>> {
+  const response = await requestClient.post('/api/quartz/StopScheduler');
+  return response;
 }
