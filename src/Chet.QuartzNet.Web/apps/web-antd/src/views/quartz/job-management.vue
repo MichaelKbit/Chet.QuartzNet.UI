@@ -17,14 +17,6 @@ import {
   Card,
   Alert,
 } from 'ant-design-vue';
-import {
-  SearchOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  PlusOutlined,
-  StopOutlined,
-  PlayCircleOutlined,
-} from '@ant-design/icons-vue';
 import type {
   ColumnsType,
   FormInstance,
@@ -599,7 +591,6 @@ onMounted(() => {
         <Form.Item style="margin-bottom: 16px">
           <Space>
             <Button type="primary" @click="handleSearch">
-              <template #icon><SearchOutlined /></template>
               搜索
             </Button>
             <Button @click="handleReset"> 重置 </Button>
@@ -612,7 +603,6 @@ onMounted(() => {
       <Form.Item>
         <Space wrap>
           <Button type="primary" @click="handleAdd">
-            <template #icon><PlusOutlined /></template>
             新增作业
           </Button>
         </Space>

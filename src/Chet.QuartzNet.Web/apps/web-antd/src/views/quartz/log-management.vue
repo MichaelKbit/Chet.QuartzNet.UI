@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, reactive, h } from 'vue';
 import { Page } from '@vben/common-ui';
-import { Table, Card, Form } from 'ant-design-vue';
-import type { ColumnsType, FormInstance } from 'ant-design-vue';
 import {
   Button,
   Input,
@@ -14,13 +12,15 @@ import {
   DatePicker,
   Typography,
   Alert,
+  Table,
+  Card,
+  Form,
 } from 'ant-design-vue';
-import {
-  SearchOutlined,
-  DownloadOutlined,
-  DeleteOutlined,
-} from '@ant-design/icons-vue';
-import type { PaginationProps } from 'ant-design-vue';
+import type {
+  ColumnsType,
+  FormInstance,
+  PaginationProps,
+} from 'ant-design-vue';
 import type { Dayjs } from 'dayjs';
 
 // 导入日志相关类型和API
@@ -341,10 +341,7 @@ initData();
           />
         </Form.Item>
         <Form.Item>
-          <Button type="primary" @click="handleSearch">
-            <template #icon><SearchOutlined /></template>
-            搜索
-          </Button>
+          <Button type="primary" @click="handleSearch"> 搜索 </Button>
         </Form.Item>
         <Form.Item>
           <Button @click="handleReset">重置</Button>

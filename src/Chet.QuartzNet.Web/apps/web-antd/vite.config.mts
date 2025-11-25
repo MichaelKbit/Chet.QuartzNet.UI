@@ -15,6 +15,9 @@ export default defineConfig(async () => {
           },
         },
       },
+      build: {
+        outDir: '../../../Chet.QuartzNet.UI/wwwroot/vbenadmin',
+      },
     },
   };
 });
