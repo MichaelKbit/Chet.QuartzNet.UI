@@ -519,7 +519,8 @@ onMounted(() => {
       </div>
       <!-- 作业列表 -->
       <Table :columns="columns" :data-source="dataSource" :pagination="pagination" :loading="loading"
-        :rowKey="(record) => `${record.jobName}-${record.jobGroup}`" @change="handlePageChange" size="middle" />
+        :rowKey="(record) => `${record.jobName}-${record.jobGroup}`" @change="handlePageChange" size="middle"
+        :scroll="{ x: 'max-content' }" />
     </Card>
 
     <!-- 编辑对话框 -->
@@ -575,12 +576,15 @@ onMounted(() => {
           </Form.Item>
           </Col>
           <Col :xs="24" :sm="24" :md="24">
-          <Form.Item label="跳过SSL验证" name="skipSslValidation" valuePropName="checked" :rules="[{ required: true }]">
+          <Form.Item label="跳过SSL验证" name="skipSslValidation" valuePropName="checked">
             <Switch v-model:checked="editForm.skipSslValidation" />
           </Form.Item>
           </Col>
           <Col :xs="24" :sm="24" :md="24">
-          <Form.Item label="API超时(秒)" name="apiTimeout" :rules="[{ required: true, message: '请输入API超时时间' }]">
+          <Form.Item label="API超时(秒)" name="apiTimeout" :rules="[
+            { required: true, message: '请输入API超时时间' },
+            { type: 'number', min: 1, message: 'API超时时间必须大于0' }
+          ]">
             <Input type="number" v-model:value="editForm.apiTimeout" placeholder="请输入API超时时间，单位秒" />
           </Form.Item>
           </Col>

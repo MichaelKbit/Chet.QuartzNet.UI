@@ -15,6 +15,8 @@ import {
   Table,
   Card,
   Form,
+  Row,
+  Col,
 } from 'ant-design-vue';
 import type {
   ColumnsType,
@@ -285,7 +287,7 @@ initData();
 
 <template>
   <Page>
-    <Card style="margin-bottom: 20px">
+    <Card class="mb-4">
       <Alert type="info" style="margin-bottom: 20px">
         <template #message>
           日志统计信息: 共 {{ statistics.totalLogs }} 条，成功
@@ -295,71 +297,69 @@ initData();
         </template>
       </Alert>
 
-      <Form
-        :model="searchForm"
-        ref="searchFormRef"
-        layout="inline"
-        style="flex-wrap: wrap"
-        :label-col="{ span: 8 }"
-        :wrapper-col="{ span: 16 }"
-      >
-        <Form.Item label="作业名称" name="jobName">
-          <Input
-            v-model:value="searchForm.jobName"
-            placeholder="请输入作业名称"
-          />
-        </Form.Item>
-        <Form.Item label="作业分组" name="jobGroup">
-          <Input
-            v-model:value="searchForm.jobGroup"
-            placeholder="请输入作业分组"
-          />
-        </Form.Item>
-        <Form.Item label="执行状态" name="status">
-          <Select
-            v-model:value="searchForm.status"
-            placeholder="请选择状态"
-            allowClear
-          >
-            <Select.Option :value="LogStatusEnum.SUCCESS">成功</Select.Option>
-            <Select.Option :value="LogStatusEnum.ERROR">失败</Select.Option>
-            <Select.Option :value="LogStatusEnum.RUNNING">运行中</Select.Option>
-          </Select>
-        </Form.Item>
-        <Form.Item label="开始时间" name="startTime">
-          <DatePicker
-            v-model:value="searchForm.startTime"
-            showTime
-            placeholder="选择开始时间"
-          />
-        </Form.Item>
-        <Form.Item label="结束时间" name="endTime">
-          <DatePicker
-            v-model:value="searchForm.endTime"
-            showTime
-            placeholder="选择结束时间"
-          />
-        </Form.Item>
-        <Form.Item>
-          <Button type="primary" @click="handleSearch"> 搜索 </Button>
-        </Form.Item>
-        <Form.Item>
-          <Button @click="handleReset">重置</Button>
-        </Form.Item>
+      <Form ref="searchFormRef" :model="searchForm" layout="horizontal" :label-col="{ span: 6 }"
+        :wrapper-col="{ span: 18 }" :label-align="'right'">
+        <Row :gutter="16">
+          <Col :xs="24" :sm="12" :md="8" :lg="8">
+          <Form.Item label="作业名称" name="jobName">
+            <Input v-model:value="searchForm.jobName" placeholder="请输入作业名称" />
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="12" :md="8" :lg="8">
+          <Form.Item label="作业分组" name="jobGroup">
+            <Input v-model:value="searchForm.jobGroup" placeholder="请输入作业分组" />
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="12" :md="8" :lg="8">
+          <Form.Item label="执行状态" name="status">
+            <Select v-model:value="searchForm.status" placeholder="请选择状态" allowClear>
+              <Select.Option :value="LogStatusEnum.SUCCESS">成功</Select.Option>
+              <Select.Option :value="LogStatusEnum.ERROR">失败</Select.Option>
+              <Select.Option :value="LogStatusEnum.RUNNING">运行中</Select.Option>
+            </Select>
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="12" :md="8" :lg="8">
+          <Form.Item label="开始时间" name="startTime">
+            <DatePicker
+              v-model:value="searchForm.startTime"
+              showTime
+              placeholder="选择开始时间"
+            />
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="12" :md="8" :lg="8">
+          <Form.Item label="结束时间" name="endTime">
+            <DatePicker
+              v-model:value="searchForm.endTime"
+              showTime
+              placeholder="选择结束时间"
+            />
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="24" :md="24" :lg="24" class="text-right">
+          <Space>
+            <Button type="primary" @click="handleSearch"> 搜索 </Button>
+            <Button @click="handleReset"> 重置 </Button>
+          </Space>
+          </Col>
+        </Row>
       </Form>
     </Card>
 
     <Card>
-      <Form.Item>
-        <Space wrap>
-          <Button type="primary" disabled icon="download" @click="handleExport">
-            导出日志（暂未实现）
-          </Button>
-          <Button danger disabled icon="delete" @click="handleClear"
-            >清空日志（暂未实现）</Button
-          >
-        </Space>
-      </Form.Item>
+      <div class="mb-4 flex items-center justify-between">
+        <div>
+          <Space>
+            <Button type="primary" disabled icon="download" @click="handleExport">
+              导出日志（暂未实现）
+            </Button>
+            <Button danger disabled icon="delete" @click="handleClear"
+              >清空日志（暂未实现）</Button
+            >
+          </Space>
+        </div>
+      </div>
       <!-- 日志列表 -->
       <Table
         :columns="columns"
@@ -369,7 +369,7 @@ initData();
         :rowKey="(record) => record.logId"
         size="middle"
         @change="handlePageChange"
-        tableLayout="auto"
+        :scroll="{ x: 'max-content' }"
       >
         <template #action="{ record }">
           <Space size="middle">
