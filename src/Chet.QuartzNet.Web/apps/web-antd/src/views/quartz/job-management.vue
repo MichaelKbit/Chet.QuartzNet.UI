@@ -11,17 +11,17 @@ import {
   Switch,
   message,
   notification,
-  Divider,
   Tag,
   Table,
   Card,
-  Alert,
+  Row,
+  Col,
+  Dropdown,
+  Menu,
 } from 'ant-design-vue';
-import type {
-  ColumnsType,
-  FormInstance,
-  PaginationProps,
-} from 'ant-design-vue';
+import type { FormInstance, PaginationProps } from 'ant-design-vue';
+// 导入Cron帮助组件
+import CronHelperModal from './components/cron-helper.vue';
 
 // 导入作业API服务
 import {
@@ -70,7 +70,6 @@ const searchForm = ref<Partial<QuartzJobQueryDto>>({
   jobName: '',
   jobGroup: '',
   status: undefined,
-  jobType: undefined,
 });
 
 // 编辑对话框
@@ -79,69 +78,44 @@ const editModalTitle = ref('新增作业');
 const editForm = reactive<QuartzJobDto>({
   jobName: '',
   jobGroup: '',
-  jobType: JobTypeEnum.CLASS,
+  jobTypeEnum: JobTypeEnum.DLL,
+  jobType: '',
   cronExpression: '',
   description: '',
-  requestUrl: '',
-  requestMethod: 'GET',
-  requestHeaders: '',
+  jobData: '',
+  apiMethod: 'GET',
+  apiHeaders: '',
   apiBody: '',
-  assemblyName: '',
-  className: '',
-  methodName: '',
-  paramJson: '',
-  shellCommand: '',
-  apiTimeout: 30000,
-  isActive: true,
-  retryCount: 0,
-  retryInterval: 0,
+  apiTimeout: 30,
+  skipSslValidation: false,
+  startTime: undefined,
+  endTime: undefined,
+  isEnabled: true,
 });
 
 const formRef = ref<FormInstance>();
 
-// 定义可展开行配置
-const expandableConfig = {
-  expandedRowRender: (record: QuartzJobResponseDto) => {
-    return h('div', { style: { padding: '16px', background: '#fafafa' } }, [
-      h('div', { style: { marginBottom: '8px' } }, [
-        h('strong', null, '描述:'),
-        ' ',
-        record.description || '-',
-      ]),
-      h('div', { style: { marginBottom: '8px' } }, [
-        h('strong', null, '创建时间:'),
-        ' ',
-        record.createTime || '-',
-      ]),
-      h('div', { style: { marginBottom: '8px' } }, [
-        h('strong', null, '修改时间:'),
-        ' ',
-        record.updateTime || '-',
-      ]),
-      h('div', { style: { display: 'flex', gap: '10px', marginTop: '10px' } }, [
-        h(
-          Button,
-          {
-            type: 'link',
-            onClick: () => handleExecute(record),
-          },
-          '立即执行',
-        ),
-        h(
-          Button,
-          {
-            type: 'link',
-            onClick: () => handlePause(record),
-          },
-          '暂停',
-        ),
-      ]),
-    ]);
-  },
+// Cron帮助模态框控制
+const cronHelperVisible = ref(false);
+
+// 打开Cron帮助
+const openCronHelper = () => {
+  cronHelperVisible.value = true;
 };
 
-// 列配置 - 移除固定宽度设置，实现列宽自适应
-const columns: ColumnsType<QuartzJobResponseDto>[] = [
+// 关闭Cron帮助
+const closeCronHelper = () => {
+  cronHelperVisible.value = false;
+};
+
+// 选择Cron表达式
+const selectCronExpression = (expression: string) => {
+  editForm.cronExpression = expression;
+  closeCronHelper();
+};
+
+// 列配置
+const columns = [
   {
     title: '作业名称',
     dataIndex: 'jobName',
@@ -156,8 +130,8 @@ const columns: ColumnsType<QuartzJobResponseDto>[] = [
     title: '作业类型',
     dataIndex: 'jobType',
     ellipsis: true,
-    customRender: ({ record }) => {
-      const type = jobTypeMap[record.jobType];
+    customRender: ({ record }: { record: QuartzJobResponseDto }) => {
+      const type = jobTypeMap[record.jobTypeEnum];
       return h(
         Tag,
         { color: type?.color || 'default' },
@@ -174,7 +148,7 @@ const columns: ColumnsType<QuartzJobResponseDto>[] = [
     title: '状态',
     dataIndex: 'status',
     ellipsis: true,
-    customRender: ({ record }) => {
+    customRender: ({ record }: { record: QuartzJobResponseDto }) => {
       const status = jobStatusMap[record.status];
       return h(
         Tag,
@@ -185,14 +159,14 @@ const columns: ColumnsType<QuartzJobResponseDto>[] = [
   },
   {
     title: '是否启用',
-    dataIndex: 'isActive',
+    dataIndex: 'isEnabled',
     ellipsis: true,
-    customRender: ({ record }) =>
-      h(Switch, { checked: record.isActive, disabled: true }),
+    customRender: ({ record }: { record: QuartzJobResponseDto }) =>
+      h(Switch, { checked: record.isEnabled, disabled: true }),
   },
   {
     title: '上次执行',
-    dataIndex: 'lastRunTime',
+    dataIndex: 'previousRunTime',
     ellipsis: true,
   },
   {
@@ -203,9 +177,62 @@ const columns: ColumnsType<QuartzJobResponseDto>[] = [
   {
     title: '操作',
     key: 'action',
-    width: 200,
-    slots: {
-      customRender: 'action',
+    width: 80,
+    customRender: ({ record }: { record: QuartzJobResponseDto }) => {
+      // 创建下拉菜单
+      const menu = h(Menu, {}, [
+        h(
+          Menu.Item,
+          {
+            onClick: () => handleEdit(record),
+          },
+          '编辑',
+        ),
+        h(
+          Menu.Item,
+          {
+            onClick: () => handleDelete(record),
+            danger: true,
+          },
+          '删除',
+        ),
+        h(
+          Menu.Item,
+          {
+            onClick: () =>
+              record.status === JobStatusEnum.Normal
+                ? handleStop(record)
+                : handleResume(record),
+          },
+          record.status === JobStatusEnum.Normal ? '停止' : '恢复',
+        ),
+        h(
+          Menu.Item,
+          {
+            onClick: () => handleExecute(record),
+          },
+          '立即执行',
+        ),
+      ]);
+
+      return h(
+        Dropdown,
+        {
+          trigger: ['click'],
+          overlay: menu,
+        },
+        {
+          default: () =>
+            h(
+              Button,
+              {
+                type: 'primary',
+                disabled: loading.value,
+              },
+              '操作',
+            ),
+        },
+      );
     },
   },
 ];
@@ -231,7 +258,6 @@ const loadJobList = async () => {
       jobName: searchForm.value.jobName,
       jobGroup: searchForm.value.jobGroup,
       status: searchForm.value.status,
-      jobType: searchForm.value.jobType,
     });
 
     dataSource.value = response.data?.items || [];
@@ -245,9 +271,9 @@ const loadJobList = async () => {
 };
 
 // 处理分页变化
-const handlePageChange = (pageObj) => {
-  currentPage.value = pageObj.current;
-  pageSize.value = pageObj.pageSize;
+const handlePageChange = (pagination: any) => {
+  currentPage.value = pagination.current || 1;
+  pageSize.value = pagination.pageSize || 10;
   loadJobList();
 };
 
@@ -266,8 +292,7 @@ const handleReset = () => {
   searchForm.value = {
     jobName: '',
     jobGroup: '',
-    jobStatus: undefined,
-    jobType: undefined,
+    status: undefined,
   };
   currentPage.value = 1;
   loadJobList();
@@ -279,22 +304,19 @@ const handleAdd = () => {
   Object.assign(editForm, {
     jobName: '',
     jobGroup: '',
-    jobType: JobTypeEnum.CLASS,
+    jobTypeEnum: JobTypeEnum.DLL,
+    jobType: '',
     cronExpression: '0 0/1 * * * ?',
     description: '',
-    requestUrl: '',
-    requestMethod: 'GET',
-    requestHeaders: '',
+    jobData: '',
+    apiMethod: 'GET',
+    apiHeaders: '',
     apiBody: '',
-    assemblyName: '',
-    className: '',
-    methodName: '',
-    paramJson: '',
-    shellCommand: '',
-    apiTimeout: 30000,
-    isActive: true,
-    retryCount: 0,
-    retryInterval: 0,
+    apiTimeout: 30,
+    skipSslValidation: false,
+    startTime: undefined,
+    endTime: undefined,
+    isEnabled: true,
   });
   editModalVisible.value = true;
 };
@@ -307,24 +329,21 @@ const handleEdit = async (job: QuartzJobResponseDto) => {
     editModalTitle.value = '编辑作业';
     // 转换响应数据到表单格式
     const jobDetail = {
-      jobName: response.result?.jobName || '',
-      jobGroup: response.result?.jobGroup || '',
-      jobType: response.result?.jobType || JobTypeEnum.CLASS,
-      cronExpression: response.result?.cronExpression || '',
-      description: response.result?.description || '',
-      requestUrl: response.result?.requestUrl || '',
-      requestMethod: response.result?.requestMethod || 'GET',
-      requestHeaders: response.result?.requestHeaders || '',
-      apiBody: response.result?.apiBody || '',
-      assemblyName: response.result?.assemblyName || '',
-      className: response.result?.className || '',
-      methodName: response.result?.methodName || '',
-      paramJson: response.result?.paramJson || '',
-      shellCommand: response.result?.shellCommand || '',
-      apiTimeout: response.result?.apiTimeout || 30000,
-      isActive: response.result?.isActive !== false,
-      retryCount: response.result?.retryCount || 0,
-      retryInterval: response.result?.retryInterval || 0,
+      jobName: response.data?.jobName || '',
+      jobGroup: response.data?.jobGroup || '',
+      jobTypeEnum: response.data?.jobTypeEnum || JobTypeEnum.DLL,
+      jobType: response.data?.jobType || '',
+      cronExpression: response.data?.cronExpression || '',
+      description: response.data?.description || '',
+      jobData: response.data?.jobData || '',
+      apiMethod: response.data?.apiMethod || 'GET',
+      apiHeaders: response.data?.apiHeaders || '',
+      apiBody: response.data?.apiBody || '',
+      apiTimeout: response.data?.apiTimeout || 30,
+      skipSslValidation: response.data?.skipSslValidation || false,
+      startTime: response.data?.startTime || undefined,
+      endTime: response.data?.endTime || undefined,
+      isEnabled: response.data?.isEnabled !== false,
     };
     Object.assign(editForm, jobDetail);
     editModalVisible.value = true;
@@ -349,22 +368,19 @@ const handleSave = async () => {
     const submitData = {
       jobName: editForm.jobName,
       jobGroup: editForm.jobGroup,
+      jobTypeEnum: editForm.jobTypeEnum,
       jobType: editForm.jobType,
       cronExpression: editForm.cronExpression,
       description: editForm.description,
-      requestUrl: editForm.requestUrl,
-      requestMethod: editForm.requestMethod,
-      requestHeaders: editForm.requestHeaders,
+      jobData: editForm.jobData,
+      apiMethod: editForm.apiMethod,
+      apiHeaders: editForm.apiHeaders,
       apiBody: editForm.apiBody,
-      assemblyName: editForm.assemblyName,
-      className: editForm.className,
-      methodName: editForm.methodName,
-      paramJson: editForm.paramJson,
-      shellCommand: editForm.shellCommand,
       apiTimeout: editForm.apiTimeout,
-      isActive: editForm.isActive,
-      retryCount: editForm.retryCount,
-      retryInterval: editForm.retryInterval,
+      skipSslValidation: editForm.skipSslValidation,
+      startTime: editForm.startTime,
+      endTime: editForm.endTime,
+      isEnabled: editForm.isEnabled,
     };
 
     if (
@@ -373,7 +389,7 @@ const handleSave = async () => {
       editModalTitle.value === '编辑作业'
     ) {
       // 更新作业
-      await updateJob(editForm.jobName, editForm.jobGroup, submitData);
+      await updateJob(submitData);
       message.success('作业更新成功');
     } else {
       // 新增作业
@@ -423,18 +439,6 @@ const handleStop = async (job: QuartzJobResponseDto) => {
   }
 };
 
-// 暂停作业
-const handlePause = async (job: QuartzJobResponseDto) => {
-  try {
-    await pauseJob(job.jobName, job.jobGroup);
-    message.success('作业暂停成功');
-    loadJobList();
-  } catch (error) {
-    message.error('作业暂停失败');
-    console.error('暂停作业失败:', error);
-  }
-};
-
 // 恢复作业
 const handleResume = async (job: QuartzJobResponseDto) => {
   try {
@@ -462,92 +466,6 @@ const handleExecute = async (job: QuartzJobResponseDto) => {
   }
 };
 
-// 获取当前作业类型对应的表单部分
-const getJobTypeFormItems = () => {
-  switch (editForm.jobType) {
-    case JobTypeEnum.CLASS:
-      return [
-        {
-          type: 'input',
-          label: '程序集名称',
-          name: 'assemblyName',
-          placeholder: '请输入程序集名称',
-          required: true,
-        },
-        {
-          type: 'input',
-          label: '类名',
-          name: 'className',
-          placeholder: '请输入类名（包含命名空间）',
-          required: true,
-        },
-        {
-          type: 'input',
-          label: '方法名',
-          name: 'methodName',
-          placeholder: '请输入方法名',
-          required: true,
-        },
-        {
-          type: 'textarea',
-          label: '参数JSON',
-          name: 'paramJson',
-          placeholder: 'JSON格式的参数',
-          rows: 4,
-        },
-      ];
-    case JobTypeEnum.HTTP:
-      return [
-        {
-          type: 'input',
-          label: '请求URL',
-          name: 'requestUrl',
-          placeholder: '请输入HTTP请求URL',
-          required: true,
-        },
-        {
-          type: 'select',
-          label: '请求方法',
-          name: 'requestMethod',
-          options: [
-            { label: 'GET', value: 'GET' },
-            { label: 'POST', value: 'POST' },
-            { label: 'PUT', value: 'PUT' },
-            { label: 'DELETE', value: 'DELETE' },
-          ],
-        },
-        {
-          type: 'textarea',
-          label: '请求头',
-          name: 'requestHeaders',
-          placeholder:
-            'JSON格式的请求头，例如: {"Content-Type": "application/json"}',
-          rows: 3,
-        },
-        {
-          type: 'textarea',
-          label: 'API请求体',
-          name: 'apiBody',
-          placeholder: '请求体内容',
-          rows: 4,
-        },
-      ];
-    case JobTypeEnum.SCRIPT:
-      return [
-        {
-          type: 'textarea',
-          label: '脚本命令',
-          name: 'shellCommand',
-          placeholder: '请输入要执行的脚本命令',
-          rows: 4,
-          required: true,
-        },
-      ];
-    default:
-      return [];
-  }
-};
-
 // 生命周期
 onMounted(() => {
   loadJobList();
@@ -556,203 +474,145 @@ onMounted(() => {
 
 <template>
   <Page>
-    <Card style="margin-bottom: 20px">
-      <Form
-        ref="searchFormRef"
-        :model="searchForm"
-        layout="inline"
-        :label-col="{ span: 8 }"
-        :wrapper-col="{ span: 16 }"
-        style="flex-wrap: wrap"
-      >
-        <Form.Item label="作业名称" name="jobName" style="margin-bottom: 16px">
-          <Input placeholder="请输入作业名称" style="width: 180px" />
-        </Form.Item>
-        <Form.Item label="作业分组" name="jobGroup" style="margin-bottom: 16px">
-          <Input placeholder="请输入作业分组" style="width: 180px" />
-        </Form.Item>
-        <Form.Item label="作业状态" name="status" style="margin-bottom: 16px">
-          <Select placeholder="请选择状态" allowClear style="width: 120px">
-            <Select.Option :value="JobStatusEnum.Normal">正常</Select.Option>
-            <Select.Option :value="JobStatusEnum.Paused">已暂停</Select.Option>
-            <Select.Option :value="JobStatusEnum.Completed"
-              >已完成</Select.Option
-            >
-            <Select.Option :value="JobStatusEnum.Error">错误</Select.Option>
-            <Select.Option :value="JobStatusEnum.Blocked">阻塞</Select.Option>
-          </Select>
-        </Form.Item>
-        <Form.Item label="作业类型" name="jobType" style="margin-bottom: 16px">
-          <Select placeholder="请选择类型" allowClear style="width: 120px">
-            <Select.Option :value="JobTypeEnum.DLL">DLL</Select.Option>
-            <Select.Option :value="JobTypeEnum.API">API</Select.Option>
-          </Select>
-        </Form.Item>
-        <Form.Item style="margin-bottom: 16px">
+    <Card class="mb-4">
+      <Form ref="searchFormRef" :model="searchForm" layout="horizontal" :label-col="{ span: 6 }"
+        :wrapper-col="{ span: 18 }" :label-align="'right'">
+        <Row :gutter="16">
+          <Col :xs="24" :sm="12" :md="8" :lg="8">
+          <Form.Item label="作业名称" name="jobName">
+            <Input v-model:value="searchForm.jobName" placeholder="请输入作业名称" />
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="12" :md="8" :lg="8">
+          <Form.Item label="作业分组" name="jobGroup">
+            <Input v-model:value="searchForm.jobGroup" placeholder="请输入作业分组" />
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="12" :md="8" :lg="8">
+          <Form.Item label="作业状态" name="status">
+            <Select v-model:value="searchForm.status" placeholder="请选择状态" allowClear>
+              <Select.Option :value="JobStatusEnum.Normal">正常</Select.Option>
+              <Select.Option :value="JobStatusEnum.Paused">已暂停</Select.Option>
+              <Select.Option :value="JobStatusEnum.Completed">已完成</Select.Option>
+              <Select.Option :value="JobStatusEnum.Error">错误</Select.Option>
+              <Select.Option :value="JobStatusEnum.Blocked">阻塞</Select.Option>
+            </Select>
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="24" :md="24" :lg="24" class="text-right">
           <Space>
-            <Button type="primary" @click="handleSearch">
-              搜索
-            </Button>
+            <Button type="primary" @click="handleSearch"> 搜索 </Button>
             <Button @click="handleReset"> 重置 </Button>
           </Space>
-        </Form.Item>
+          </Col>
+        </Row>
       </Form>
     </Card>
 
     <Card>
-      <Form.Item>
-        <Space wrap>
-          <Button type="primary" @click="handleAdd">
-            新增作业
-          </Button>
-        </Space>
-      </Form.Item>
-      <!-- 作业列表 -->
-      <Table
-        :columns="columns"
-        :data-source="dataSource"
-        :pagination="pagination"
-        :loading="loading"
-        :rowKey="(record) => `${record.jobName}-${record.jobGroup}`"
-        @change="handlePageChange"
-        :expandable="expandableConfig"
-        size="middle"
-        width="100%"
-        tableLayout="auto"
-      >
-        <template #action="{ record }">
+      <div class="mb-4 flex items-center justify-between">
+        <div>
           <Space>
-            <Button
-              type="primary"
-              :disabled="loading"
-              @click="handleEdit(record)"
-              >编辑</Button
-            >
-            <Button danger :disabled="loading" @click="handleDelete(record)"
-              >删除</Button
-            >
-            <Button
-              v-if="record.status === JobStatusEnum.Normal"
-              :disabled="loading"
-              @click="handleStop(record)"
-              >停止</Button
-            >
-            <Button v-else :disabled="loading" @click="handleResume(record)"
-              >恢复</Button
-            >
+            <Button type="primary" @click="handleAdd"> 新增作业 </Button>
           </Space>
-        </template>
-      </Table>
+        </div>
+      </div>
+      <!-- 作业列表 -->
+      <Table :columns="columns" :data-source="dataSource" :pagination="pagination" :loading="loading"
+        :rowKey="(record) => `${record.jobName}-${record.jobGroup}`" @change="handlePageChange" size="middle" />
     </Card>
 
     <!-- 编辑对话框 -->
-    <Modal
-      v-model:visible="editModalVisible"
-      :title="editModalTitle"
-      width="700px"
-      @cancel="editModalVisible = false"
-    >
-      <Form
-        ref="formRef"
-        :model="editForm"
-        layout="vertical"
-        :label-col="{ span: 6 }"
-        :wrapper-col="{ span: 18 }"
-      >
-        <Form.Item
-          label="作业名称"
-          name="jobName"
-          :rules="[{ required: true, message: '请输入作业名称' }]"
-        >
-          <Input placeholder="请输入作业名称" />
-        </Form.Item>
-
-        <Form.Item
-          label="作业分组"
-          name="jobGroup"
-          :rules="[{ required: true, message: '请输入作业分组' }]"
-        >
-          <Input placeholder="请输入作业分组" />
-        </Form.Item>
-
-        <Form.Item
-          label="作业类型"
-          name="jobType"
-          :rules="[{ required: true, message: '请选择作业类型' }]"
-        >
-          <Select v-model:value="editForm.jobType" @change="() => {}">
-            <Select.Option :value="JobTypeEnum.DLL">DLL</Select.Option>
-            <Select.Option :value="JobTypeEnum.API">API</Select.Option>
-          </Select>
-        </Form.Item>
-
-        <Form.Item
-          label="Cron表达式"
-          name="cronExpression"
-          :rules="[{ required: true, message: '请输入Cron表达式' }]"
-        >
-          <Input placeholder="例如: 0 0/1 * * * ? (每分钟执行一次)" />
-        </Form.Item>
-
-        <Form.Item label="描述" name="description">
-          <Input.TextArea placeholder="请输入作业描述" :rows="3" />
-        </Form.Item>
-
-        <Form.Item
-          label="API超时(ms)"
-          name="apiTimeout"
-          :rules="[{ required: true, message: '请输入API超时时间' }]"
-        >
-          <Input type="number" placeholder="请输入API超时时间，单位毫秒" />
-        </Form.Item>
-
-        <Form.Item label="重试次数" name="retryCount">
-          <Input type="number" placeholder="请输入失败重试次数" />
-        </Form.Item>
-
-        <Form.Item label="重试间隔(ms)" name="retryInterval">
-          <Input type="number" placeholder="请输入重试间隔时间" />
-        </Form.Item>
-
-        <Form.Item label="是否启用" name="isActive" valuePropName="checked">
-          <Switch />
-        </Form.Item>
-
-        <Divider>作业配置详情</Divider>
-
-        <template
-          v-for="(item, index) in getJobTypeFormItems()"
-          :key="`${item.name}-${index}`"
-        >
-          <Form.Item
-            :label="item.label"
-            :name="item.name"
-            :rules="
-              item.required
-                ? [{ required: true, message: `请输入${item.label}` }]
-                : []
-            "
-          >
-            <template v-if="item.type === 'input'">
-              <Input :placeholder="item.placeholder" />
-            </template>
-            <template v-else-if="item.type === 'select'">
-              <Select v-model:value="editForm[item.name]" v-if="item.options">
-                <template v-for="option in item.options" :key="option.value">
-                  <Select.Option :value="option.value">{{
-                    option.label
-                  }}</Select.Option>
-                </template>
-              </Select>
-            </template>
-            <template v-else-if="item.type === 'textarea'">
-              <Input.TextArea
-                :placeholder="item.placeholder"
-                :rows="item.rows || 3"
-              />
-            </template>
+    <Modal v-model:visible="editModalVisible" :title="editModalTitle" width="800px" :body-style="{ padding: '24px' }"
+      destroyOnClose @cancel="editModalVisible = false">
+      <Form ref="formRef" :model="editForm" layout="horizontal" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }"
+        :label-align="'right'">
+        <Row :gutter="16">
+          <Col :xs="24" :sm="24" :md="24">
+          <Form.Item label="作业名称" name="jobName" :rules="[{ required: true, message: '请输入作业名称' }]">
+            <Input v-model:value="editForm.jobName" placeholder="请输入作业名称" />
           </Form.Item>
-        </template>
+          </Col>
+          <Col :xs="24" :sm="24" :md="24">
+          <Form.Item label="作业分组" name="jobGroup" :rules="[{ required: true, message: '请输入作业分组' }]">
+            <Input v-model:value="editForm.jobGroup" placeholder="请输入作业分组" />
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="24" :md="24">
+          <Form.Item label="Cron表达式" name="cronExpression" :rules="[{ required: true, message: '请输入Cron表达式' }]">
+            <Space.Compact style="width: 100%">
+              <Input v-model:value="editForm.cronExpression" placeholder="例如: 0 0/1 * * * ?" style="flex: 1" />
+              <Button type="default" @click="openCronHelper">
+                帮助
+              </Button>
+            </Space.Compact>
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="24" :md="24">
+          <Form.Item label="作业类型枚举" name="jobTypeEnum" :rules="[{ required: true, message: '请选择作业类型枚举' }]">
+            <Select v-model:value="editForm.jobTypeEnum" @change="() => { }">
+              <Select.Option :value="JobTypeEnum.DLL">DLL</Select.Option>
+              <Select.Option :value="JobTypeEnum.API">API</Select.Option>
+            </Select>
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="24" :md="24">
+          <Form.Item label="作业类型" name="jobType" :rules="[{ required: true, message: '请输入作业类型' }]">
+            <Input v-model:value="editForm.jobType" placeholder="请输入作业类型（类名或API URL）" />
+          </Form.Item>
+          </Col>
+
+          <!-- API相关配置 -->
+          <Col :xs="24" :sm="24" :md="24" v-if="editForm.jobTypeEnum === JobTypeEnum.API">
+          <Col :xs="24" :sm="24" :md="24">
+          <Form.Item label="API请求方法" name="apiMethod" :rules="[{ required: true, message: '请选择API请求方法' }]">
+            <Select v-model:value="editForm.apiMethod">
+              <Select.Option value="GET">GET</Select.Option>
+              <Select.Option value="POST">POST</Select.Option>
+              <Select.Option value="PUT">PUT</Select.Option>
+              <Select.Option value="DELETE">DELETE</Select.Option>
+            </Select>
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="24" :md="24">
+          <Form.Item label="跳过SSL验证" name="skipSslValidation" valuePropName="checked" :rules="[{ required: true }]">
+            <Switch v-model:checked="editForm.skipSslValidation" />
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="24" :md="24">
+          <Form.Item label="API超时(秒)" name="apiTimeout" :rules="[{ required: true, message: '请输入API超时时间' }]">
+            <Input type="number" v-model:value="editForm.apiTimeout" placeholder="请输入API超时时间，单位秒" />
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="24" :md="24">
+          <Form.Item label="API请求头" name="apiHeaders">
+            <Input.TextArea v-model:value="editForm.apiHeaders"
+              placeholder="JSON格式的请求头，例如: {'Content-Type': 'application/json'}" :rows="3" />
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="24" :md="24">
+          <Form.Item label="API请求体" name="apiBody">
+            <Input.TextArea v-model:value="editForm.apiBody" placeholder="JSON格式的请求体" :rows="4" />
+          </Form.Item>
+          </Col>
+          </Col>
+
+          <Col :xs="24" :sm="24" :md="24">
+          <Form.Item label="作业数据" name="jobData">
+            <Input.TextArea v-model:value="editForm.jobData" placeholder="JSON格式的作业数据" :rows="4" />
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="24" :md="24">
+          <Form.Item label="描述" name="description">
+            <Input.TextArea v-model:value="editForm.description" placeholder="请输入作业描述" :rows="3" />
+          </Form.Item>
+          </Col>
+          <Col :xs="24" :sm="24" :md="24">
+          <Form.Item label="是否启用" name="isEnabled" valuePropName="checked">
+            <Switch v-model:checked="editForm.isEnabled" />
+          </Form.Item>
+          </Col>
+        </Row>
       </Form>
 
       <template #footer>
@@ -762,24 +622,39 @@ onMounted(() => {
         </Space>
       </template>
     </Modal>
+
+    <!-- Cron帮助模态框 -->
+    <CronHelperModal v-model:visible="cronHelperVisible" @cancel="closeCronHelper" @select="selectCronExpression" />
   </Page>
 </template>
 
 <style scoped>
-/* 响应式布局调整 */
-@media (max-width: 768px) {
-  .ant-form-inline .ant-form-item {
-    margin-right: 0;
-    margin-bottom: 16px;
-    width: 100%;
-  }
+/* VbenAdmin 风格样式优化 */
+.mb-4 {
+  margin-bottom: 16px;
+}
 
-  .ant-form-inline .ant-form-item-label {
-    text-align: left;
-  }
+.text-right {
+  text-align: right;
+}
 
-  .ant-card {
-    margin-bottom: 16px !important;
-  }
+.text-sm {
+  font-size: 14px;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.text-gray-700 {
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.pl-6 {
+  padding-left: 24px;
+}
+
+.pr-6 {
+  padding-right: 24px;
 }
 </style>
