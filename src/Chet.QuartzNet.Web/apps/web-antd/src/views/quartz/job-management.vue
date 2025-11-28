@@ -48,8 +48,12 @@ import type {
 
 // 作业类型和状态映射
 const jobTypeMap = {
+  // 支持数字枚举
   [JobTypeEnum.DLL]: { text: 'DLL', color: 'blue' },
   [JobTypeEnum.API]: { text: 'API', color: 'green' },
+  // 支持字符串类型
+  DLL: { text: 'DLL', color: 'blue' },
+  API: { text: 'API', color: 'green' },
 };
 
 const jobStatusMap = {
