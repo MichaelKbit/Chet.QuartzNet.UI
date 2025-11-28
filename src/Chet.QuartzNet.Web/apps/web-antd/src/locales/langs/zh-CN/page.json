@@ -11,5 +11,9 @@
     "title": "概览",
     "analytics": "分析页",
     "workspace": "工作台"
+  },
+  "quartz": {
+    "jobManagement": "作业管理",
+    "logManagement": "日志管理"
   }
 }

@@ -29,7 +29,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('#/views/quartz/job-management.vue'),
     meta: {
       icon: 'ion:time-outline',
-      title: $t('作业管理'),
+      title: $t('page.quartz.jobManagement'),
     },
   },
   {
@@ -38,7 +38,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('#/views/quartz/log-management.vue'),
     meta: {
       icon: 'lucide:logs',
-      title: $t('日志管理'),
+      title: $t('page.quartz.logManagement'),
     },
   },
 ];
