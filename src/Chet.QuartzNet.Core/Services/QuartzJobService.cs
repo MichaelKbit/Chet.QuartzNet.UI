@@ -58,7 +58,7 @@ public class QuartzJobService : IQuartzJobService
             }
 
             // 验证作业类型
-            if (!ValidateJobType(jobDto.JobType, jobDto.JobTypeEnum))
+            if (!ValidateJobType(jobDto.JobClassOrApi, jobDto.JobType))
             {
                 return ApiResponseDto<bool>.ErrorResponse("无效的作业类型");
             }
@@ -80,8 +80,8 @@ public class QuartzJobService : IQuartzJobService
                 TriggerGroup = triggerGroup,
                 CronExpression = jobDto.CronExpression,
                 Description = jobDto.Description,
-                JobTypeEnum = jobDto.JobTypeEnum,
                 JobType = jobDto.JobType,
+                JobClassOrApi = jobDto.JobClassOrApi,
                 JobData = jobDto.JobData,
                 ApiMethod = jobDto.ApiMethod,
                 ApiHeaders = jobDto.ApiHeaders,
@@ -137,7 +137,7 @@ public class QuartzJobService : IQuartzJobService
             }
 
             // 验证作业类型
-            if (!ValidateJobType(jobDto.JobType, jobDto.JobTypeEnum))
+            if (!ValidateJobType(jobDto.JobClassOrApi, jobDto.JobType))
             {
                 return ApiResponseDto<bool>.ErrorResponse("无效的作业类型");
             }
@@ -158,8 +158,8 @@ public class QuartzJobService : IQuartzJobService
             existingJob.TriggerGroup = string.IsNullOrWhiteSpace(jobDto.TriggerGroup) ? existingJob.TriggerGroup : jobDto.TriggerGroup;
             existingJob.CronExpression = jobDto.CronExpression;
             existingJob.Description = jobDto.Description;
-            existingJob.JobTypeEnum = jobDto.JobTypeEnum;
             existingJob.JobType = jobDto.JobType;
+            existingJob.JobClassOrApi = jobDto.JobClassOrApi;
             existingJob.JobData = jobDto.JobData;
             existingJob.ApiMethod = jobDto.ApiMethod;
             existingJob.ApiHeaders = jobDto.ApiHeaders;
@@ -388,7 +388,7 @@ public class QuartzJobService : IQuartzJobService
                     .StoreDurably(true); // 没有触发器的作业必须设置为持久化
 
                 // 根据作业类型设置作业类
-                if (jobInfo.JobTypeEnum == JobTypeEnum.API)
+                if (jobInfo.JobType == JobTypeEnum.API)
                 {
                     // API作业使用ApiJob类
                     jobBuilder.OfType<ApiJob>();
@@ -398,13 +398,13 @@ public class QuartzJobService : IQuartzJobService
                     // DLL作业使用指定的作业类
                     try
                     {
-                        var jobType = Type.GetType(jobInfo.JobType);
+                        var jobType = Type.GetType(jobInfo.JobClassOrApi);
                         if (jobType == null)
                         {
                             // 如果没找到，搜索所有已加载的程序集
                             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
                             {
-                                jobType = assembly.GetType(jobInfo.JobType);
+                                jobType = assembly.GetType(jobInfo.JobClassOrApi);
                                 if (jobType != null)
                                 {
                                     break;
@@ -858,7 +858,7 @@ public class QuartzJobService : IQuartzJobService
         // 确定作业类型
         Type jobType;
 
-        if (jobInfo.JobTypeEnum == JobTypeEnum.API)
+        if (jobInfo.JobType == JobTypeEnum.API)
         {
             // API作业使用ApiJob类
             jobType = typeof(ApiJob);
@@ -866,14 +866,14 @@ public class QuartzJobService : IQuartzJobService
         else
         {
             // DLL作业使用指定的类型
-            jobType = Type.GetType(jobInfo.JobType);
+            jobType = Type.GetType(jobInfo.JobClassOrApi);
 
             // 如果没找到，搜索所有已加载的程序集
             if (jobType == null)
             {
                 foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
                 {
-                    jobType = assembly.GetType(jobInfo.JobType);
+                    jobType = assembly.GetType(jobInfo.JobClassOrApi);
                     if (jobType != null)
                     {
                         break;
@@ -883,7 +883,7 @@ public class QuartzJobService : IQuartzJobService
 
             if (jobType == null)
             {
-                throw new ArgumentException($"无法找到作业类型: {jobInfo.JobType}");
+                throw new ArgumentException($"无法找到作业类型: {jobInfo.JobClassOrApi}");
             }
         }
 
@@ -996,8 +996,8 @@ public class QuartzJobService : IQuartzJobService
             TriggerGroup = jobInfo.TriggerGroup,
             CronExpression = jobInfo.CronExpression,
             Description = jobInfo.Description,
-            JobTypeEnum = jobInfo.JobTypeEnum,
             JobType = jobInfo.JobType,
+            JobClassOrApi = jobInfo.JobClassOrApi,
             JobData = jobInfo.JobData,
             ApiMethod = jobInfo.ApiMethod,
             ApiHeaders = jobInfo.ApiHeaders,

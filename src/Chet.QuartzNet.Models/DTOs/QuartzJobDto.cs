@@ -78,16 +78,16 @@ public class QuartzJobDto
     public string? Description { get; set; }
 
     /// <summary>
-    /// 作业类型枚举
+    /// 作业类型
     /// </summary>
-    public JobTypeEnum JobTypeEnum { get; set; } = JobTypeEnum.DLL;
+    public JobTypeEnum JobType { get; set; } = JobTypeEnum.DLL;
 
     /// <summary>
-    /// 作业类型（类名或API URL）
+    /// 作业类名或API URL
     /// </summary>
-    [Required(ErrorMessage = "作业类型不能为空")]
-    [StringLength(500, ErrorMessage = "作业类型长度不能超过500个字符")]
-    public string JobType { get; set; } = string.Empty;
+    [Required(ErrorMessage = "作业类名或API URL不能为空")]
+    [StringLength(500, ErrorMessage = "作业类名或API URL长度不能超过500个字符")]
+    public string JobClassOrApi { get; set; } = string.Empty;
 
     /// <summary>
     /// 作业数据（JSON格式）
@@ -113,7 +113,7 @@ public class QuartzJobDto
     /// <summary>
     /// API超时时间（毫秒）
     /// </summary>
-    [ConditionalRange(1, 3600, nameof(JobTypeEnum), JobTypeEnum.API, ErrorMessage = "API超时时间必须在1秒到1小时之间")]
+    [ConditionalRange(1, 3600, nameof(JobType), JobTypeEnum.API, ErrorMessage = "API超时时间必须在1秒到1小时之间")]
     public int ApiTimeout { get; set; } = 30; // 默认30秒
 
     /// <summary>
@@ -219,14 +219,14 @@ public class QuartzJobResponseDto
     public string? Description { get; set; }
 
     /// <summary>
-    /// 作业类型枚举
+    /// 作业类型
     /// </summary>
-    public JobTypeEnum JobTypeEnum { get; set; }
+    public JobTypeEnum JobType { get; set; }
 
     /// <summary>
-    /// 作业类型（类名或API URL）
+    /// 作业类名或API URL
     /// </summary>
-    public string JobType { get; set; } = string.Empty;
+    public string JobClassOrApi { get; set; } = string.Empty;
 
     /// <summary>
     /// 作业数据（JSON格式）

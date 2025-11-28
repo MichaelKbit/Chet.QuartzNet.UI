@@ -50,16 +50,16 @@ public class QuartzJobInfo
     public string? Description { get; set; }
 
     /// <summary>
-    /// 作业类型枚举
+    /// 作业类型
     /// </summary>
-    public JobTypeEnum JobTypeEnum { get; set; } = JobTypeEnum.DLL;
+    public JobTypeEnum JobType { get; set; } = JobTypeEnum.DLL;
 
     /// <summary>
-    /// 作业类型（类名或API URL）
+    /// 作业类名或API URL
     /// </summary>
     [Required]
     [StringLength(500)]
-    public string JobType { get; set; } = string.Empty;
+    public string JobClassOrApi { get; set; } = string.Empty;
 
     /// <summary>
     /// 作业数据（JSON格式）

@@ -68,6 +68,7 @@ public class EFCoreJobStorage : IJobStorage
             existingJob.CronExpression = jobInfo.CronExpression;
             existingJob.Description = jobInfo.Description;
             existingJob.JobType = jobInfo.JobType;
+            existingJob.JobClassOrApi = jobInfo.JobClassOrApi;
             existingJob.JobData = jobInfo.JobData;
             existingJob.StartTime = jobInfo.StartTime;
             existingJob.EndTime = jobInfo.EndTime;

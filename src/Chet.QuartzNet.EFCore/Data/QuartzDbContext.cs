@@ -76,9 +76,13 @@ public class QuartzJobInfoConfiguration : IEntityTypeConfiguration<QuartzJobInfo
             .HasComment("作业描述");
 
         builder.Property(j => j.JobType)
-            .HasMaxLength(500)
             .IsRequired()
             .HasComment("作业类型");
+
+        builder.Property(j => j.JobClassOrApi)
+            .HasMaxLength(500)
+            .IsRequired()
+            .HasComment("作业类名或API URL");
 
         builder.Property(j => j.JobData)
             .HasColumnType("text")

@@ -35,6 +35,10 @@ import {
   triggerJob,
   pauseJob,
   resumeJob,
+  getSchedulerStatus,
+  startScheduler,
+  stopScheduler,
+  getJobClasses,
 } from '../../api/quartz/job';
 import type {
   QuartzJobDto,
@@ -63,6 +67,22 @@ const total = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(10);
 
+// 调度器状态
+const schedulerStatus = ref({
+  schedulerName: '',
+  schedulerInstanceId: '',
+  isStarted: false,
+  isShutdown: true,
+  inStandbyMode: false,
+  status: '未知',
+  jobCount: 0,
+  executingJobCount: 0,
+  threadPoolSize: 0,
+  version: '',
+  startTime: undefined,
+  runningTime: 0,
+});
+
 // 搜索条件
 // 添加表单实例引用
 const searchFormRef = ref<FormInstance>();
@@ -78,8 +98,8 @@ const editModalTitle = ref('新增作业');
 const editForm = reactive<QuartzJobDto>({
   jobName: '',
   jobGroup: '',
-  jobTypeEnum: JobTypeEnum.DLL,
-  jobType: '',
+  jobType: JobTypeEnum.DLL,
+  jobClassOrApi: '',
   cronExpression: '',
   description: '',
   jobData: '',
@@ -94,6 +114,22 @@ const editForm = reactive<QuartzJobDto>({
 });
 
 const formRef = ref<FormInstance>();
+
+// 作业类列表
+const jobClasses = ref<string[]>([]);
+
+// 加载作业类列表
+const loadJobClasses = async () => {
+  try {
+    const response = await getJobClasses();
+    if (response.success && response.data) {
+      jobClasses.value = response.data;
+    }
+  } catch (error) {
+    console.error('获取作业类列表失败:', error);
+    message.error('获取作业类列表失败');
+  }
+};
 
 // Cron帮助模态框控制
 const cronHelperVisible = ref(false);
@@ -114,6 +150,13 @@ const selectCronExpression = (expression: string) => {
   closeCronHelper();
 };
 
+// 作业类型变化事件处理
+const handleJobTypeChange = async (jobType: JobTypeEnum) => {
+  if (jobType === JobTypeEnum.DLL) {
+    await loadJobClasses();
+  }
+};
+
 // 列配置
 const columns = [
   {
@@ -131,13 +174,18 @@ const columns = [
     dataIndex: 'jobType',
     ellipsis: true,
     customRender: ({ record }: { record: QuartzJobResponseDto }) => {
-      const type = jobTypeMap[record.jobTypeEnum];
+      const type = jobTypeMap[record.jobType];
       return h(
         Tag,
         { color: type?.color || 'default' },
-        type?.text || record.jobType || '未知',
+        type?.text || '未知',
       );
     },
+  },
+  {
+    title: '作业类名/API',
+    dataIndex: 'jobClassOrApi',
+    ellipsis: true,
   },
   {
     title: 'cron表达式',
@@ -299,13 +347,13 @@ const handleReset = () => {
 };
 
 // 打开新增对话框
-const handleAdd = () => {
+const handleAdd = async () => {
   editModalTitle.value = '新增作业';
   Object.assign(editForm, {
     jobName: '',
     jobGroup: '',
-    jobTypeEnum: JobTypeEnum.DLL,
-    jobType: '',
+    jobType: JobTypeEnum.DLL,
+    jobClassOrApi: '',
     cronExpression: '0 0/1 * * * ?',
     description: '',
     jobData: '',
@@ -318,6 +366,8 @@ const handleAdd = () => {
     endTime: undefined,
     isEnabled: true,
   });
+  // 默认作业类型是DLL，加载作业类列表
+  await loadJobClasses();
   editModalVisible.value = true;
 };
 
@@ -331,8 +381,8 @@ const handleEdit = async (job: QuartzJobResponseDto) => {
     const jobDetail = {
       jobName: response.data?.jobName || '',
       jobGroup: response.data?.jobGroup || '',
-      jobTypeEnum: response.data?.jobTypeEnum || JobTypeEnum.DLL,
-      jobType: response.data?.jobType || '',
+      jobType: response.data?.jobType || JobTypeEnum.DLL,
+      jobClassOrApi: response.data?.jobClassOrApi || '',
       cronExpression: response.data?.cronExpression || '',
       description: response.data?.description || '',
       jobData: response.data?.jobData || '',
@@ -346,6 +396,12 @@ const handleEdit = async (job: QuartzJobResponseDto) => {
       isEnabled: response.data?.isEnabled !== false,
     };
     Object.assign(editForm, jobDetail);
+
+    // 如果作业类型是DLL，加载作业类列表
+    if (editForm.jobType === JobTypeEnum.DLL) {
+      await loadJobClasses();
+    }
+
     editModalVisible.value = true;
   } catch (error) {
     message.error('获取作业详情失败');
@@ -368,8 +424,8 @@ const handleSave = async () => {
     const submitData = {
       jobName: editForm.jobName,
       jobGroup: editForm.jobGroup,
-      jobTypeEnum: editForm.jobTypeEnum,
       jobType: editForm.jobType,
+      jobClassOrApi: editForm.jobClassOrApi,
       cronExpression: editForm.cronExpression,
       description: editForm.description,
       jobData: editForm.jobData,
@@ -466,8 +522,62 @@ const handleExecute = async (job: QuartzJobResponseDto) => {
   }
 };
 
+// 获取调度器状态
+const getSchedulerStatusInfo = async () => {
+  try {
+    const response = await getSchedulerStatus();
+    if (response.success && response.data) {
+      // 直接使用后端返回的数据，不进行命名转换
+      schedulerStatus.value = response.data;
+    }
+  } catch (error) {
+    console.error('获取调度器状态失败:', error);
+    message.error('获取调度器状态失败');
+  }
+};
+
+// 启动调度器
+const handleStartScheduler = async () => {
+  try {
+    const response = await startScheduler();
+    if (response.success) {
+      message.success('调度器启动成功');
+      await getSchedulerStatusInfo();
+      loadJobList();
+    }
+  } catch (error) {
+    console.error('启动调度器失败:', error);
+    message.error('启动调度器失败');
+  }
+};
+
+// 停止调度器
+const handleStopScheduler = async () => {
+  try {
+    const response = await stopScheduler();
+    if (response.success) {
+      message.success('调度器停止成功');
+      await getSchedulerStatusInfo();
+      loadJobList();
+    }
+  } catch (error) {
+    console.error('停止调度器失败:', error);
+    message.error('停止调度器失败');
+  }
+};
+
+// 调度器操作处理函数
+const handleSchedulerAction = async () => {
+  if (schedulerStatus.isStarted) {
+    await handleStopScheduler();
+  } else {
+    await handleStartScheduler();
+  }
+};
+
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
+  await getSchedulerStatusInfo();
   loadJobList();
 });
 </script>
@@ -509,13 +619,22 @@ onMounted(() => {
       </Form>
     </Card>
 
+    <!-- 作业管理卡片 -->
     <Card>
-      <div class="mb-4 flex items-center justify-between">
-        <div>
-          <Space>
-            <Button type="primary" @click="handleAdd"> 新增作业 </Button>
-          </Space>
-        </div>
+      <div class="mb-4 flex items-center justify-end">
+        <Space>
+          <Tag :color="schedulerStatus.isStarted ? 'success' : 'error'">
+            {{ schedulerStatus.status }}
+          </Tag>
+          <Button type="primary" :disabled="schedulerStatus.isStarted" @click="handleStartScheduler">
+            启动调度器
+          </Button>
+          <Button danger :disabled="!schedulerStatus.isStarted || schedulerStatus.isShutdown"
+            @click="handleStopScheduler">
+            停止调度器
+          </Button>
+          <Button type="primary" @click="handleAdd"> 新增作业 </Button>
+        </Space>
       </div>
       <!-- 作业列表 -->
       <Table :columns="columns" :data-source="dataSource" :pagination="pagination" :loading="loading"
@@ -523,7 +642,7 @@ onMounted(() => {
         :scroll="{ x: 'max-content' }" />
     </Card>
 
-    <!-- 编辑对话框 -->
+    <!-- 新增编辑对话框 -->
     <Modal v-model:visible="editModalVisible" :title="editModalTitle" width="800px" :body-style="{ padding: '24px' }"
       destroyOnClose @cancel="editModalVisible = false">
       <Form ref="formRef" :model="editForm" layout="horizontal" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }"
@@ -550,21 +669,28 @@ onMounted(() => {
           </Form.Item>
           </Col>
           <Col :xs="24" :sm="24" :md="24">
-          <Form.Item label="作业类型枚举" name="jobTypeEnum" :rules="[{ required: true, message: '请选择作业类型枚举' }]">
-            <Select v-model:value="editForm.jobTypeEnum" @change="() => { }">
+          <Form.Item label="作业类型" name="jobType" :rules="[{ required: true, message: '请选择作业类型' }]">
+            <Select v-model:value="editForm.jobType" @change="handleJobTypeChange">
               <Select.Option :value="JobTypeEnum.DLL">DLL</Select.Option>
               <Select.Option :value="JobTypeEnum.API">API</Select.Option>
             </Select>
           </Form.Item>
           </Col>
           <Col :xs="24" :sm="24" :md="24">
-          <Form.Item label="作业类型" name="jobType" :rules="[{ required: true, message: '请输入作业类型' }]">
-            <Input v-model:value="editForm.jobType" placeholder="请输入作业类型（类名或API URL）" />
+          <Form.Item label="作业类名/API" name="jobClassOrApi" :rules="[{ required: true, message: '请输入作业类名或API URL' }]">
+            <Select v-model:value="editForm.jobClassOrApi" placeholder="请选择或输入作业类名" showSearch allowClear
+              mode="SECRET_COMBOBOX_MODE_DO_NOT_USE" :filter-option="(input, option) => {
+                return (option?.label || '').toLowerCase().includes(input.toLowerCase());
+              }">
+              <Select.Option v-for="jobClass in jobClasses" :key="jobClass" :value="jobClass" :label="jobClass">
+                {{ jobClass }}
+              </Select.Option>
+            </Select>
           </Form.Item>
           </Col>
 
           <!-- API相关配置 -->
-          <Col :xs="24" :sm="24" :md="24" v-if="editForm.jobTypeEnum === JobTypeEnum.API">
+          <Col :xs="24" :sm="24" :md="24" v-if="editForm.jobType === JobTypeEnum.API">
           <Col :xs="24" :sm="24" :md="24">
           <Form.Item label="API请求方法" name="apiMethod" :rules="[{ required: true, message: '请选择API请求方法' }]">
             <Select v-model:value="editForm.apiMethod">

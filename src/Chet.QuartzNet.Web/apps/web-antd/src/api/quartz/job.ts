@@ -60,10 +60,10 @@ export interface QuartzJobDto {
   cronExpression: string;
   /** 作业描述 */
   description?: string;
-  /** 作业类型枚举 */
-  jobTypeEnum: JobTypeEnum;
-  /** 作业类型（类名或API URL） */
-  jobType: string;
+  /** 作业类型 */
+  jobType: JobTypeEnum;
+  /** 作业类名或API URL */
+  jobClassOrApi: string;
   /** 作业数据（JSON格式） */
   jobData?: string;
   /** API请求方法 */
@@ -98,10 +98,10 @@ export interface QuartzJobResponseDto {
   cronExpression: string;
   /** 作业描述 */
   description?: string;
-  /** 作业类型枚举 */
-  jobTypeEnum: JobTypeEnum;
-  /** 作业类型（类名或API URL） */
-  jobType: string;
+  /** 作业类型 */
+  jobType: JobTypeEnum;
+  /** 作业类名或API URL */
+  jobClassOrApi: string;
   /** 作业数据（JSON格式） */
   jobData?: string;
   /** API请求方法 */

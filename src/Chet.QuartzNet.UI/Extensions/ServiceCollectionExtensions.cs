@@ -284,8 +284,8 @@ public static class ServiceCollectionExtensions
                             TriggerGroup = "DEFAULT",
                             CronExpression = attribute.CronExpression, // 使用特性中的Cron表达式
                             Description = attribute.Description,
-                            JobTypeEnum = JobTypeEnum.DLL,
-                            JobType = jobType.FullName ?? string.Empty,
+                            JobType = JobTypeEnum.DLL,
+                            JobClassOrApi = jobType.FullName ?? string.Empty,
                             Status = JobStatus.Normal,
                             IsEnabled = attribute.Enabled, // 使用特性中配置的启用状态
                             CreateTime = DateTime.Now
