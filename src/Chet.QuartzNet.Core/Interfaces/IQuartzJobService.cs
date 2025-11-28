@@ -144,6 +144,14 @@ public interface IQuartzJobService
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>操作结果</returns>
     Task<ApiResponseDto<bool>> UpdateJobExecutionTimesAsync(string jobName, string jobGroup, Quartz.ITrigger trigger, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// 清空作业日志
+    /// </summary>
+    /// <param name="queryDto">查询条件，用于指定清空哪些日志</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>操作结果</returns>
+    Task<ApiResponseDto<bool>> ClearJobLogsAsync(QuartzJobLogQueryDto queryDto, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

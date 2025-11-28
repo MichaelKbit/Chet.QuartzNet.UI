@@ -30,9 +30,7 @@ import {
   LogStatusEnum,
   getLogList,
   getLogDetail,
-  exportLogList,
   clearLogs,
-  getLogStatistics,
 } from '../../api/quartz/log';
 import type { LogQueryParams, LogResponseDto } from '../../api/quartz/log';
 import type { ProColumns } from '@vben/common-ui';
@@ -181,19 +179,7 @@ const loadLogList = async () => {
   }
 };
 
-// 加载统计信息
-const loadLogStatistics = async () => {
-  try {
-    // 根据API定义，getLogStatistics只接受开始时间和结束时间参数
-    const stats = await getLogStatistics({
-      startTime: searchForm.startTime,
-      endTime: searchForm.endTime,
-    });
-    statistics.value = stats;
-  } catch (error) {
-    console.log('获取日志统计信息失败:', error);
-  }
-};
+
 
 // 处理分页变化
 const handlePageChange = (pageObj) => {
@@ -210,7 +196,6 @@ const handleSearch = async () => {
   }
   currentPage.value = 1;
   loadLogList();
-  loadLogStatistics();
 };
 
 // 处理重置
@@ -221,28 +206,28 @@ const handleReset = () => {
   }
   currentPage.value = 1;
   loadLogList();
-  loadLogStatistics();
 };
 
-// 导出日志 - 暂时禁用
-const handleExport = async () => {
-  try {
-    await exportLogList({ ...searchForm });
-  } catch (error: any) {
-    message.error(error.message || '导出功能暂未实现');
-  }
-};
 
-// 清空日志 - 暂时禁用
+
+// 清空日志
 const handleClear = () => {
   Modal.confirm({
     title: '确认清空',
     content: '确定要清空日志吗？此操作不可恢复！',
     onOk: async () => {
       try {
-        await clearLogs(searchForm);
+        const response = await clearLogs(searchForm);
+        if (response.success) {
+          message.success('日志清空成功');
+          // 清空后重新加载日志列表
+          await loadLogList();
+        } else {
+          message.error(response.message || '日志清空失败');
+        }
       } catch (error: any) {
-        message.error(error.message || '清空功能暂未实现');
+        console.error('清空日志失败:', error);
+        message.error(error.message || '日志清空失败');
       }
     },
   });
@@ -259,26 +244,9 @@ const handleDetail = (log: LogResponseDto) => {
   }
 };
 
-// 统计信息（模拟数据）
-const statistics = ref({
-  totalLogs: 0,
-  successCount: 0,
-  failureCount: 0,
-  runningCount: 0,
-  cancelledCount: 0,
-});
-
 // 初始化
 const initData = async () => {
   await loadLogList();
-  // 初始化统计信息
-  statistics.value = {
-    totalLogs: 0,
-    successCount: 0,
-    failureCount: 0,
-    runningCount: 0,
-    cancelledCount: 0,
-  };
 };
 
 // 启动时加载数据
@@ -288,14 +256,6 @@ initData();
 <template>
   <Page>
     <Card class="mb-4">
-      <Alert type="info" style="margin-bottom: 20px">
-        <template #message>
-          日志统计信息: 共 {{ statistics.totalLogs }} 条，成功
-          {{ statistics.successCount }} 条，失败
-          {{ statistics.failureCount }} 条，运行中
-          {{ statistics.runningCount }} 条
-        </template>
-      </Alert>
 
       <Form ref="searchFormRef" :model="searchForm" layout="horizontal" :label-col="{ span: 6 }"
         :wrapper-col="{ span: 18 }" :label-align="'right'">
@@ -321,20 +281,12 @@ initData();
           </Col>
           <Col :xs="24" :sm="12" :md="8" :lg="8">
           <Form.Item label="开始时间" name="startTime">
-            <DatePicker
-              v-model:value="searchForm.startTime"
-              showTime
-              placeholder="选择开始时间"
-            />
+            <DatePicker v-model:value="searchForm.startTime" showTime placeholder="选择开始时间" />
           </Form.Item>
           </Col>
           <Col :xs="24" :sm="12" :md="8" :lg="8">
           <Form.Item label="结束时间" name="endTime">
-            <DatePicker
-              v-model:value="searchForm.endTime"
-              showTime
-              placeholder="选择结束时间"
-            />
+            <DatePicker v-model:value="searchForm.endTime" showTime placeholder="选择结束时间" />
           </Form.Item>
           </Col>
           <Col :xs="24" :sm="24" :md="24" :lg="24" class="text-right">
@@ -348,36 +300,17 @@ initData();
     </Card>
 
     <Card>
-      <div class="mb-4 flex items-center justify-between">
-        <div>
-          <Space>
-            <Button type="primary" disabled icon="download" @click="handleExport">
-              导出日志（暂未实现）
-            </Button>
-            <Button danger disabled icon="delete" @click="handleClear"
-              >清空日志（暂未实现）</Button
-            >
-          </Space>
-        </div>
+      <div class="mb-4 flex items-center justify-end">
+        <Space>
+          <Button danger @click="handleClear">清空日志</Button>
+        </Space>
       </div>
       <!-- 日志列表 -->
-      <Table
-        :columns="columns"
-        :data-source="dataSource"
-        :pagination="pagination"
-        :loading="loading"
-        :rowKey="(record) => record.logId"
-        size="middle"
-        @change="handlePageChange"
-        :scroll="{ x: 'max-content' }"
-      >
+      <Table :columns="columns" :data-source="dataSource" :pagination="pagination" :loading="loading"
+        :rowKey="(record) => record.logId" size="middle" @change="handlePageChange" :scroll="{ x: 'max-content' }">
         <template #action="{ record }">
           <Space size="middle">
-            <Button
-              type="link"
-              @click="handleDetail(record)"
-              :disabled="loading"
-            >
+            <Button type="link" @click="handleDetail(record)" :disabled="loading">
               详情
             </Button>
           </Space>
@@ -386,14 +319,8 @@ initData();
     </Card>
 
     <!-- 详情对话框 -->
-    <Modal
-      v-model:open="detailModalVisible"
-      :title="detailModalTitle"
-      width="900px"
-      :okButtonProps="{ style: { display: 'none' } }"
-      :cancelButtonProps="{ style: { display: 'none' } }"
-      :footer="[]"
-    >
+    <Modal v-model:open="detailModalVisible" :title="detailModalTitle" width="900px"
+      :okButtonProps="{ style: { display: 'none' } }" :cancelButtonProps="{ style: { display: 'none' } }" :footer="[]">
       <div v-if="logDetail" class="log-detail">
         <div class="detail-header">
           <Typography.Title :level="4">
@@ -415,72 +342,64 @@ initData();
 
         <div class="detail-content">
           <Typography.Title :level="5">执行信息</Typography.Title>
-          <pre
-            style="
+          <pre style="
               background: #f5f5f5;
               padding: 10px;
               border-radius: 4px;
               white-space: pre-wrap;
               word-break: break-word;
-            "
-          >
-            {{ logDetail.executionInfo || logDetail.message || '暂无执行信息' }}
-          </pre>
+            ">
+        {{ logDetail.executionInfo || logDetail.message || '暂无执行信息' }}
+      </pre>
 
           <div v-if="logDetail.errorMessage || logDetail.exception">
             <Typography.Title :level="5">错误信息</Typography.Title>
-            <pre
-              style="
+            <pre style="
                 background: #fff1f0;
                 padding: 10px;
                 border-radius: 4px;
                 color: #f5222d;
                 white-space: pre-wrap;
                 word-break: break-word;
-              "
-            >
-              {{ logDetail.errorMessage || logDetail.exception }}
-            </pre>
+              ">
+          {{ logDetail.errorMessage || logDetail.exception }}
+        </pre>
           </div>
 
           <!-- 显示新增的result字段 -->
           <div v-if="logDetail.result">
             <Typography.Title :level="5">执行结果</Typography.Title>
-            <pre
-              style="
+            <pre style="
                 background: #f0f9ff;
                 padding: 10px;
                 border-radius: 4px;
                 white-space: pre-wrap;
                 word-break: break-word;
-              "
-            >
-              {{
-                typeof logDetail.result === 'string'
-                  ? logDetail.result
-                  : JSON.stringify(logDetail.result, null, 2)
-              }}
-            </pre>
+              ">
+          {{
+            typeof logDetail.result === 'string'
+              ? logDetail.result
+              : JSON.stringify(logDetail.result, null, 2)
+          }}
+        </pre>
           </div>
 
           <!-- 显示新增的jobData字段 -->
           <div v-if="logDetail.jobData">
             <Typography.Title :level="5">作业数据</Typography.Title>
-            <pre
-              style="
+            <pre style="
                 background: #f6ffed;
                 padding: 10px;
                 border-radius: 4px;
                 white-space: pre-wrap;
                 word-break: break-word;
-              "
-            >
-              {{
-                typeof logDetail.jobData === 'string'
-                  ? logDetail.jobData
-                  : JSON.stringify(logDetail.jobData, null, 2)
-              }}
-            </pre>
+              ">
+          {{
+            typeof logDetail.jobData === 'string'
+              ? logDetail.jobData
+              : JSON.stringify(logDetail.jobData, null, 2)
+          }}
+        </pre>
           </div>
         </div>
       </div>

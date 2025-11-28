@@ -315,6 +315,32 @@ public class QuartzUIController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// 清空作业日志
+    /// </summary>
+    [HttpPost("ClearLogs")]
+    public async Task<ActionResult<ApiResponseDto<bool>>> ClearLogs([FromBody] QuartzJobLogQueryDto query)
+    {
+        try
+        {
+            var result = await _jobService.ClearJobLogsAsync(query);
+            if (result.Success)
+            {
+                _logger.LogInformation("清空作业日志成功");
+            }
+            else
+            {
+                _logger.LogWarning("清空作业日志失败, 原因: {Message}", result.Message);
+            }
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "清空作业日志失败");
+            return Ok(ApiResponseDto<bool>.ErrorResponse("清空作业日志失败: " + ex.Message));
+        }
+    }
+
     #endregion
 
     #region 扩展

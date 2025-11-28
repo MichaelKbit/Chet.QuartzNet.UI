@@ -126,26 +126,16 @@ export async function getLogDetail(logId: string): Promise<LogResponseDto> {
   };
 }
 
-/**
- * 导出日志
- * 注：此接口在后端未实现
- * @param params 查询参数
- * @returns 导出结果
- */
-export async function exportLogList(params: LogQueryParams): Promise<Blob> {
-  console.warn('后端未提供日志导出接口');
-  throw new Error('后端未提供日志导出接口');
-}
+
 
 /**
  * 清除日志
- * 注：此接口在后端未实现
- * @param days 保留最近几天的日志，0表示全部清除
+ * @param params 查询参数
  * @returns 清除结果
  */
-export async function clearLogs(params: any = {}): Promise<boolean> {
-  console.warn('后端未提供日志清除接口');
-  throw new Error('后端未提供日志清除接口');
+export async function clearLogs(params: any = {}): Promise<ApiResponse<boolean>> {
+  const response = await requestClient.post('/api/quartz/ClearLogs', params);
+  return response;
 }
 
 /**

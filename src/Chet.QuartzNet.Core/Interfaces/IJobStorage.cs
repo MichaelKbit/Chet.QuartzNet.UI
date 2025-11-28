@@ -90,6 +90,14 @@ public interface IJobStorage
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>清除的日志数量</returns>
     Task<int> ClearExpiredLogsAsync(int daysToKeep, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// 清空作业日志
+    /// </summary>
+    /// <param name="queryDto">查询条件，用于指定清空哪些日志</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>操作结果</returns>
+    Task<bool> ClearJobLogsAsync(QuartzJobLogQueryDto queryDto, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 初始化存储

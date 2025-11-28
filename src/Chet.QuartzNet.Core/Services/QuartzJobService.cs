@@ -631,6 +631,29 @@ public class QuartzJobService : IQuartzJobService
         }
     }
 
+    public async Task<ApiResponseDto<bool>> ClearJobLogsAsync(QuartzJobLogQueryDto queryDto, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var result = await _jobStorage.ClearJobLogsAsync(queryDto, cancellationToken);
+            if (result)
+            {
+                _logger.LogInformation("清空作业日志成功");
+                return ApiResponseDto<bool>.SuccessResponse(true, "清空作业日志成功");
+            }
+            else
+            {
+                _logger.LogWarning("清空作业日志失败");
+                return ApiResponseDto<bool>.ErrorResponse("清空作业日志失败");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "清空作业日志失败");
+            return ApiResponseDto<bool>.ErrorResponse($"清空作业日志失败: {ex.Message}");
+        }
+    }
+
     public async Task<ApiResponseDto<SchedulerStatusDto>> GetSchedulerStatusAsync(CancellationToken cancellationToken = default)
     {
         try

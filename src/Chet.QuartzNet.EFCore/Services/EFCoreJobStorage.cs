@@ -397,6 +397,59 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
+    public async Task<bool> ClearJobLogsAsync(QuartzJobLogQueryDto queryDto, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var query = _dbContext.QuartzJobLogs.AsQueryable();
+
+            // 应用过滤条件
+            if (!string.IsNullOrEmpty(queryDto.JobName))
+            {
+                query = query.Where(l => EF.Functions.Like(l.JobName, $"%{queryDto.JobName}%"));
+            }
+
+            if (!string.IsNullOrEmpty(queryDto.JobGroup))
+            {
+                query = query.Where(l => EF.Functions.Like(l.JobGroup, $"%{queryDto.JobGroup}%"));
+            }
+
+            if (queryDto.Status.HasValue)
+            {
+                query = query.Where(l => l.Status == queryDto.Status.Value);
+            }
+
+            if (queryDto.StartTime.HasValue)
+            {
+                query = query.Where(l => l.StartTime >= queryDto.StartTime.Value);
+            }
+
+            if (queryDto.EndTime.HasValue)
+            {
+                query = query.Where(l => l.StartTime <= queryDto.EndTime.Value);
+            }
+
+            // 执行删除操作
+            var logsToDelete = await query.ToListAsync(cancellationToken);
+            var deletedCount = logsToDelete.Count;
+
+            if (deletedCount > 0)
+            {
+                _dbContext.QuartzJobLogs.RemoveRange(logsToDelete);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("清空作业日志成功: 共清空 {Count} 条日志", deletedCount);
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "清空作业日志失败");
+            return false;
+        }
+    }
+
     public async Task<bool> InitializeAsync(CancellationToken cancellationToken = default)
     {
         try

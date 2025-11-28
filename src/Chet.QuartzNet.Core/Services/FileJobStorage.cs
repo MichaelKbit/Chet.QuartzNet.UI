@@ -399,6 +399,61 @@ public class FileJobStorage : IJobStorage
         }
     }
 
+    public async Task<bool> ClearJobLogsAsync(QuartzJobLogQueryDto queryDto, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var logs = await LoadLogsAsync();
+            var originalCount = logs.Count;
+
+            // 找出需要保留的日志（即不匹配查询条件的日志）
+            var logsToKeep = logs.Where(log => {
+                // 应用与GetJobLogsAsync相反的过滤条件
+                bool match = true;
+                
+                if (!string.IsNullOrEmpty(queryDto.JobName))
+                {
+                    match &= !log.JobName.Contains(queryDto.JobName, StringComparison.OrdinalIgnoreCase);
+                }
+                
+                if (!string.IsNullOrEmpty(queryDto.JobGroup))
+                {
+                    match &= !log.JobGroup.Contains(queryDto.JobGroup, StringComparison.OrdinalIgnoreCase);
+                }
+                
+                if (queryDto.Status.HasValue)
+                {
+                    match &= log.Status != queryDto.Status.Value;
+                }
+                
+                if (queryDto.StartTime.HasValue)
+                {
+                    match &= log.StartTime < queryDto.StartTime.Value;
+                }
+                
+                if (queryDto.EndTime.HasValue)
+                {
+                    match &= log.StartTime > queryDto.EndTime.Value;
+                }
+                
+                return match;
+            }).ToList();
+
+            // 保存保留的日志
+            await SaveLogsAsync(logsToKeep);
+            
+            var clearedCount = originalCount - logsToKeep.Count;
+            _logger.LogInformation("清空作业日志成功: 共清空 {Count} 条日志", clearedCount);
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "清空作业日志失败");
+            return false;
+        }
+    }
+
     public async Task<bool> InitializeAsync(CancellationToken cancellationToken = default)
     {
         try
