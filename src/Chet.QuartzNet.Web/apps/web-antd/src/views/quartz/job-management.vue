@@ -626,11 +626,8 @@ onMounted(async () => {
 
     <!-- 作业管理卡片 -->
     <Card>
-      <div class="mb-4 flex items-center justify-end">
+      <div class="mb-4 flex items-center justify-between">
         <Space>
-          <Tag :color="schedulerStatus.isStarted ? 'success' : 'error'">
-            {{ schedulerStatus.status }}
-          </Tag>
           <Button type="primary" :disabled="schedulerStatus.isStarted" @click="handleStartScheduler">
             启动调度器
           </Button>
@@ -638,8 +635,11 @@ onMounted(async () => {
             @click="handleStopScheduler">
             停止调度器
           </Button>
-          <Button type="primary" @click="handleAdd"> 新增作业 </Button>
+          <Tag :color="schedulerStatus.isStarted ? 'success' : 'error'">
+            {{ schedulerStatus.status }}
+          </Tag>
         </Space>
+        <Button type="primary" @click="handleAdd"> 新增作业 </Button>
       </div>
       <!-- 作业列表 -->
       <Table :columns="columns" :data-source="dataSource" :pagination="pagination" :loading="loading"
