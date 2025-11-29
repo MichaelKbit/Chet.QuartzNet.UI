@@ -1099,4 +1099,74 @@ public class QuartzJobService : IQuartzJobService
             return ApiResponseDto<List<string>>.ErrorResponse($"获取作业类列表失败: {ex.Message}");
         }
     }
+
+    public async Task<ApiResponseDto<JobStatsDto>> GetJobStatsAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var stats = await _jobStorage.GetJobStatsAsync(queryDto, cancellationToken);
+            return ApiResponseDto<JobStatsDto>.SuccessResponse(stats, "获取作业统计数据成功");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取作业统计数据失败");
+            return ApiResponseDto<JobStatsDto>.ErrorResponse($"获取作业统计数据失败: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResponseDto<List<JobStatusDistributionDto>>> GetJobStatusDistributionAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var distribution = await _jobStorage.GetJobStatusDistributionAsync(queryDto, cancellationToken);
+            return ApiResponseDto<List<JobStatusDistributionDto>>.SuccessResponse(distribution, "获取作业状态分布数据成功");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取作业状态分布数据失败");
+            return ApiResponseDto<List<JobStatusDistributionDto>>.ErrorResponse($"获取作业状态分布数据失败: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResponseDto<List<JobExecutionTrendDto>>> GetJobExecutionTrendAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var trend = await _jobStorage.GetJobExecutionTrendAsync(queryDto, cancellationToken);
+            return ApiResponseDto<List<JobExecutionTrendDto>>.SuccessResponse(trend, "获取作业执行趋势数据成功");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取作业执行趋势数据失败");
+            return ApiResponseDto<List<JobExecutionTrendDto>>.ErrorResponse($"获取作业执行趋势数据失败: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResponseDto<List<JobTypeDistributionDto>>> GetJobTypeDistributionAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var distribution = await _jobStorage.GetJobTypeDistributionAsync(queryDto, cancellationToken);
+            return ApiResponseDto<List<JobTypeDistributionDto>>.SuccessResponse(distribution, "获取作业类型分布数据成功");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取作业类型分布数据失败");
+            return ApiResponseDto<List<JobTypeDistributionDto>>.ErrorResponse($"获取作业类型分布数据失败: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResponseDto<List<JobExecutionTimeDto>>> GetJobExecutionTimeAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var executionTime = await _jobStorage.GetJobExecutionTimeAsync(queryDto, cancellationToken);
+            return ApiResponseDto<List<JobExecutionTimeDto>>.SuccessResponse(executionTime, "获取作业执行耗时数据成功");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取作业执行耗时数据失败");
+            return ApiResponseDto<List<JobExecutionTimeDto>>.ErrorResponse($"获取作业执行耗时数据失败: {ex.Message}");
+        }
+    }
 }

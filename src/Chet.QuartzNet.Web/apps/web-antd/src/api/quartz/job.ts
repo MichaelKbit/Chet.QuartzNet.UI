@@ -46,6 +46,60 @@ export enum JobStatusEnum {
   Blocked = 4
 }
 
+// 作业统计数据DTO
+export interface JobStats {
+  totalJobs: number;          // 总作业数
+  enabledJobs: number;        // 启用的作业数
+  disabledJobs: number;       // 禁用的作业数
+  executingJobs: number;      // 正在执行的作业数
+  successCount: number;       // 成功执行次数
+  failedCount: number;        // 失败执行次数
+  pausedCount: number;        // 暂停作业数
+  blockedCount: number;       // 阻塞作业数
+}
+
+// 作业状态分布数据DTO
+export interface JobStatusDistribution {
+  status: string;             // 作业状态
+  count: number;              // 数量
+  percentage: number;         // 百分比
+}
+
+// 作业执行趋势数据DTO
+export interface JobExecutionTrend {
+  time: string;               // 时间点
+  successCount: number;       // 成功执行次数
+  failedCount: number;        // 失败执行次数
+  totalCount: number;         // 总执行次数
+}
+
+// 作业类型分布数据DTO
+export interface JobTypeDistribution {
+  type: string;               // 作业类型
+  count: number;              // 数量
+  percentage: number;         // 百分比
+}
+
+// 作业执行耗时数据DTO
+export interface JobExecutionTime {
+  timeRange: string;          // 耗时区间
+  count: number;              // 作业数量
+}
+
+// 统计查询DTO
+export interface StatsQueryDto {
+  /** 时间范围类型：today, yesterday, thisWeek, thisMonth, custom */
+  timeRangeType?: string;
+  /** 自定义开始时间 */
+  startTime?: string;
+  /** 自定义结束时间 */
+  endTime?: string;
+  /** 作业名称 */
+  jobName?: string;
+  /** 作业分组 */
+  jobGroup?: string;
+}
+
 // Quartz作业DTO
 export interface QuartzJobDto {
   /** 作业名称 */
@@ -296,5 +350,55 @@ export async function startScheduler(): Promise<ApiResponse<boolean>> {
  */
 export async function stopScheduler(): Promise<ApiResponse<boolean>> {
   const response = await requestClient.post('/api/quartz/StopScheduler');
+  return response;
+}
+
+/**
+ * 获取作业统计数据
+ * @param query 查询参数
+ * @returns 作业统计数据
+ */
+export async function getJobStats(query?: StatsQueryDto): Promise<ApiResponse<JobStats>> {
+  const response = await requestClient.post('/api/quartz/GetJobStats', query);
+  return response;
+}
+
+/**
+ * 获取作业状态分布数据
+ * @param query 查询参数
+ * @returns 作业状态分布数据
+ */
+export async function getJobStatusDistribution(query?: StatsQueryDto): Promise<ApiResponse<JobStatusDistribution[]>> {
+  const response = await requestClient.post('/api/quartz/GetJobStatusDistribution', query);
+  return response;
+}
+
+/**
+ * 获取作业执行趋势数据
+ * @param query 查询参数
+ * @returns 作业执行趋势数据
+ */
+export async function getJobExecutionTrend(query?: StatsQueryDto): Promise<ApiResponse<JobExecutionTrend[]>> {
+  const response = await requestClient.post('/api/quartz/GetJobExecutionTrend', query);
+  return response;
+}
+
+/**
+ * 获取作业类型分布数据
+ * @param query 查询参数
+ * @returns 作业类型分布数据
+ */
+export async function getJobTypeDistribution(query?: StatsQueryDto): Promise<ApiResponse<JobTypeDistribution[]>> {
+  const response = await requestClient.post('/api/quartz/GetJobTypeDistribution', query);
+  return response;
+}
+
+/**
+ * 获取作业执行耗时数据
+ * @param query 查询参数
+ * @returns 作业执行耗时数据
+ */
+export async function getJobExecutionTime(query?: StatsQueryDto): Promise<ApiResponse<JobExecutionTime[]>> {
+  const response = await requestClient.post('/api/quartz/GetJobExecutionTime', query);
   return response;
 }

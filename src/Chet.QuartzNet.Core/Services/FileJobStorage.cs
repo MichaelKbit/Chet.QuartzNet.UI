@@ -639,4 +639,210 @@ public class FileJobStorage : IJobStorage
             _logger.LogWarning(ex, "清理旧备份文件失败");
         }
     }
+
+    public async Task<JobStatsDto> GetJobStatsAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var jobs = await LoadJobsAsync();
+            var logs = await LoadLogsAsync();
+
+            // 计算时间范围
+            var (startTime, endTime) = CalculateTimeRange(queryDto);
+
+            // 过滤日志
+            var filteredLogs = logs.Where(log => log.StartTime >= startTime && log.StartTime <= endTime).ToList();
+
+            // 统计数据
+            var stats = new JobStatsDto
+            {
+                TotalJobs = jobs.Count,
+                EnabledJobs = jobs.Count(j => j.IsEnabled),
+                DisabledJobs = jobs.Count(j => !j.IsEnabled),
+                ExecutingJobs = filteredLogs.Count(l => l.Status == LogStatus.Running),
+                SuccessCount = filteredLogs.Count(l => l.Status == LogStatus.Success),
+                FailedCount = filteredLogs.Count(l => l.Status == LogStatus.Failed),
+                PausedCount = jobs.Count(j => j.Status == JobStatus.Paused),
+                BlockedCount = jobs.Count(j => j.Status == JobStatus.Blocked)
+            };
+
+            return stats;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取作业统计数据失败");
+            return new JobStatsDto();
+        }
+    }
+
+    public async Task<List<JobStatusDistributionDto>> GetJobStatusDistributionAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var jobs = await LoadJobsAsync();
+
+            // 按状态分组
+            var statusGroups = jobs.GroupBy(j => j.Status).ToList();
+            var totalJobs = jobs.Count;
+
+            // 转换为分布数据
+            var distribution = statusGroups.Select(group => new JobStatusDistributionDto
+            {
+                Status = group.Key.ToString(),
+                Count = group.Count(),
+                Percentage = totalJobs > 0 ? Math.Round((double)group.Count() / totalJobs * 100, 2) : 0
+            }).ToList();
+
+            return distribution;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取作业状态分布数据失败");
+            return new List<JobStatusDistributionDto>();
+        }
+    }
+
+    public async Task<List<JobExecutionTrendDto>> GetJobExecutionTrendAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var logs = await LoadLogsAsync();
+
+            // 计算时间范围
+            var (startTime, endTime) = CalculateTimeRange(queryDto);
+
+            // 过滤日志
+            var filteredLogs = logs.Where(log => log.StartTime >= startTime && log.StartTime <= endTime).ToList();
+
+            // 按时间分组（小时）
+            var timeGroups = filteredLogs.GroupBy(l => new DateTime(l.StartTime.Year, l.StartTime.Month, l.StartTime.Day, l.StartTime.Hour, 0, 0)).ToList();
+
+            // 转换为趋势数据
+            var trend = timeGroups.Select(group => new JobExecutionTrendDto
+            {
+                Time = group.Key.ToString("yyyy-MM-dd HH:00"),
+                SuccessCount = group.Count(l => l.Status == LogStatus.Success),
+                FailedCount = group.Count(l => l.Status == LogStatus.Failed),
+                TotalCount = group.Count()
+            }).OrderBy(t => t.Time).ToList();
+
+            return trend;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取作业执行趋势数据失败");
+            return new List<JobExecutionTrendDto>();
+        }
+    }
+
+    public async Task<List<JobTypeDistributionDto>> GetJobTypeDistributionAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var jobs = await LoadJobsAsync();
+
+            // 按类型分组
+            var typeGroups = jobs.GroupBy(j => j.JobType).ToList();
+            var totalJobs = jobs.Count;
+
+            // 转换为分布数据
+            var distribution = typeGroups.Select(group => new JobTypeDistributionDto
+            {
+                Type = group.Key.ToString(),
+                Count = group.Count(),
+                Percentage = totalJobs > 0 ? Math.Round((double)group.Count() / totalJobs * 100, 2) : 0
+            }).ToList();
+
+            return distribution;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取作业类型分布数据失败");
+            return new List<JobTypeDistributionDto>();
+        }
+    }
+
+    public async Task<List<JobExecutionTimeDto>> GetJobExecutionTimeAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var logs = await LoadLogsAsync();
+
+            // 计算时间范围
+            var (startTime, endTime) = CalculateTimeRange(queryDto);
+
+            // 过滤日志
+            var filteredLogs = logs.Where(log => log.StartTime >= startTime && log.StartTime <= endTime && log.Status != LogStatus.Running).ToList();
+
+            // 按耗时分组
+            var timeRangeGroups = new List<(string Range, Func<double, bool> Predicate)>
+            {
+                ("< 1s", d => d < 1),
+                ("1-5s", d => d >= 1 && d < 5),
+                ("5-10s", d => d >= 5 && d < 10),
+                ("10-30s", d => d >= 10 && d < 30),
+                ("30s-1m", d => d >= 30 && d < 60),
+                ("1-5m", d => d >= 60 && d < 300),
+                (">= 5m", d => d >= 300)
+            };
+
+            // 统计每个耗时区间的作业数
+            var executionTimeData = timeRangeGroups.Select(group => new JobExecutionTimeDto
+            {
+                TimeRange = group.Range,
+                Count = filteredLogs.Count(l => l.Duration.HasValue && group.Predicate(l.Duration.Value / 1000.0))
+            }).ToList();
+
+            return executionTimeData;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取作业执行耗时数据失败");
+            return new List<JobExecutionTimeDto>();
+        }
+    }
+
+    /// <summary>
+    /// 计算时间范围
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <returns>开始时间和结束时间</returns>
+    private (DateTime StartTime, DateTime EndTime) CalculateTimeRange(StatsQueryDto queryDto)
+    {
+        DateTime startTime, endTime;
+
+        // 如果指定了自定义时间范围，使用自定义时间
+        if (queryDto.TimeRangeType == "custom" && queryDto.StartTime.HasValue && queryDto.EndTime.HasValue)
+        {
+            startTime = queryDto.StartTime.Value;
+            endTime = queryDto.EndTime.Value;
+        }
+        else
+        {
+            // 否则根据时间范围类型计算
+            endTime = DateTime.Now;
+
+            switch (queryDto.TimeRangeType)
+            {
+                case "today":
+                    startTime = new DateTime(endTime.Year, endTime.Month, endTime.Day, 0, 0, 0);
+                    break;
+                case "yesterday":
+                    startTime = new DateTime(endTime.Year, endTime.Month, endTime.Day, 0, 0, 0).AddDays(-1);
+                    endTime = new DateTime(endTime.Year, endTime.Month, endTime.Day, 0, 0, 0).AddMilliseconds(-1);
+                    break;
+                case "thisWeek":
+                    startTime = endTime.AddDays(-(int)endTime.DayOfWeek).Date;
+                    break;
+                case "thisMonth":
+                    startTime = new DateTime(endTime.Year, endTime.Month, 1, 0, 0, 0);
+                    break;
+                default:
+                    startTime = endTime.AddDays(-7); // 默认最近7天
+                    break;
+            }
+        }
+
+        return (startTime, endTime);
+    }
 }

@@ -152,6 +152,46 @@ public interface IQuartzJobService
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>操作结果</returns>
     Task<ApiResponseDto<bool>> ClearJobLogsAsync(QuartzJobLogQueryDto queryDto, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取作业统计数据
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>作业统计数据</returns>
+    Task<ApiResponseDto<JobStatsDto>> GetJobStatsAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取作业状态分布数据
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>作业状态分布数据</returns>
+    Task<ApiResponseDto<List<JobStatusDistributionDto>>> GetJobStatusDistributionAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取作业执行趋势数据
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>作业执行趋势数据</returns>
+    Task<ApiResponseDto<List<JobExecutionTrendDto>>> GetJobExecutionTrendAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取作业类型分布数据
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>作业类型分布数据</returns>
+    Task<ApiResponseDto<List<JobTypeDistributionDto>>> GetJobTypeDistributionAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取作业执行耗时数据
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>作业执行耗时数据</returns>
+    Task<ApiResponseDto<List<JobExecutionTimeDto>>> GetJobExecutionTimeAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

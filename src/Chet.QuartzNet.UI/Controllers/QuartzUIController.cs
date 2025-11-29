@@ -453,6 +453,100 @@ public class QuartzUIController : ControllerBase
 
     #endregion
 
+    #region 统计分析
+
+    /// <summary>
+    /// 获取作业统计数据
+    /// </summary>
+    [HttpPost("GetJobStats")]
+    public async Task<ActionResult<ApiResponseDto<JobStatsDto>>> GetJobStats([FromBody] StatsQueryDto query)
+    {
+        try
+        {
+            var result = await _jobService.GetJobStatsAsync(query);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取作业统计数据失败");
+            return Ok(ApiResponseDto<JobStatsDto>.ErrorResponse("获取作业统计数据失败: " + ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// 获取作业状态分布数据
+    /// </summary>
+    [HttpPost("GetJobStatusDistribution")]
+    public async Task<ActionResult<ApiResponseDto<List<JobStatusDistributionDto>>>> GetJobStatusDistribution([FromBody] StatsQueryDto query)
+    {
+        try
+        {
+            var result = await _jobService.GetJobStatusDistributionAsync(query);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取作业状态分布数据失败");
+            return Ok(ApiResponseDto<List<JobStatusDistributionDto>>.ErrorResponse("获取作业状态分布数据失败: " + ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// 获取作业执行趋势数据
+    /// </summary>
+    [HttpPost("GetJobExecutionTrend")]
+    public async Task<ActionResult<ApiResponseDto<List<JobExecutionTrendDto>>>> GetJobExecutionTrend([FromBody] StatsQueryDto query)
+    {
+        try
+        {
+            var result = await _jobService.GetJobExecutionTrendAsync(query);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取作业执行趋势数据失败");
+            return Ok(ApiResponseDto<List<JobExecutionTrendDto>>.ErrorResponse("获取作业执行趋势数据失败: " + ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// 获取作业类型分布数据
+    /// </summary>
+    [HttpPost("GetJobTypeDistribution")]
+    public async Task<ActionResult<ApiResponseDto<List<JobTypeDistributionDto>>>> GetJobTypeDistribution([FromBody] StatsQueryDto query)
+    {
+        try
+        {
+            var result = await _jobService.GetJobTypeDistributionAsync(query);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取作业类型分布数据失败");
+            return Ok(ApiResponseDto<List<JobTypeDistributionDto>>.ErrorResponse("获取作业类型分布数据失败: " + ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// 获取作业执行耗时数据
+    /// </summary>
+    [HttpPost("GetJobExecutionTime")]
+    public async Task<ActionResult<ApiResponseDto<List<JobExecutionTimeDto>>>> GetJobExecutionTime([FromBody] StatsQueryDto query)
+    {
+        try
+        {
+            var result = await _jobService.GetJobExecutionTimeAsync(query);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取作业执行耗时数据失败");
+            return Ok(ApiResponseDto<List<JobExecutionTimeDto>>.ErrorResponse("获取作业执行耗时数据失败: " + ex.Message));
+        }
+    }
+
+    #endregion
+
     #region 扩展
 
     /// <summary>

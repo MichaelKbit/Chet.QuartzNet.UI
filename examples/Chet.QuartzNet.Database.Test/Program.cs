@@ -22,7 +22,7 @@ builder.Services.AddQuartzUI(options =>
 builder.Services.AddQuartzUIDatabaseFromConfiguration(builder.Configuration);
 
 // 添加Basic认证服务
-builder.Services.AddQuartzUIBasicAuthentication(builder.Configuration);
+builder.Services.AddQuartzUIAuthentication(builder.Configuration);
 
 var app = builder.Build();
 
