@@ -87,13 +87,6 @@ const showDot = computed(() =>
 const menus = computed(() => [
   {
     handler: () => {
-      router.push({ name: 'Profile' });
-    },
-    icon: 'lucide:user',
-    text: $t('page.auth.profile'),
-  },
-  {
-    handler: () => {
       openWindow(VBEN_DOC_URL, {
         target: '_blank',
       });
@@ -176,8 +169,6 @@ watch(
         :avatar
         :menus
         :text="userStore.userInfo?.realName"
-        description="ann.vben@gmail.com"
-        tag-text="Pro"
         @logout="handleLogout"
       />
     </template>

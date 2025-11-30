@@ -1,27 +1,28 @@
 {
-  "name": "vben-admin-monorepo",
-  "version": "5.5.9",
+  "name": "Chet.QuartzNet.UI",
+  "version": "1.0.0",
   "private": true,
   "keywords": [
-    "monorepo",
-    "turbo",
-    "vben",
+    "chet",
+    "quartz net",
+    "quartz net ui",
     "vben admin",
-    "vben pro",
     "vue",
     "vue admin",
     "vue vben admin",
     "vue vben admin pro",
-    "vue3"
+    "vue3",
+    "net",
+    "net 8"
   ],
-  "homepage": "https://github.com/vbenjs/vue-vben-admin",
+  "homepage": "https://github.com/qiect/Chet.QuartzNet.UI",
   "bugs": "https://github.com/vbenjs/vue-vben-admin/issues",
   "repository": "vbenjs/vue-vben-admin.git",
   "license": "MIT",
   "author": {
-    "name": "vben",
-    "email": "ann.vben@gmail.com",
-    "url": "https://github.com/anncwb"
+    "name": "Chet",
+    "email": "qctvip@vip.163.com",
+    "url": "https://github.com/qiect"
   },
   "type": "module",
   "scripts": {
