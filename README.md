@@ -1,6 +1,6 @@
-# Chet.QuartzNet.UI - Quartz.Net 可视化管理库
+# Chet.QuartzNet.UI 可视化作业调度管理系统
 
-Chet.QuartzNet.UI 是一个基于 .NET 8.0 开发的轻量级 Quartz.Net 可视化管理库，提供了完整的任务调度管理功能，支持文件存储和数据库存储两种模式。该组件库旨在简化 Quartz.Net 的使用门槛，提供直观、易用的可视化管理界面，使开发人员能够轻松地创建、管理、监控和调试定时作业，无需深入了解 Quartz.Net 的复杂 API。
+Chet.QuartzNet.UI 是一个基于 .NET 8.0 和VbenAdmin 框架开发的可视化作业调度管理系统，提供了完整的任务调度管理功能，支持文件存储和数据库存储两种模式。该组件库旨在简化 Quartz.Net 的使用门槛，提供直观、易用的可视化管理界面，使开发人员能够轻松地创建、管理、监控和调试定时作业，无需深入了解 Quartz.Net 的复杂 API。
 
 通过 Chet.QuartzNet.UI，您可以快速集成任务调度功能到现有项目中，实现作业的可视化配置、实时监控和历史记录查询，大大提高开发效率和运维便利性。
 
@@ -14,12 +14,10 @@ Chet.QuartzNet.UI 是一个基于 .NET 8.0 开发的轻量级 Quartz.Net 可视�
 - 🔐 **认证保护**：提供 JWT 认证保护管理界面
 - 📦 **RCL 打包**：使用 Razor Class Library 打包，无侵入集成
 - 🚀 **快速集成**：简单配置即可集成到现有项目
-- 🎨 **现代化 UI**：基于 Ant Design Vue，界面美观易用
+- 🎨 **现代化 UI**：基于 VbenAdmin 框架，界面美观易用
 - 📱 **响应式设计**：支持移动端访问
-- 🌙 **暗色主题**：支持系统暗色主题
 - 📝 **作业执行历史**：记录作业执行历史和结果
 - 🎯 **数据同步功能**：支持数据同步作业示例
-- 📊 **报表生成功能**：支持报表生成作业示例
 - ⏱️ **灵活的时间调度**：支持 Cron 表达式和多种触发器类型
 
 ## 📦 安装
@@ -48,8 +46,6 @@ dotnet add package Microsoft.EntityFrameworkCore.Sqlite      # SQLite
 - ASP.NET Core 8.0+
 - Quartz.NET 3.8.1+ - 作业调度核心库
 - Entity Framework Core 8.0+（可选，用于数据库存储）
-- Ant Design Vue - UI 组件库
-- Vue.js 3 - 前端框架
 
 ## 🚀 快速开始
 
@@ -170,7 +166,6 @@ builder.Services.AddQuartzUI();
 
 // 在 appsettings.json 中配置 JWT 相关选项
 "QuartzUI": {
-  "EnableJwtAuth": true,
   "UserName": "admin",
   "Password": "password",
   "JwtSecret": "your-secret-key-change-this-in-production",
@@ -185,6 +180,13 @@ app.UseQuartz();
 
 ## 🎯 界面功能
 
+### 分析页
+- 📊 显示当前活跃作业数量
+- 📈 自动刷新状态信息
+- 📝 查看作业执行历史记录
+
+
+
 ### 作业管理
 - 📋 作业列表展示（支持分页、搜索、筛选）
 - ➕ 添加新作业（支持Cron表达式验证）
@@ -195,12 +197,19 @@ app.UseQuartz();
 - 📊 查看作业状态（正常、暂停、完成、错误、阻塞）
 - 📝 查看作业执行历史记录
 
-### 执行日志
+### 日志管理
 - 📜 查看作业执行历史
 - 🔍 按状态筛选日志（运行中、成功、失败）
 - ⏱️ 查看执行耗时
 - ❌ 查看错误信息
 - 📋 分页显示日志记录
+
+### 分析页
+- 📊 **作业统计概览**：总作业数、启用/禁用作业数、正在执行作业数、成功/失败执行次数
+- 📈 **作业状态分布**：各状态作业数量和百分比的饼图展示
+- 📉 **作业执行趋势**：作业执行趋势的折线图展示
+- ⏱️ **作业执行耗时**：作业执行耗时的柱状图展示
+- 📋 **作业类型分布**：各类型作业数量和百分比的饼图展示
 
 ### 调度器状态
 - 🟢 实时显示调度器运行状态
@@ -208,9 +217,8 @@ app.UseQuartz();
 - 📊 显示当前活跃作业数量
 
 ### 作业类型支持
-- 🎯 ClassJob 模式：基于类的作业定义
-- ⚙️ TriggerJob 模式：基于触发器的作业定义
-- 🔄 支持多种触发器类型（Cron、Simple、Calendar等）
+- 🎯 DLL 模式：基于类的作业定义
+- ⚙️ API 模式：基于 API 调用的作业定义
 
 ## 🔧 配置选项
 
@@ -234,7 +242,6 @@ services.AddQuartzUISqlServer(options);
 ```json
 {
   "QuartzUI": {
-    "EnableJwtAuth": true,
     "UserName": "自定义用户名",
     "Password": "自定义密码",
     "JwtSecret": "your-secret-key-change-this-in-production",
@@ -294,7 +301,6 @@ Chet.QuartzNet.UI/
 - [ ] 更多数据库支持
 - [ ] 作业分组管理
 - [ ] 批量操作功能
-- [ ] 作业执行统计图表
 
 ## 🤝 贡献指南
 
@@ -321,7 +327,7 @@ Chet.QuartzNet.UI/
 ## 🙏 致谢
 
 - [Quartz.Net](https://www.quartz-scheduler.net/) - 优秀的任务调度框架
-- [Ant Design Vue](https://www.antdv.com/) - 美观的UI组件库
+- [Ant Design Vue](https://www.vben.pro/) - 美观的UI组件库
 - [.NET](https://dotnet.microsoft.com/) - 强大的开发平台
 
 ---
