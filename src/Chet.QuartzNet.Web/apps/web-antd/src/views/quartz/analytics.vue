@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, } from 'vue';
+import { ref, onMounted } from 'vue';
 // 导入日期格式化工具
 import { formatDateTime } from '@vben/utils';
 import { Page } from '@vben/common-ui';
@@ -13,7 +13,7 @@ import {
   DatePicker,
   Statistic,
 } from 'ant-design-vue';
-import type { PaginationProps } from 'ant-design-vue';
+import type { EChartsOption } from 'echarts';
 
 // 导入Vben集成的ECharts组件
 import type { EchartsUIType } from '@vben/plugins/echarts';
@@ -87,7 +87,7 @@ const timeRangeOptions = [
   { label: '自定义', value: 'custom' },
 ];
 
-const selectedTimeRange = ref('today');
+const selectedTimeRange = ref('thisMonth');
 const customDateRange = ref<[Date | null, Date | null]>([null, null]);
 
 // Vben ECharts组件引用
@@ -112,8 +112,13 @@ const fetchStatsData = async () => {
     // 构建查询参数
     const query: StatsQueryDto = {
       timeRangeType: selectedTimeRange.value,
-      // 这里可以根据需要添加其他查询参数
     };
+
+    // 如果是自定义时间范围，添加开始时间和结束时间
+    if (selectedTimeRange.value === 'custom' && customDateRange.value[0] && customDateRange.value[1]) {
+      query.startTime = customDateRange.value[0].toISOString();
+      query.endTime = customDateRange.value[1].toISOString();
+    }
 
     // 获取作业统计数据
     const statsResponse = await getJobStats(query);
@@ -126,6 +131,7 @@ const fetchStatsData = async () => {
     const statusDistributionResponse = await getJobStatusDistribution(query);
     if (statusDistributionResponse && statusDistributionResponse.success && statusDistributionResponse.data) {
       jobStatusDistribution.value = statusDistributionResponse.data as JobStatusDistribution[];
+      console.log('jobStatusDistribution:', JSON.stringify(jobStatusDistribution.value));
     } else {
       jobStatusDistribution.value = [];
     }
@@ -153,7 +159,6 @@ const fetchStatsData = async () => {
     } else {
       jobExecutionTimeData.value = [];
     }
-
     // 渲染图表
     renderAllCharts();
   } catch (error) {
@@ -230,44 +235,26 @@ const getExecutionStatsChartOption = (): EChartsOption => {
 const getStatusDistributionChartOption = (): EChartsOption => {
   // 确保数据存在且为数组
   const chartData = jobStatusDistribution.value || [];
+  console.log('chartData:', JSON.stringify(chartData));
+  // 状态映射：将API返回的字符串状态转换为数字
+  const statusStringToNumberMap: Record<string, number> = {
+    'Normal': 0,
+    'Paused': 1,
+    'Completed': 2,
+    'Error': 3,
+    'Blocked': 4
+  };
 
-  // 处理空数据情况
-  if (chartData.length === 0) {
+  // 构建图表数据，使用状态映射转换为中文名称
+  const pieData = chartData.map(item => {
+    const statusNumber = statusStringToNumberMap[item.status] || 0;
+    const statusInfo = jobStatusMap[statusNumber] || { text: item.status };
     return {
-      title: {
-        text: '作业状态分布',
-        left: 'center',
-        textStyle: {
-          fontSize: 16,
-          fontWeight: 'bold',
-        },
-      },
-      tooltip: {
-        trigger: 'item',
-        formatter: '{b}: {c} ({d}%)',
-      },
-      legend: {
-        orient: 'vertical',
-        left: 'left',
-        bottom: 0,
-      },
-      series: [
-        {
-          name: '作业状态',
-          type: 'pie',
-          radius: ['40%', '70%'],
-          data: [{ value: 1, name: '暂无数据' }],
-        },
-      ],
+      value: item.count,
+      name: statusInfo.text,
     };
-  }
-
-  // 构建图表数据
-  const pieData = chartData.map(item => ({
-    value: item.count,
-    name: item.status,
-  }));
-
+  });
+  console.log('pieData:', JSON.stringify(pieData));
   return {
     title: {
       text: '作业状态分布',
@@ -285,7 +272,11 @@ const getStatusDistributionChartOption = (): EChartsOption => {
       orient: 'vertical',
       left: 'left',
       bottom: 0,
-      data: chartData.map(item => item.status),
+      data: chartData.map(item => {
+        const statusNumber = statusStringToNumberMap[item.status] || 0;
+        const statusInfo = jobStatusMap[statusNumber] || { text: item.status };
+        return statusInfo.text;
+      }),
     },
     series: [
       {
@@ -507,7 +498,6 @@ const getExecutionTimeChartOption = (): EChartsOption => {
         left: '3%',
         right: '4%',
         bottom: '15%',
-        containLabel: true,
       },
       xAxis: {
         type: 'category',
@@ -618,7 +608,7 @@ const getSchedulerStatusInfo = async () => {
 // 时间范围变化处理
 const handleTimeRangeChange = () => {
   // 根据时间范围获取数据
-   fetchStatsData();
+  fetchStatsData();
 };
 
 // 自定义日期范围变化处理
