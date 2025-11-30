@@ -707,7 +707,7 @@ onMounted(async () => {
       <!-- 统计概览卡片 -->
       <Col :xs="24" :sm="12" :md="6" :lg="6">
       <Card hoverable>
-        <Statistic title="总作业数" :value="statsOverview.totalJobs" />
+        <Statistic title="总作业数" :value="statsOverview.totalJobs" prefix="📊" />
       </Card>
       </Col>
       <Col :xs="24" :sm="12" :md="6" :lg="6">
