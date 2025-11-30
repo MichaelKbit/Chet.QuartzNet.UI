@@ -11,7 +11,7 @@ Chet.QuartzNet.UI 是一个基于 .NET 8.0 开发的轻量级 Quartz.Net 可视�
 - 🎯 **ClassJob 模式支持**：支持基于类的作业定义，简化作业创建
 - ✅ **ClassJob 自动注册**：自动扫描和注册带有特定特性的作业类
 - 💾 **多种存储方式**：支持文件存储和数据库存储（MySQL、PostgreSQL、SQL Server、SQLite）
-- 🔐 **认证保护**：提供 Basic 认证保护管理界面
+- 🔐 **认证保护**：提供 JWT 认证保护管理界面
 - 📦 **RCL 打包**：使用 Razor Class Library 打包，无侵入集成
 - 🚀 **快速集成**：简单配置即可集成到现有项目
 - 🎨 **现代化 UI**：基于 Ant Design Vue，界面美观易用
@@ -162,21 +162,24 @@ builder.Services.AddQuartzClassJobs();
 
 ### 认证配置
 
-启用 Basic 认证：
+启用 JWT 认证：
 
 ```csharp
-// 添加认证服务
-builder.Services.AddQuartzUIBasicAuthentication(builder.Configuration);
+// 添加 Quartz UI 服务时自动启用 JWT 认证
+builder.Services.AddQuartzUI();
 
-// 在 appsettings.json 中配置用户名密码
+// 在 appsettings.json 中配置 JWT 相关选项
 "QuartzUI": {
-  "EnableBasicAuth": true,
+  "EnableJwtAuth": true,
   "UserName": "admin",
-  "Password": "password"
+  "Password": "password",
+  "JwtSecret": "your-secret-key-change-this-in-production",
+  "JwtExpiresInMinutes": 30,
+  "JwtIssuer": "Chet",
+  "JwtAudience": "Chet.QuartzNet.UI"
 }
 
-// 启用认证中间件（在 UseQuartz 之前）
-app.UseQuartzUIBasicAuthorized();
+// 启用中间件
 app.UseQuartz();
 ```
 
@@ -231,9 +234,13 @@ services.AddQuartzUISqlServer(options);
 ```json
 {
   "QuartzUI": {
-    "EnableBasicAuth": true,
+    "EnableJwtAuth": true,
     "UserName": "自定义用户名",
-    "Password": "自定义密码"
+    "Password": "自定义密码",
+    "JwtSecret": "your-secret-key-change-this-in-production",
+    "JwtExpiresInMinutes": 30,
+    "JwtIssuer": "Chet",
+    "JwtAudience": "Chet.QuartzNet.UI"
   }
 }
 ```
@@ -280,6 +287,7 @@ Chet.QuartzNet.UI/
 - [x] EFCore数据访问层
 - [x] Ant Design Vue前端界面
 - [x] Basic授权支持
+- [x] JWT授权支持
 - [x] Razor Class Library打包
 - [x] 示例项目
 - [x] 邮件通知功能

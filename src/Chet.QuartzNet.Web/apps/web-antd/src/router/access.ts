@@ -9,7 +9,7 @@ import { preferences } from '@vben/preferences';
 import { message } from 'ant-design-vue';
 
 import { getAllMenusApi } from '#/api';
-import { BasicLayout, IFrameView } from '#/layouts';
+import { BasicLayout } from '#/layouts';
 import { $t } from '#/locales';
 
 const forbiddenComponent = () => import('#/views/_core/fallback/forbidden.vue');
@@ -19,7 +19,7 @@ async function generateAccess(options: GenerateMenuAndRoutesOptions) {
 
   const layoutMap: ComponentRecordType = {
     BasicLayout,
-    IFrameView,
+    // IFrameView,
   };
 
   return await generateAccessible(preferences.app.accessMode, {

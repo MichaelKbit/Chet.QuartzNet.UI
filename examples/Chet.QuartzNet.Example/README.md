@@ -7,7 +7,7 @@
 - **可视化管理界面**: 通过 Web 界面管理 Quartz 作业
 - **ClassJob 模式支持**: 支持基于类的作业定义
 - **多种存储方式**: 支持文件存储和数据库存储
-- **Basic 认证**: 提供基础的认证保护
+- **JWT 认证**: 提供安全的JWT认证保护
 - **ClassJob 自动注册**: 自动扫描和注册带有特定特性的作业类
 - **示例作业**: 包含多个示例作业类，展示不同的作业实现方式
 
@@ -61,18 +61,22 @@ builder.Services.AddQuartzUISQLite(builder.Configuration.GetConnectionString("Qu
 }
 ```
 
-### 4. 启用 Basic 认证（当前示例已启用）
+### 4. 启用 JWT 认证（当前示例已启用）
 
 ```csharp
 // Program.cs
-// 配置 Basic 认证服务，从配置文件中读取认证信息
-builder.Services.AddQuartzUIBasicAuthentication(builder.Configuration);
+// 配置 Quartz UI 服务时自动启用 JWT 认证
+builder.Services.AddQuartzUI();
 
-// 在 appsettings.json 中配置用户名密码
+// 在 appsettings.json 中配置 JWT 相关选项
 "QuartzUI": {
-  "EnableBasicAuth": true,
+  "EnableJwtAuth": true,
   "UserName": "Admin",
-  "Password": "123456"
+  "Password": "123456",
+  "JwtSecret": "your-secret-key-change-this-in-production",
+  "JwtExpiresInMinutes": 30,
+  "JwtIssuer": "Chet",
+  "JwtAudience": "Chet.QuartzNet.UI"
 }
 ```
 
@@ -222,7 +226,7 @@ Chet.QuartzNet.UI 支持多种数据库：
 1. **存储方式**: 当前示例使用文件存储，作业数据默认保存在应用程序目录的 `quartz-jobs.json` 文件中
 2. **数据库存储**: 如果需要使用数据库存储，请参考示例代码中的数据库存储配置部分
 3. **ClassJob 自动注册**: 系统会自动扫描并注册当前程序集中带有 `[QuartzJob]` 特性的作业类
-4. **认证保护**: 当前示例已启用 Basic 认证，建议在生产环境中始终启用认证保护
+4. **认证保护**: 当前示例已启用 JWT 认证，建议在生产环境中始终启用认证保护
 5. **依赖注入**: 作业类支持通过构造函数注入依赖服务（如 ILogger）
 6. **作业数据**: 可以通过 JobDataMap 传递自定义数据给作业
 
@@ -243,9 +247,13 @@ Chet.QuartzNet.UI 支持多种数据库：
     "QuartzDB": "server=localhost;database=quartz_db;User Id=root;PWD=password;"
   },
   "QuartzUI": {
-    "EnableBasicAuth": true,
+    "EnableJwtAuth": true,
     "UserName": "Admin",
-    "Password": "123456"
+    "Password": "123456",
+    "JwtSecret": "your-secret-key-change-this-in-production",
+    "JwtExpiresInMinutes": 30,
+    "JwtIssuer": "Chet",
+    "JwtAudience": "Chet.QuartzNet.UI"
   }
 }
 ```
@@ -269,10 +277,8 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 配置 Quartz UI（默认使用文件存储）
+// 配置 Quartz UI（默认使用文件存储，自动启用JWT认证）
 builder.Services.AddQuartzUI();
-// 添加 Basic 认证服务
-builder.Services.AddQuartzUIBasicAuthentication(builder.Configuration);
 // 添加 ClassJob 自动注册
 builder.Services.AddQuartzClassJobs();
 
@@ -286,9 +292,7 @@ if (app.Environment.IsDevelopment())
 // 使用CORS策略
 app.UseCors("AllowAll");
 
-// 先启用认证中间件
-app.UseQuartzUIBasicAuthorized();
-// 然后启用Quartz UI中间件
+// 启用Quartz UI中间件（JWT认证自动集成）
 app.UseQuartz();
 
 app.MapControllers();

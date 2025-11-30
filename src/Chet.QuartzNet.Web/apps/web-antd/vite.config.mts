@@ -8,7 +8,7 @@ export default defineConfig(async () => {
     application: {},
     vite: {
       // 只在构建时设置base
-      base: isBuild ? '/vbenadmin/' : './',
+      base: isBuild ? '/quartz-ui/' : './',
       server: {
         proxy: {
           '/api': {
@@ -21,7 +21,7 @@ export default defineConfig(async () => {
         },
       },
       build: {
-        outDir: '../../../Chet.QuartzNet.UI/wwwroot/vbenadmin',
+        outDir: '../../../Chet.QuartzNet.UI/wwwroot/quartz-ui',
       },
     },
   };
