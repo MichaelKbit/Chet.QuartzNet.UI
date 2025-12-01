@@ -47,10 +47,6 @@ if (app.Environment.IsDevelopment())
 
 // 使用CORS策略
 app.UseCors("AllowAll");
-
-// 先启用认证中间件
-app.UseAuthentication();
-app.UseAuthorization();
 // 然后启用Quartz UI中间件
 app.UseQuartz();
 

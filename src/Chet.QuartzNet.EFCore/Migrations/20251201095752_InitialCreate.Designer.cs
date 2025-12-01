@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Chet.QuartzNet.EFCore.Migrations
 {
     [DbContext(typeof(QuartzDbContext))]
-    [Migration("20251118041817_InitialCreate")]
+    [Migration("20251201095752_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -84,18 +84,19 @@ namespace Chet.QuartzNet.EFCore.Migrations
                         .HasDefaultValue(true)
                         .HasComment("是否启用");
 
+                    b.Property<string>("JobClassOrApi")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasComment("作业类名或API URL");
+
                     b.Property<string>("JobData")
                         .HasColumnType("text")
                         .HasComment("作业数据(JSON格式)");
 
-                    b.Property<string>("JobType")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                    b.Property<int>("JobType")
+                        .HasColumnType("int")
                         .HasComment("作业类型");
-
-                    b.Property<int>("JobTypeEnum")
-                        .HasColumnType("int");
 
                     b.Property<DateTime?>("NextRunTime")
                         .HasColumnType("datetime2")

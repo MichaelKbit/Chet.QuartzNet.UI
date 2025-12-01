@@ -20,18 +20,11 @@ builder.Services.AddQuartzUI(options =>
 
 // 从配置文件中添加数据库支持（SQL Server）
 builder.Services.AddQuartzUIDatabaseFromConfiguration(builder.Configuration);
-
+builder.Services.AddQuartzClassJobs();
 // 添加Basic认证服务
 builder.Services.AddQuartzUIAuthentication(builder.Configuration);
 
 var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-
-app.UseAuthorization();
-
-// 启用Basic认证中间件
-app.UseQuartzUIBasicAuthorized();
 
 // 启用Quartz UI中间件
 app.UseQuartz();
