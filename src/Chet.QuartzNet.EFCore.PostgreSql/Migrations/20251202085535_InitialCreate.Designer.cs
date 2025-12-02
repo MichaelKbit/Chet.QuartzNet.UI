@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Chet.QuartzNet.EFCore.PostgreSQL.Migrations
 {
     [DbContext(typeof(QuartzDbContext))]
-    [Migration("20251202075223_InitialCreate")]
+    [Migration("20251202085535_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -66,9 +66,7 @@ namespace Chet.QuartzNet.EFCore.PostgreSQL.Migrations
                         .HasComment("创建人");
 
                     b.Property<DateTime>("CreateTime")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP")
                         .HasComment("创建时间");
 
                     b.Property<string>("CronExpression")
@@ -179,14 +177,11 @@ namespace Chet.QuartzNet.EFCore.PostgreSQL.Migrations
                 {
                     b.Property<Guid>("LogId")
                         .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
                         .HasColumnType("uuid")
                         .HasComment("日志ID");
 
                     b.Property<DateTime>("CreateTime")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP")
                         .HasComment("创建时间");
 
                     b.Property<long?>("Duration")
@@ -206,36 +201,37 @@ namespace Chet.QuartzNet.EFCore.PostgreSQL.Migrations
                         .HasComment("错误堆栈");
 
                     b.Property<string>("Exception")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasComment("异常信息");
 
                     b.Property<string>("JobData")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasComment("执行参数");
 
                     b.Property<string>("JobGroup")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasDefaultValue("DEFAULT")
                         .HasComment("作业分组");
 
                     b.Property<string>("JobName")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasComment("作业名称");
 
                     b.Property<string>("Message")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasComment("执行结果消息");
 
                     b.Property<string>("Result")
                         .HasColumnType("text")
                         .HasComment("执行结果");
 
                     b.Property<DateTime>("StartTime")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP")
                         .HasComment("开始时间");
 
                     b.Property<int>("Status")
@@ -247,15 +243,15 @@ namespace Chet.QuartzNet.EFCore.PostgreSQL.Migrations
                     b.Property<string>("TriggerGroup")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasDefaultValue("DEFAULT")
                         .HasComment("触发器分组");
 
                     b.Property<string>("TriggerName")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasComment("触发器名称");
 
                     b.HasKey("LogId");

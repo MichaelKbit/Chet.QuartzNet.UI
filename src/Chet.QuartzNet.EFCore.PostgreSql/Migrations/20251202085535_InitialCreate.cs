@@ -15,22 +15,22 @@ namespace Chet.QuartzNet.EFCore.PostgreSQL.Migrations
                 name: "quartz_job_logs",
                 columns: table => new
                 {
-                    LogId = table.Column<Guid>(type: "uuid", maxLength: 50, nullable: false, comment: "日志ID"),
-                    JobName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false, comment: "作业名称"),
-                    JobGroup = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false, defaultValue: "DEFAULT", comment: "作业分组"),
+                    LogId = table.Column<Guid>(type: "uuid", nullable: false, comment: "日志ID"),
+                    JobName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false, comment: "作业名称"),
+                    JobGroup = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false, defaultValue: "DEFAULT", comment: "作业分组"),
                     Status = table.Column<int>(type: "integer", nullable: false, defaultValue: 0, comment: "日志状态"),
-                    StartTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP", comment: "开始时间"),
+                    StartTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, comment: "开始时间"),
                     EndTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true, comment: "结束时间"),
                     Duration = table.Column<long>(type: "bigint", nullable: true, comment: "执行耗时(毫秒)"),
-                    Message = table.Column<string>(type: "text", nullable: true),
-                    Exception = table.Column<string>(type: "text", nullable: true),
+                    Message = table.Column<string>(type: "text", nullable: true, comment: "执行结果消息"),
+                    Exception = table.Column<string>(type: "text", nullable: true, comment: "异常信息"),
                     ErrorMessage = table.Column<string>(type: "text", nullable: true, comment: "错误信息"),
                     ErrorStackTrace = table.Column<string>(type: "text", nullable: true, comment: "错误堆栈"),
                     Result = table.Column<string>(type: "text", nullable: true, comment: "执行结果"),
-                    TriggerName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false, comment: "触发器名称"),
-                    TriggerGroup = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false, defaultValue: "DEFAULT", comment: "触发器分组"),
-                    JobData = table.Column<string>(type: "text", nullable: true),
-                    CreateTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP", comment: "创建时间")
+                    TriggerName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false, comment: "触发器名称"),
+                    TriggerGroup = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false, defaultValue: "DEFAULT", comment: "触发器分组"),
+                    JobData = table.Column<string>(type: "text", nullable: true, comment: "执行参数"),
+                    CreateTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, comment: "创建时间")
                 },
                 constraints: table =>
                 {
@@ -62,7 +62,7 @@ namespace Chet.QuartzNet.EFCore.PostgreSQL.Migrations
                     NextRunTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true, comment: "下次执行时间"),
                     PreviousRunTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true, comment: "上次执行时间"),
                     Remark = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true, comment: "备注"),
-                    CreateTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP", comment: "创建时间"),
+                    CreateTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, comment: "创建时间"),
                     UpdateTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true, comment: "更新时间"),
                     CreateBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true, comment: "创建人"),
                     UpdateBy = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true, comment: "更新人")

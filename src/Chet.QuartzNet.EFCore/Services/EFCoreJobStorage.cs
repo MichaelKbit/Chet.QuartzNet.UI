@@ -120,7 +120,7 @@ public class EFCoreJobStorage : IJobStorage
         try
         {
             return await _dbContext.QuartzJobs
-                .FirstOrDefaultAsync(j => j.JobName.Equals(jobName, StringComparison.CurrentCultureIgnoreCase) && j.JobGroup == jobGroup, cancellationToken);
+                .FirstOrDefaultAsync(j => j.JobName == jobName && j.JobGroup == jobGroup, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -564,9 +564,13 @@ public class EFCoreJobStorage : IJobStorage
             // 计算时间范围
             var (startTime, endTime) = CalculateTimeRange(queryDto);
 
-            // 按小时分组统计
-            var timeGroups = await _dbContext.QuartzJobLogs
+            // 获取所有符合条件的日志，然后在内存中分组
+            var logs = await _dbContext.QuartzJobLogs
                 .Where(l => l.StartTime >= startTime && l.StartTime <= endTime)
+                .ToListAsync(cancellationToken);
+
+            // 在内存中按小时分组统计
+            var timeGroups = logs
                 .GroupBy(l => new DateTime(l.StartTime.Year, l.StartTime.Month, l.StartTime.Day, l.StartTime.Hour, 0, 0))
                 .Select(group => new
                 {
@@ -576,7 +580,7 @@ public class EFCoreJobStorage : IJobStorage
                     TotalCount = group.Count()
                 })
                 .OrderBy(g => g.Time)
-                .ToListAsync(cancellationToken);
+                .ToList();
 
             // 转换为趋势数据
             var trend = timeGroups.Select(group => new JobExecutionTrendDto
@@ -678,31 +682,33 @@ public class EFCoreJobStorage : IJobStorage
     {
         DateTime startTime, endTime;
 
-        // 如果指定了自定义时间范围，使用自定义时间
+        // 如果指定了自定义时间范围，使用自定义时间并确保是UTC
         if (queryDto.TimeRangeType == "custom" && queryDto.StartTime.HasValue && queryDto.EndTime.HasValue)
         {
-            startTime = queryDto.StartTime.Value;
-            endTime = queryDto.EndTime.Value;
+            // 确保自定义时间是UTC
+            startTime = DateTime.SpecifyKind(queryDto.StartTime.Value, DateTimeKind.Utc);
+            endTime = DateTime.SpecifyKind(queryDto.EndTime.Value, DateTimeKind.Utc);
         }
         else
         {
-            // 否则根据时间范围类型计算
-            endTime = DateTime.Now;
+            // 否则根据时间范围类型计算，确保所有时间都是UTC
+            endTime = DateTime.UtcNow;
 
             switch (queryDto.TimeRangeType)
             {
                 case "today":
-                    startTime = new DateTime(endTime.Year, endTime.Month, endTime.Day, 0, 0, 0);
+                    startTime = new DateTime(endTime.Year, endTime.Month, endTime.Day, 0, 0, 0, DateTimeKind.Utc);
                     break;
                 case "yesterday":
-                    startTime = new DateTime(endTime.Year, endTime.Month, endTime.Day, 0, 0, 0).AddDays(-1);
-                    endTime = new DateTime(endTime.Year, endTime.Month, endTime.Day, 0, 0, 0).AddMilliseconds(-1);
+                    startTime = new DateTime(endTime.Year, endTime.Month, endTime.Day, 0, 0, 0, DateTimeKind.Utc).AddDays(-1);
+                    endTime = new DateTime(endTime.Year, endTime.Month, endTime.Day, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(-1);
                     break;
                 case "thisWeek":
                     startTime = endTime.AddDays(-(int)endTime.DayOfWeek).Date;
+                    startTime = DateTime.SpecifyKind(startTime, DateTimeKind.Utc);
                     break;
                 case "thisMonth":
-                    startTime = new DateTime(endTime.Year, endTime.Month, 1, 0, 0, 0);
+                    startTime = new DateTime(endTime.Year, endTime.Month, 1, 0, 0, 0, DateTimeKind.Utc);
                     break;
                 default:
                     startTime = endTime.AddDays(-7); // 默认最近7天
