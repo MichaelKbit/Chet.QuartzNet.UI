@@ -45,7 +45,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Chet.QuartzNet.Core\Chet.QuartzNet.Core.csproj" />
-    <ProjectReference Include="..\Chet.QuartzNet.EFCore\Chet.QuartzNet.EFCore.csproj" />
+    <!--<ProjectReference Include="..\Chet.QuartzNet.EFCore\Chet.QuartzNet.EFCore.csproj" />-->
   </ItemGroup>
 
   <!-- 嵌入静态资源 -->
