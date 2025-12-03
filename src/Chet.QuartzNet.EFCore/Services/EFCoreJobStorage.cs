@@ -15,12 +15,68 @@ public class EFCoreJobStorage : IJobStorage
     private readonly QuartzDbContext _dbContext;
     private readonly ILogger<EFCoreJobStorage> _logger;
 
+    /// <summary>
+    /// 初始化 EFCoreJobStorage 实例
+    /// </summary>
+    /// <param name="dbContext">数据库上下文实例</param>
+    /// <param name="logger">日志记录器实例</param>
     public EFCoreJobStorage(QuartzDbContext dbContext, ILogger<EFCoreJobStorage> logger)
     {
         _dbContext = dbContext;
         _logger = logger;
     }
 
+    #region 初始化数据库
+
+    /// <summary>
+    /// 初始化数据库存储，应用所有未应用的迁移
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>初始化成功返回 true，失败返回 false</returns>
+    public async Task<bool> InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // 应用所有未应用的迁移
+            await _dbContext.Database.MigrateAsync(cancellationToken);
+
+            _logger.LogInformation("EFCore数据库存储初始化成功");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "EFCore数据库存储初始化失败");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 检查数据库存储是否已初始化
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>已初始化返回 true，未初始化返回 false</returns>
+    public async Task<bool> IsInitializedAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _dbContext.Database.CanConnectAsync(cancellationToken);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    #endregion
+
+    #region 作业管理
+
+    /// <summary>
+    /// 添加新的定时作业
+    /// </summary>
+    /// <param name="jobInfo">作业信息对象</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>添加成功返回 true，失败返回 false</returns>
     public async Task<bool> AddJobAsync(QuartzJobInfo jobInfo, CancellationToken cancellationToken = default)
     {
         try
@@ -48,6 +104,12 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
+    /// <summary>
+    /// 更新现有的定时作业
+    /// </summary>
+    /// <param name="jobInfo">作业信息对象，包含更新后的作业数据</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>更新成功返回 true，失败返回 false</returns>
     public async Task<bool> UpdateJobAsync(QuartzJobInfo jobInfo, CancellationToken cancellationToken = default)
     {
         try
@@ -89,6 +151,13 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
+    /// <summary>
+    /// 根据作业名称和分组删除定时作业
+    /// </summary>
+    /// <param name="jobName">作业名称</param>
+    /// <param name="jobGroup">作业分组</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>删除成功返回 true，失败返回 false</returns>
     public async Task<bool> DeleteJobAsync(string jobName, string jobGroup, CancellationToken cancellationToken = default)
     {
         try
@@ -115,6 +184,13 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
+    /// <summary>
+    /// 根据作业名称和分组获取单个定时作业信息
+    /// </summary>
+    /// <param name="jobName">作业名称</param>
+    /// <param name="jobGroup">作业分组</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>找到的作业信息对象，找不到则返回 null</returns>
     public async Task<QuartzJobInfo?> GetJobAsync(string jobName, string jobGroup, CancellationToken cancellationToken = default)
     {
         try
@@ -129,6 +205,12 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
+    /// <summary>
+    /// 根据查询条件获取定时作业列表，支持分页、过滤和排序
+    /// </summary>
+    /// <param name="queryDto">查询条件对象，包含分页参数、过滤条件和排序规则</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>包含分页信息和作业列表的响应对象</returns>
     public async Task<PagedResponseDto<QuartzJobInfo>> GetJobsAsync(QuartzJobQueryDto queryDto, CancellationToken cancellationToken = default)
     {
         try
@@ -215,6 +297,11 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
+    /// <summary>
+    /// 获取所有定时作业列表
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>作业列表</returns>
     public async Task<List<QuartzJobInfo>> GetAllJobsAsync(CancellationToken cancellationToken = default)
     {
         try
@@ -228,6 +315,14 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
+    /// <summary>
+    /// 更新定时作业的状态
+    /// </summary>
+    /// <param name="jobName">作业名称</param>
+    /// <param name="jobGroup">作业分组</param>
+    /// <param name="status">新的作业状态</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>更新成功返回 true，失败返回 false</returns>
     public async Task<bool> UpdateJobStatusAsync(string jobName, string jobGroup, JobStatus status, CancellationToken cancellationToken = default)
     {
         try
@@ -242,7 +337,7 @@ public class EFCoreJobStorage : IJobStorage
             }
 
             job.Status = status;
-            job.UpdateTime = DateTime.Now;
+            job.UpdateTime = DateTime.UtcNow;
 
             var result = await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -256,6 +351,16 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
+    #endregion
+
+    #region 作业日志
+
+    /// <summary>
+    /// 添加作业执行日志
+    /// </summary>
+    /// <param name="jobLog">作业日志对象</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>添加成功返回 true，失败返回 false</returns>
     public async Task<bool> AddJobLogAsync(QuartzJobLog jobLog, CancellationToken cancellationToken = default)
     {
         try
@@ -273,6 +378,12 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
+    /// <summary>
+    /// 根据查询条件获取作业执行日志列表，支持分页、过滤和排序
+    /// </summary>
+    /// <param name="queryDto">查询条件对象，包含分页参数、过滤条件和排序规则</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>包含分页信息和日志列表的响应对象</returns>
     public async Task<PagedResponseDto<QuartzJobLog>> GetJobLogsAsync(QuartzJobLogQueryDto queryDto, CancellationToken cancellationToken = default)
     {
         try
@@ -367,11 +478,17 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
+    /// <summary>
+    /// 清除指定天数之前的过期作业日志
+    /// </summary>
+    /// <param name="daysToKeep">保留天数</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>清除的日志数量</returns>
     public async Task<int> ClearExpiredLogsAsync(int daysToKeep, CancellationToken cancellationToken = default)
     {
         try
         {
-            var cutoffDate = DateTime.Now.AddDays(-daysToKeep);
+            var cutoffDate = DateTime.UtcNow.AddDays(-daysToKeep);
 
             var expiredLogs = await _dbContext.QuartzJobLogs
                 .Where(l => l.CreateTime < cutoffDate)
@@ -396,6 +513,12 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
+    /// <summary>
+    /// 根据查询条件清空作业执行日志
+    /// </summary>
+    /// <param name="queryDto">查询条件对象，包含过滤条件</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>清空成功返回 true，失败返回 false</returns>
     public async Task<bool> ClearJobLogsAsync(QuartzJobLogQueryDto queryDto, CancellationToken cancellationToken = default)
     {
         try
@@ -449,35 +572,16 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
-    public async Task<bool> InitializeAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            // 应用所有未应用的迁移
-            await _dbContext.Database.MigrateAsync(cancellationToken);
+    #endregion
 
-            _logger.LogInformation("EFCore数据库存储初始化成功");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "EFCore数据库存储初始化失败");
-            return false;
-        }
-    }
+    #region 统计分析
 
-    public async Task<bool> IsInitializedAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            return await _dbContext.Database.CanConnectAsync(cancellationToken);
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
+    /// <summary>
+    /// 获取作业统计数据
+    /// </summary>
+    /// <param name="queryDto">查询条件对象，包含时间范围等参数</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>作业统计数据</returns>
     public async Task<JobStatsDto> GetJobStatsAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
     {
         try
@@ -524,6 +628,12 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
+    /// <summary>
+    /// 获取作业状态分布数据
+    /// </summary>
+    /// <param name="queryDto">查询条件对象</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>作业状态分布数据列表</returns>
     public async Task<List<JobStatusDistributionDto>> GetJobStatusDistributionAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
     {
         try
@@ -557,6 +667,12 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
+    /// <summary>
+    /// 获取作业执行趋势数据，按小时统计成功、失败和总执行次数
+    /// </summary>
+    /// <param name="queryDto">查询条件对象，包含时间范围等参数</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>作业执行趋势数据列表，按小时分组</returns>
     public async Task<List<JobExecutionTrendDto>> GetJobExecutionTrendAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
     {
         try
@@ -600,6 +716,12 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
+    /// <summary>
+    /// 获取作业类型分布数据
+    /// </summary>
+    /// <param name="queryDto">查询条件对象</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>作业类型分布数据列表</returns>
     public async Task<List<JobTypeDistributionDto>> GetJobTypeDistributionAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
     {
         try
@@ -633,6 +755,12 @@ public class EFCoreJobStorage : IJobStorage
         }
     }
 
+    /// <summary>
+    /// 获取作业执行耗时分布数据
+    /// </summary>
+    /// <param name="queryDto">查询条件对象，包含时间范围等参数</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>作业执行耗时分布数据列表</returns>
     public async Task<List<JobExecutionTimeDto>> GetJobExecutionTimeAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
     {
         try
@@ -717,5 +845,7 @@ public class EFCoreJobStorage : IJobStorage
         }
 
         return (startTime, endTime);
-    }
+    } 
+
+    #endregion
 }
