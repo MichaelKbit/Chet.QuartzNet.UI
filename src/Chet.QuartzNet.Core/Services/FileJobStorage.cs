@@ -110,6 +110,11 @@ public class FileJobStorage : IJobStorage
             existingJob.JobType = jobInfo.JobType;
             existingJob.JobClassOrApi = jobInfo.JobClassOrApi;
             existingJob.JobData = jobInfo.JobData;
+            existingJob.ApiMethod = jobInfo.ApiMethod;
+            existingJob.ApiHeaders = jobInfo.ApiHeaders;
+            existingJob.ApiBody = jobInfo.ApiBody;
+            existingJob.ApiTimeout = jobInfo.ApiTimeout;
+            existingJob.SkipSslValidation = jobInfo.SkipSslValidation;
             existingJob.StartTime = jobInfo.StartTime;
             existingJob.EndTime = jobInfo.EndTime;
             existingJob.IsEnabled = jobInfo.IsEnabled;
@@ -511,45 +516,58 @@ public class FileJobStorage : IJobStorage
             var logs = await LoadLogsAsync();
             var originalCount = logs.Count;
 
-            // 找出需要保留的日志（即不匹配查询条件的日志）
-            var logsToKeep = logs.Where(log =>
+            // 找出需要删除的日志（即匹配查询条件的日志）
+            var logsToDelete = logs.Where(log =>
             {
-                // 应用与GetJobLogsAsync相反的过滤条件
+                // 应用与GetJobLogsAsync相同的过滤条件
                 bool match = true;
 
                 if (!string.IsNullOrEmpty(queryDto.JobName))
                 {
-                    match &= !log.JobName.Contains(queryDto.JobName, StringComparison.OrdinalIgnoreCase);
+                    match &= log.JobName.Contains(queryDto.JobName, StringComparison.OrdinalIgnoreCase);
                 }
 
                 if (!string.IsNullOrEmpty(queryDto.JobGroup))
                 {
-                    match &= !log.JobGroup.Contains(queryDto.JobGroup, StringComparison.OrdinalIgnoreCase);
+                    match &= log.JobGroup.Contains(queryDto.JobGroup, StringComparison.OrdinalIgnoreCase);
                 }
 
                 if (queryDto.Status.HasValue)
                 {
-                    match &= log.Status != queryDto.Status.Value;
+                    match &= log.Status == queryDto.Status.Value;
                 }
 
                 if (queryDto.StartTime.HasValue)
                 {
-                    match &= log.StartTime < queryDto.StartTime.Value;
+                    match &= log.StartTime >= queryDto.StartTime.Value;
                 }
 
                 if (queryDto.EndTime.HasValue)
                 {
-                    match &= log.StartTime > queryDto.EndTime.Value;
+                    match &= log.StartTime <= queryDto.EndTime.Value;
                 }
 
                 return match;
             }).ToList();
 
+            // 如果没有指定查询条件，删除所有日志
+            if (string.IsNullOrEmpty(queryDto.JobName) && 
+                string.IsNullOrEmpty(queryDto.JobGroup) && 
+                !queryDto.Status.HasValue && 
+                !queryDto.StartTime.HasValue && 
+                !queryDto.EndTime.HasValue)
+            {
+                logsToDelete = logs;
+            }
+
+            // 创建新的日志列表，不包含需要删除的日志
+            var logsToKeep = logs.Except(logsToDelete).ToList();
+
             // 保存保留的日志（即删除了匹配条件的日志）
             await SaveLogsAsync(logsToKeep);
 
             // 计算清空的日志数量
-            var clearedCount = originalCount - logsToKeep.Count;
+            var clearedCount = logsToDelete.Count;
             _logger.LogInformation("清空作业日志成功: 共清空 {Count} 条日志", clearedCount);
 
             return true;

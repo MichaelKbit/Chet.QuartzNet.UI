@@ -228,7 +228,14 @@ const handleClear = () => {
     content: '确定要清空日志吗？此操作不可恢复！',
     onOk: async () => {
       try {
-        const response = await clearLogs(searchForm);
+        // 传递空的查询参数，清空所有日志，而不是使用当前搜索条件
+        const response = await clearLogs({
+          jobName: '',
+          jobGroup: '',
+          status: undefined,
+          startTime: undefined,
+          endTime: undefined,
+        });
         if (response.success) {
           message.success('日志清空成功');
           // 清空后重新加载日志列表

@@ -192,7 +192,7 @@ public static class ServiceCollectionExtensions
         // 筛选出标记了QuartzJobAttribute特性的类
         var attributeType = typeof(Chet.QuartzNet.Core.Attributes.QuartzJobAttribute);
         var attributedJobTypes = jobTypes
-            .Where(t => t.GetCustomAttributes(attributeType, false)?.Any() == true)
+            .Where(t => (t.GetCustomAttributes(attributeType, false) ?? Array.Empty<object>()).Any())
             .ToList();
 
         _logger.LogInformation("找到 {AttributedJobCount} 个标记了QuartzJobAttribute特性的类", attributedJobTypes.Count);
@@ -201,8 +201,8 @@ public static class ServiceCollectionExtensions
         {
             foreach (var jobType in attributedJobTypes)
             {
-                var attributes = jobType.GetCustomAttributes(attributeType, false);
-                if (attributes != null && attributes.Any())
+                var attributes = jobType.GetCustomAttributes(attributeType, false) ?? Array.Empty<object>();
+                if (attributes.Any())
                 {
                     var attribute = (Chet.QuartzNet.Core.Attributes.QuartzJobAttribute)attributes.First();
                     var jobKey = new JobKey(attribute.Name, attribute.Group);
@@ -267,8 +267,8 @@ public static class ServiceCollectionExtensions
 
                     foreach (var jobType in jobTypes)
                     {
-                        var attributes = jobType.GetCustomAttributes(attributeType, false);
-                        var attribute = attributes?.FirstOrDefault() as Chet.QuartzNet.Core.Attributes.QuartzJobAttribute;
+                        var attributes = jobType.GetCustomAttributes(attributeType, false) ?? Array.Empty<object>();
+                        var attribute = attributes.FirstOrDefault() as Chet.QuartzNet.Core.Attributes.QuartzJobAttribute;
                         if (attribute == null)
                         {
                             _logger.LogWarning("无法获取QuartzJobAttribute特性: {JobType}", jobType.FullName);

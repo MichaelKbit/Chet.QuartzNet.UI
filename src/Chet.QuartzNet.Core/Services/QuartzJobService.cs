@@ -1079,31 +1079,31 @@ public class QuartzJobService : IQuartzJobService
             .StoreDurably();
 
         // 设置作业数据
-            if (!string.IsNullOrEmpty(jobInfo.JobData))
+        if (!string.IsNullOrEmpty(jobInfo.JobData))
+        {
+            var jobDataMap = new JobDataMap();
+            try
             {
-                var jobDataMap = new JobDataMap();
-                try
+                // 解析JSON数据并添加到jobDataMap
+                var jobDataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(jobInfo.JobData);
+                if (jobDataDict != null)
                 {
-                    // 解析JSON数据并添加到jobDataMap
-                    var jobDataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(jobInfo.JobData);
-                    if (jobDataDict != null)
+                    foreach (var kvp in jobDataDict)
                     {
-                        foreach (var kvp in jobDataDict)
+                        // 只添加非null值，避免CS8604警告
+                        if (kvp.Value != null)
                         {
-                            // 只添加非null值，避免CS8604警告
-                            if (kvp.Value != null)
-                            {
-                                jobDataMap.Add(kvp.Key, kvp.Value);
-                            }
+                            jobDataMap.Add(kvp.Key, kvp.Value);
                         }
                     }
                 }
-                catch (System.Text.Json.JsonException ex)
-                {
-                    _logger.LogError(ex, "解析作业数据JSON失败: {JobData}", jobInfo.JobData);
-                }
-                jobBuilder.UsingJobData(jobDataMap);
             }
+            catch (System.Text.Json.JsonException ex)
+            {
+                _logger.LogError(ex, "解析作业数据JSON失败: {JobData}", jobInfo.JobData);
+            }
+            jobBuilder.UsingJobData(jobDataMap);
+        }
 
         var jobDetail = jobBuilder.Build();
 
