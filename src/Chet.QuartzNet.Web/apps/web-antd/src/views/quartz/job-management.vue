@@ -655,12 +655,12 @@ onMounted(async () => {
         <Row :gutter="16">
           <Col :xs="24" :sm="24" :md="24">
           <Form.Item label="作业名称" name="jobName" :rules="[{ required: true, message: '请输入作业名称' }]">
-            <Input v-model:value="editForm.jobName" placeholder="请输入作业名称" />
+            <Input v-model:value="editForm.jobName" placeholder="请输入作业名称" :disabled="editModalTitle === '编辑作业'" />
           </Form.Item>
           </Col>
           <Col :xs="24" :sm="24" :md="24">
           <Form.Item label="作业分组" name="jobGroup" :rules="[{ required: true, message: '请输入作业分组' }]">
-            <Input v-model:value="editForm.jobGroup" placeholder="请输入作业分组" />
+            <Input v-model:value="editForm.jobGroup" placeholder="请输入作业分组" :disabled="editModalTitle === '编辑作业'" />
           </Form.Item>
           </Col>
           <Col :xs="24" :sm="24" :md="24">
@@ -713,7 +713,7 @@ onMounted(async () => {
           </Col>
           <Col :xs="24" :sm="24" :md="24">
           <Form.Item label="API超时(秒)" name="apiTimeout" :rules="[
-            { required: true, message: '请输入API超时时间' },
+            { required: true, message: '请输入API超时时间', type: 'number' },
             { type: 'number', min: 1, message: 'API超时时间必须大于0' }
           ]">
             <Input type="number" v-model:value="editForm.apiTimeout" placeholder="请输入API超时时间，单位秒" />

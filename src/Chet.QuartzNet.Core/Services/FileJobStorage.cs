@@ -563,6 +563,9 @@ public class FileJobStorage : IJobStorage
 
     #endregion
 
+
+    #region 文件操作
+
     /// <summary>
     /// 初始化文件存储
     /// </summary>
@@ -604,9 +607,7 @@ public class FileJobStorage : IJobStorage
         // 检查作业文件和日志文件是否都存在
         return File.Exists(_jobsFilePath) && File.Exists(_logsFilePath);
     }
-
-    #region 文件操作
-
+    
     /// <summary>
     /// 从文件加载作业数据
     /// </summary>
@@ -658,7 +659,8 @@ public class FileJobStorage : IJobStorage
             // 序列化作业列表为JSON
             var json = JsonSerializer.Serialize(jobs, new JsonSerializerOptions
             {
-                WriteIndented = true
+                WriteIndented = true,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             });
 
             // 使用FileStream并设置FileShare参数，写入时允许其他进程读取
@@ -710,7 +712,8 @@ public class FileJobStorage : IJobStorage
         {
             var json = JsonSerializer.Serialize(logs, new JsonSerializerOptions
             {
-                WriteIndented = true
+                WriteIndented = true,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             });
 
             // 使用FileStream并设置FileShare参数，写入时允许其他进程读取

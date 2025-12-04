@@ -546,22 +546,24 @@ public class QuartzJobService : IQuartzJobService
                     {
                         var nextFireTimes = triggers.Select(t => t.GetNextFireTimeUtc())
                                                    .Where(t => t.HasValue)
-                                                   .OrderBy(t => t.Value)
+                                                   .Select(t => t.Value)
+                                                   .OrderBy(t => t)
                                                    .ToList();
 
                         if (nextFireTimes.Any())
                         {
-                            jobInfo.NextRunTime = nextFireTimes.First().Value.DateTime;
+                            jobInfo.NextRunTime = nextFireTimes.First().DateTime;
                         }
 
                         var previousFireTimes = triggers.Select(t => t.GetPreviousFireTimeUtc())
                                                        .Where(t => t.HasValue)
-                                                       .OrderByDescending(t => t.Value)
+                                                       .Select(t => t.Value)
+                                                       .OrderByDescending(t => t)
                                                        .ToList();
 
                         if (previousFireTimes.Any())
                         {
-                            jobInfo.PreviousRunTime = previousFireTimes.First().Value.DateTime;
+                            jobInfo.PreviousRunTime = previousFireTimes.First().DateTime;
                         }
                     }
                 }
@@ -583,22 +585,24 @@ public class QuartzJobService : IQuartzJobService
             {
                 var nextFireTimes = updatedTriggers.Select(t => t.GetNextFireTimeUtc())
                                                    .Where(t => t.HasValue)
-                                                   .OrderBy(t => t.Value)
+                                                   .Select(t => t.Value)
+                                                   .OrderBy(t => t)
                                                    .ToList();
 
                 if (nextFireTimes.Any())
                 {
-                    jobInfo.NextRunTime = nextFireTimes.First().Value.DateTime;
+                    jobInfo.NextRunTime = nextFireTimes.First().DateTime;
                 }
 
                 var previousFireTimes = updatedTriggers.Select(t => t.GetPreviousFireTimeUtc())
                                                        .Where(t => t.HasValue)
-                                                       .OrderByDescending(t => t.Value)
+                                                       .Select(t => t.Value)
+                                                       .OrderByDescending(t => t)
                                                        .ToList();
 
                 if (previousFireTimes.Any())
                 {
-                    jobInfo.PreviousRunTime = previousFireTimes.First().Value.DateTime;
+                    jobInfo.PreviousRunTime = previousFireTimes.First().DateTime;
                 }
             }
 
@@ -699,7 +703,11 @@ public class QuartzJobService : IQuartzJobService
                         {
                             foreach (var kvp in jobDataDict)
                             {
-                                jobDataMap.Add(kvp.Key, kvp.Value);
+                                // 只添加非null值，避免CS8604警告
+                                if (kvp.Value != null)
+                                {
+                                    jobDataMap.Add(kvp.Key, kvp.Value);
+                                }
                             }
                         }
                     }
@@ -795,12 +803,13 @@ public class QuartzJobService : IQuartzJobService
                         // 找到最早的下一次执行时间
                         var nextFireTimes = triggers.Select(t => t.GetNextFireTimeUtc())
                                                    .Where(t => t.HasValue)
-                                                   .OrderBy(t => t.Value)
+                                                   .Select(t => t.Value)
+                                                   .OrderBy(t => t)
                                                    .ToList();
 
                         if (nextFireTimes.Any())
                         {
-                            jobResponse.NextRunTime = nextFireTimes.First().Value.DateTime.ToLocalTime();
+                            jobResponse.NextRunTime = nextFireTimes.First().DateTime.ToLocalTime();
                             _logger.LogInformation("作业 {JobKey} 的下次执行时间: {NextRunTime}", $"{jobInfo.JobGroup}.{jobInfo.JobName}", jobResponse.NextRunTime);
                         }
                         else
@@ -811,13 +820,14 @@ public class QuartzJobService : IQuartzJobService
                         // 找到最近的上一次执行时间
                         var previousFireTimes = triggers.Select(t => t.GetPreviousFireTimeUtc())
                                                        .Where(t => t.HasValue)
-                                                       .OrderByDescending(t => t.Value)
+                                                       .Select(t => t.Value)
+                                                       .OrderByDescending(t => t)
                                                        .ToList();
 
                         if (previousFireTimes.Any())
                         {
                             // 将UTC时间转换为北京时间（UTC+8）
-                            jobResponse.PreviousRunTime = previousFireTimes.First().Value.DateTime.ToLocalTime();
+                            jobResponse.PreviousRunTime = previousFireTimes.First().DateTime.ToLocalTime();
                         }
                     }
                     else
@@ -1069,27 +1079,31 @@ public class QuartzJobService : IQuartzJobService
             .StoreDurably();
 
         // 设置作业数据
-        if (!string.IsNullOrEmpty(jobInfo.JobData))
-        {
-            var jobDataMap = new JobDataMap();
-            try
+            if (!string.IsNullOrEmpty(jobInfo.JobData))
             {
-                // 解析JSON数据并添加到jobDataMap
-                var jobDataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(jobInfo.JobData);
-                if (jobDataDict != null)
+                var jobDataMap = new JobDataMap();
+                try
                 {
-                    foreach (var kvp in jobDataDict)
+                    // 解析JSON数据并添加到jobDataMap
+                    var jobDataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(jobInfo.JobData);
+                    if (jobDataDict != null)
                     {
-                        jobDataMap.Add(kvp.Key, kvp.Value);
+                        foreach (var kvp in jobDataDict)
+                        {
+                            // 只添加非null值，避免CS8604警告
+                            if (kvp.Value != null)
+                            {
+                                jobDataMap.Add(kvp.Key, kvp.Value);
+                            }
+                        }
                     }
                 }
+                catch (System.Text.Json.JsonException ex)
+                {
+                    _logger.LogError(ex, "解析作业数据JSON失败: {JobData}", jobInfo.JobData);
+                }
+                jobBuilder.UsingJobData(jobDataMap);
             }
-            catch (System.Text.Json.JsonException ex)
-            {
-                _logger.LogError(ex, "解析作业数据JSON失败: {JobData}", jobInfo.JobData);
-            }
-            jobBuilder.UsingJobData(jobDataMap);
-        }
 
         var jobDetail = jobBuilder.Build();
 
