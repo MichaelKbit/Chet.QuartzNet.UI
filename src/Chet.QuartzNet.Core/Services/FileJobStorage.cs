@@ -247,6 +247,12 @@ public class FileJobStorage : IJobStorage
                     case "updatetime":
                         jobs = isAscending ? jobs.OrderBy(j => j.UpdateTime).ToList() : jobs.OrderByDescending(j => j.UpdateTime).ToList();
                         break;
+                    case "previousruntime":
+                        jobs = isAscending ? jobs.OrderBy(j => j.PreviousRunTime).ToList() : jobs.OrderByDescending(j => j.PreviousRunTime).ToList();
+                        break;
+                    case "nextruntime":
+                        jobs = isAscending ? jobs.OrderBy(j => j.NextRunTime).ToList() : jobs.OrderByDescending(j => j.NextRunTime).ToList();
+                        break;
                     default:
                         // 默认按创建时间降序排序
                         jobs = jobs.OrderByDescending(j => j.CreateTime).ToList();

@@ -263,6 +263,12 @@ public class EFCoreJobStorage : IJobStorage
                     case "updatetime":
                         query = isAscending ? query.OrderBy(j => j.UpdateTime) : query.OrderByDescending(j => j.UpdateTime);
                         break;
+                    case "previousruntime":
+                        query = isAscending ? query.OrderBy(j => j.PreviousRunTime) : query.OrderByDescending(j => j.PreviousRunTime);
+                        break;
+                    case "nextruntime":
+                        query = isAscending ? query.OrderBy(j => j.NextRunTime) : query.OrderByDescending(j => j.NextRunTime);
+                        break;
                     default:
                         // 默认按创建时间降序排序
                         query = query.OrderByDescending(j => j.CreateTime);

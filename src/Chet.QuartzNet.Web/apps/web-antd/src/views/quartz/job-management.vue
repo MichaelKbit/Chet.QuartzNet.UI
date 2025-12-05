@@ -163,17 +163,25 @@ const handleJobTypeChange = async (jobType: JobTypeEnum) => {
   }
 };
 
-// 列配置
-const columns = [
+// 排序配置
+const sortBy = ref<string>('');
+const sortOrder = ref<string>('');
+
+// 列配置（使用computed属性，当排序状态变化时自动更新）
+const columns = computed(() => [
   {
     title: '作业名称',
     dataIndex: 'jobName',
     ellipsis: true,
+    sorter: true,
+    sortOrder: sortBy.value === 'jobName' ? (sortOrder.value === 'asc' ? 'ascend' : sortOrder.value === 'desc' ? 'descend' : undefined) : undefined,
   },
   {
     title: '作业分组',
     dataIndex: 'jobGroup',
     ellipsis: true,
+    sorter: true,
+    sortOrder: sortBy.value === 'jobGroup' ? (sortOrder.value === 'asc' ? 'ascend' : sortOrder.value === 'desc' ? 'descend' : undefined) : undefined,
   },
   {
     title: '作业类型',
@@ -198,6 +206,8 @@ const columns = [
     title: '上次执行',
     dataIndex: 'previousRunTime',
     ellipsis: true,
+    sorter: true,
+    sortOrder: sortBy.value === 'previousRunTime' ? (sortOrder.value === 'asc' ? 'ascend' : sortOrder.value === 'desc' ? 'descend' : undefined) : undefined,
     customRender: ({ record }: { record: QuartzJobResponseDto }) => {
       return record.previousRunTime
         ? formatDateTime(record.previousRunTime)
@@ -208,6 +218,8 @@ const columns = [
     title: '下次执行',
     dataIndex: 'nextRunTime',
     ellipsis: true,
+    sorter: true,
+    sortOrder: sortBy.value === 'nextRunTime' ? (sortOrder.value === 'asc' ? 'ascend' : sortOrder.value === 'desc' ? 'descend' : undefined) : undefined,
     customRender: ({ record }: { record: QuartzJobResponseDto }) => {
       return record.nextRunTime ? formatDateTime(record.nextRunTime) : '-';
     },
@@ -236,6 +248,8 @@ const columns = [
     title: '创建时间',
     dataIndex: 'createTime',
     ellipsis: true,
+    sorter: true,
+    sortOrder: sortBy.value === 'createTime' ? (sortOrder.value === 'asc' ? 'ascend' : sortOrder.value === 'desc' ? 'descend' : undefined) : undefined,
     customRender: ({ record }: { record: QuartzJobResponseDto }) => {
       return record.createTime ? formatDateTime(record.createTime) : '-';
     },
@@ -301,7 +315,7 @@ const columns = [
       );
     },
   },
-];
+]);
 
 // 分页配置
 const pagination = computed<PaginationProps>(() => ({
@@ -314,6 +328,27 @@ const pagination = computed<PaginationProps>(() => ({
   pageSizeOptions: ['10', '20', '50', '100'],
 }));
 
+// 处理表格变化事件（分页、排序）
+const handleTableChange = (pagination: any, filters: any, sorter: any) => {
+  // 处理分页变化
+  if (pagination.current !== undefined) {
+    currentPage.value = pagination.current;
+  }
+  if (pagination.pageSize !== undefined) {
+    pageSize.value = pagination.pageSize;
+  }
+
+  // 处理排序变化
+  if (sorter.field !== undefined) {
+    sortBy.value = sorter.field;
+    // 根据表格组件返回的排序状态直接设置，表格组件会自动处理切换逻辑（升序→降序→取消）
+    sortOrder.value = sorter.order === 'ascend' ? 'asc' : sorter.order === 'descend' ? 'desc' : '';
+  }
+
+  // 重新加载数据
+  loadJobList();
+};
+
 // 加载作业列表
 const loadJobList = async () => {
   loading.value = true;
@@ -324,6 +359,8 @@ const loadJobList = async () => {
       jobName: searchForm.value.jobName,
       jobGroup: searchForm.value.jobGroup,
       status: searchForm.value.status,
+      sortBy: sortBy.value,
+      sortOrder: sortOrder.value,
     });
 
     dataSource.value = response.data?.items || [];
@@ -336,12 +373,7 @@ const loadJobList = async () => {
   }
 };
 
-// 处理分页变化
-const handlePageChange = (pagination: any) => {
-  currentPage.value = pagination.current || 1;
-  pageSize.value = pagination.pageSize || 10;
-  loadJobList();
-};
+
 
 // 处理搜索
 const handleSearch = async () => {
@@ -694,7 +726,7 @@ onMounted(async () => {
         :pagination="pagination"
         :loading="loading"
         :rowKey="(record) => `${record.jobName}-${record.jobGroup}`"
-        @change="handlePageChange"
+        @change="handleTableChange"
         size="middle"
         :scroll="{ x: 'max-content' }"
       />
