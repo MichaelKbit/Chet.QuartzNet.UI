@@ -2,9 +2,9 @@ using Chet.QuartzNet.Core.Configuration;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Reflection;
+using System.IO;
 
 namespace Chet.QuartzNet.UI.Middleware;
 
@@ -16,55 +16,32 @@ public class QuartzUIMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly IWebHostEnvironment _env;
-    private readonly ILogger<QuartzUIMiddleware> _logger;
     private readonly IFileProvider _fileProvider;
     private readonly QuartzUIOptions _options;
 
-    public QuartzUIMiddleware(RequestDelegate next, IWebHostEnvironment env, ILogger<QuartzUIMiddleware> logger, IOptions<QuartzUIOptions> options)
+    public QuartzUIMiddleware(RequestDelegate next, IWebHostEnvironment env, IOptions<QuartzUIOptions> options)
     {
         _next = next;
         _env = env;
-        _logger = logger;
         _options = options.Value;
 
         // 获取嵌入的程序集文件提供程序
         var assembly = Assembly.GetExecutingAssembly();
         var embeddedFileNamespace = "Chet.QuartzNet.UI.wwwroot";
         _fileProvider = new EmbeddedFileProvider(assembly, embeddedFileNamespace);
-
-        // 调试：列出所有嵌入资源
-        var resources = assembly.GetManifestResourceNames();
-        _logger.LogInformation("发现 {Count} 个嵌入资源:", resources.Length);
-        foreach (var resource in resources)
-        {
-            _logger.LogInformation("  - {ResourceName}", resource);
-        }
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
-        var path = context.Request.Path.Value?.ToLower();
+        var path = context.Request.Path.Value;
 
-        // 处理Quartz UI相关请求
         if (path?.StartsWith("/quartz-ui") == true)
         {
-            _logger.LogDebug("处理Quartz UI请求: {Path}", path);
-
-            // 如果启用了Basic认证，检查用户是否已认证
-            if (_options.EnableBasicAuth && (context.User?.Identity?.IsAuthenticated != true))
-            {
-                _logger.LogDebug("Basic认证已启用，但用户未认证");
-                context.Response.StatusCode = 401;
-                context.Response.Headers["WWW-Authenticate"] = "Basic realm=\"QuartzUI\"";
-                context.Response.ContentType = "text/plain; charset=utf-8";
-                await context.Response.WriteAsync("Basic认证已启用，但用户未认证");
-                return;
-            }
 
             // 处理根路径，返回主页面
             if (path == "/quartz-ui" || path == "/quartz-ui/")
             {
-                await ServeIndexPage(context);
+                await ServeQuartzUIIndexPage(context);
                 return;
             }
 
@@ -74,11 +51,11 @@ public class QuartzUIMiddleware
                 var filePath = path.Substring("/quartz-ui/".Length);
                 if (string.IsNullOrEmpty(filePath))
                 {
-                    await ServeIndexPage(context);
+                    await ServeQuartzUIIndexPage(context);
                     return;
                 }
 
-                await ServeStaticFile(context, filePath);
+                await ServeQuartzUIStaticFile(context, filePath);
                 return;
             }
         }
@@ -88,9 +65,9 @@ public class QuartzUIMiddleware
     }
 
     /// <summary>
-    /// 提供主页面
+    /// 提供quartz-ui主页面
     /// </summary>
-    private async Task ServeIndexPage(HttpContext context)
+    private async Task ServeQuartzUIIndexPage(HttpContext context)
     {
         try
         {
@@ -109,30 +86,27 @@ public class QuartzUIMiddleware
             }
             else
             {
-                _logger.LogWarning("未找到Quartz UI主页文件");
                 context.Response.StatusCode = 404;
-                await context.Response.WriteAsync("Quartz UI页面未找到");
+                await context.Response.WriteAsync("quartz-ui页面未找到");
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError(ex, "提供Quartz UI主页失败");
             context.Response.StatusCode = 500;
             await context.Response.WriteAsync("加载页面失败");
         }
     }
 
     /// <summary>
-    /// 提供静态文件
+    /// 提供quartz-ui静态文件
     /// </summary>
-    private async Task ServeStaticFile(HttpContext context, string filePath)
+    private async Task ServeQuartzUIStaticFile(HttpContext context, string filePath)
     {
         try
         {
             var fileInfo = _fileProvider.GetFileInfo($"quartz_ui.{filePath}");
             if (!fileInfo.Exists)
             {
-                _logger.LogWarning("未找到静态文件: {FilePath}", filePath);
                 context.Response.StatusCode = 404;
                 await context.Response.WriteAsync("文件未找到");
                 return;
@@ -149,14 +123,12 @@ public class QuartzUIMiddleware
             using var stream = fileInfo.CreateReadStream();
             await stream.CopyToAsync(context.Response.Body);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError(ex, "提供静态文件失败: {FilePath}", filePath);
             context.Response.StatusCode = 500;
             await context.Response.WriteAsync("加载文件失败");
         }
     }
-
     /// <summary>
     /// 根据文件扩展名获取MIME类型
     /// </summary>

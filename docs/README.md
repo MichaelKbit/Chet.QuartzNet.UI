@@ -13,7 +13,7 @@ Chet.QuartzNet.UI 是一个基于 .NET 8.0 开发的轻量级 Quartz.Net 可视�
 - 🎯 **ClassJob 模式支持**：支持基于类的作业定义，简化作业创建
 - ✅ **ClassJob 自动注册**：自动扫描和注册带有特定特性的作业类
 - � **多种存储方式**：支持文件存储和数据库存储（MySQL、PostgreSQL、SQL Server、SQLite）
-- 🔐 **认证保护**：提供 Basic 认证保护管理界面
+- 🔐 **认证保护**：提供 JWT 认证保护管理界面
 - 📦 **RCL 打包**：使用 Razor Class Library 打包，无侵入集成
 - 🚀 **快速集成**：简单配置即可集成到现有项目
 - 🎨 **现代化 UI**：基于 Ant Design Vue，界面美观易用
@@ -124,12 +124,10 @@ public class SampleJob : IJob
 
 ```csharp
 // Program.cs
-// 添加 Basic 认证服务
-builder.Services.AddQuartzUIBasicAuthentication(builder.Configuration);
+// 添加 Quartz UI 服务时自动启用 JWT 认证
+builder.Services.AddQuartzUI();
 
-// 启用认证中间件
-app.UseQuartzUIBasicAuthorized();
-// 然后启用 Quartz 中间件
+// 启用中间件
 app.UseQuartz();
 ```
 
@@ -138,9 +136,13 @@ app.UseQuartz();
 ```json
 // appsettings.json
 "QuartzUI": {
-  "EnableBasicAuth": true,
+  "EnableJwtAuth": true,
   "UserName": "Admin",
-  "Password": "123456"
+  "Password": "123456",
+  "JwtSecret": "your-secret-key-change-this-in-production",
+  "JwtExpiresInMinutes": 30,
+  "JwtIssuer": "Chet",
+  "JwtAudience": "Chet.QuartzNet.UI"
 }
 ```
 

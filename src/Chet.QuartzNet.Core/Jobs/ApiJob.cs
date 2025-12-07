@@ -56,13 +56,13 @@ public class ApiJob : IJob
             _logger.LogInformation("开始执行API作业: {JobKey}", $"{jobGroup}.{jobName}");
 
             // 验证作业类型
-            if (jobInfo.JobTypeEnum != JobTypeEnum.API)
+            if (jobInfo.JobType != JobTypeEnum.API)
             {
-                throw new InvalidOperationException($"作业类型不是API: {jobInfo.JobTypeEnum}");
+                throw new InvalidOperationException($"作业类型不是API: {jobInfo.JobType}");
             }
 
             // 验证必要的API信息
-            if (string.IsNullOrEmpty(jobInfo.JobType)) // JobType存储API URL
+            if (string.IsNullOrEmpty(jobInfo.JobClassOrApi)) // JobClassOrApi存储API URL
             {
                 throw new InvalidOperationException("API URL不能为空");
             }
@@ -73,16 +73,16 @@ public class ApiJob : IJob
             }
 
             // 选择合适的HttpClient实例，不修改共享实例的属性
-            var httpClient = jobInfo.SkipSslValidation && jobInfo.JobType.StartsWith("https://")
+            var httpClient = jobInfo.SkipSslValidation && jobInfo.JobClassOrApi.StartsWith("https://")
                 ? _sslHttpClient
                 : _httpClient;
 
             // 计算超时时间
-            var timeoutSeconds = jobInfo.ApiTimeout > 0 ? jobInfo.ApiTimeout : 30;
+            var timeoutSeconds = jobInfo.ApiTimeout > 0 ? jobInfo.ApiTimeout : 60;
             var timeout = TimeSpan.FromSeconds(timeoutSeconds);
 
             // 创建请求消息
-            var request = new HttpRequestMessage(new HttpMethod(jobInfo.ApiMethod.ToUpper()), jobInfo.JobType);
+            var request = new HttpRequestMessage(new HttpMethod(jobInfo.ApiMethod.ToUpper()), jobInfo.JobClassOrApi);
 
             // 添加请求头
             if (!string.IsNullOrEmpty(jobInfo.ApiHeaders))

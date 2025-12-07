@@ -45,15 +45,16 @@ public class JobClassScanner
                             continue;
                         }
 
-                        // 查找实现了IJob接口的非抽象类，排除自身项目(Chet.QuartzNet.*)的所有类
+                        // 查找实现了IJob接口的非抽象类，只排除核心库中的类
                         var types = assembly.GetTypes()
                             .Where(t => typeof(IJob).IsAssignableFrom(t) && 
                                        !t.IsAbstract && 
                                        !t.IsInterface && 
                                        t.IsPublic &&
-                                       !(t.Namespace?.StartsWith("Chet.QuartzNet") == true))
+                                       !(t.Namespace?.StartsWith("Chet.QuartzNet.Core") == true || t.Namespace?.StartsWith("Chet.QuartzNet.UI") == true))
                             .Select(t => t.FullName)
                             .Where(name => !string.IsNullOrEmpty(name))
+                            .Select(name => name!)
                             .ToList();
 
                         jobClasses.AddRange(types);

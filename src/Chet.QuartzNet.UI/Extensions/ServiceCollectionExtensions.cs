@@ -23,6 +23,8 @@ namespace Chet.QuartzNet.UI.Extensions;
 /// </summary>
 public static class ServiceCollectionExtensions
 {
+    private static ILogger? _logger = null;
+
     /// <summary>
     /// 添加QuartzUI服务（文件存储版本）
     /// </summary>
@@ -190,7 +192,7 @@ public static class ServiceCollectionExtensions
         // 筛选出标记了QuartzJobAttribute特性的类
         var attributeType = typeof(Chet.QuartzNet.Core.Attributes.QuartzJobAttribute);
         var attributedJobTypes = jobTypes
-            .Where(t => t.GetCustomAttributes(attributeType, false).Any())
+            .Where(t => (t.GetCustomAttributes(attributeType, false) ?? Array.Empty<object>()).Any())
             .ToList();
 
         _logger.LogInformation("找到 {AttributedJobCount} 个标记了QuartzJobAttribute特性的类", attributedJobTypes.Count);
@@ -199,12 +201,15 @@ public static class ServiceCollectionExtensions
         {
             foreach (var jobType in attributedJobTypes)
             {
-                var attributes = jobType.GetCustomAttributes(attributeType, false);
-                var attribute = (Chet.QuartzNet.Core.Attributes.QuartzJobAttribute)attributes.First();
-                var jobKey = new JobKey(attribute.Name, attribute.Group);
-                q.AddJob(jobType, jobKey, j => j.WithDescription(attribute.Description).StoreDurably());
-                _logger.LogInformation("注册ClassJob: {JobName} 分组: {JobGroup}, 表达式: {CronExpression}",
-                    attribute.Name, attribute.Group, attribute.CronExpression);
+                var attributes = jobType.GetCustomAttributes(attributeType, false) ?? Array.Empty<object>();
+                if (attributes.Any())
+                {
+                    var attribute = (Chet.QuartzNet.Core.Attributes.QuartzJobAttribute)attributes.First();
+                    var jobKey = new JobKey(attribute.Name, attribute.Group);
+                    q.AddJob(jobType, jobKey, j => j.WithDescription(attribute.Description).StoreDurably());
+                    _logger.LogInformation("注册ClassJob: {JobName} 分组: {JobGroup}, 表达式: {CronExpression}",
+                        attribute.Name, attribute.Group, attribute.CronExpression);
+                }
             }
         });
 
@@ -250,7 +255,7 @@ public static class ServiceCollectionExtensions
                         }
                     })
                     .Where(t => typeof(IJob).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract)
-                    .Where(t => t.GetCustomAttributes(attributeType, false).Any())
+                    .Where(t => t.GetCustomAttributes(attributeType, false)?.Any() == true)
                     .ToList();
 
                 _logger.LogInformation("找到 {JobCount} 个标记了QuartzJobAttribute特性的作业类型", jobTypes.Count);
@@ -262,8 +267,13 @@ public static class ServiceCollectionExtensions
 
                     foreach (var jobType in jobTypes)
                     {
-                        var attributes = jobType.GetCustomAttributes(attributeType, false);
-                        var attribute = (Chet.QuartzNet.Core.Attributes.QuartzJobAttribute)attributes.First();
+                        var attributes = jobType.GetCustomAttributes(attributeType, false) ?? Array.Empty<object>();
+                        var attribute = attributes.FirstOrDefault() as Chet.QuartzNet.Core.Attributes.QuartzJobAttribute;
+                        if (attribute == null)
+                        {
+                            _logger.LogWarning("无法获取QuartzJobAttribute特性: {JobType}", jobType.FullName);
+                            continue;
+                        }
 
                         // 检查作业是否已经存在于存储中
                         var existingJob = await jobStorage.GetJobAsync(attribute.Name, attribute.Group, cancellationToken);
@@ -282,7 +292,8 @@ public static class ServiceCollectionExtensions
                             TriggerGroup = "DEFAULT",
                             CronExpression = attribute.CronExpression, // 使用特性中的Cron表达式
                             Description = attribute.Description,
-                            JobType = jobType.AssemblyQualifiedName ?? jobType.FullName ?? string.Empty,
+                            JobType = JobTypeEnum.DLL,
+                            JobClassOrApi = jobType.FullName ?? string.Empty,
                             Status = JobStatus.Normal,
                             IsEnabled = attribute.Enabled, // 使用特性中配置的启用状态
                             CreateTime = DateTime.Now
@@ -307,61 +318,53 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// 添加Basic认证
+    /// 添加JWT认证
     /// </summary>
     /// <param name="services">服务集合</param>
     /// <param name="configuration">配置</param>
     /// <returns>服务集合</returns>
-    public static IServiceCollection AddQuartzUIBasicAuthentication(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddQuartzUIAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
         // 注册QuartzUI配置
         services.Configure<QuartzUIOptions>(configuration.GetSection("QuartzUI"));
 
-        services.AddAuthentication("QuartzUIBasic")
-            .AddScheme<BasicAuthenticationSchemeOptions, BasicAuthenticationHandler>("QuartzUIBasic", null);
+        // 获取配置
+        var quartzUIOptions = configuration.GetSection("QuartzUI").Get<QuartzUIOptions>() ?? new QuartzUIOptions();
 
+        // 启用JWT认证
+        services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = "QuartzUIJwt";
+            options.DefaultChallengeScheme = "QuartzUIJwt";
+        })
+        .AddJwtBearer("QuartzUIJwt", options =>
+        {
+            options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = quartzUIOptions.JwtIssuer,
+                ValidAudience = quartzUIOptions.JwtAudience,
+                IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
+                    System.Text.Encoding.UTF8.GetBytes(quartzUIOptions.JwtSecret)
+                )
+            };
+        });
+
+        // 添加授权策略
         services.AddAuthorization(options =>
         {
             options.AddPolicy("QuartzUIPolicy", policy =>
             {
-                policy.AuthenticationSchemes.Add("QuartzUIBasic");
+                policy.AuthenticationSchemes.Add("QuartzUIJwt");
                 policy.RequireAuthenticatedUser();
             });
         });
 
         return services;
     }
-
-    /// <summary>
-    /// 从配置文件中添加QuartzUI服务
-    /// </summary>
-    /// <param name="services">服务集合</param>
-    /// <param name="configuration">配置</param>
-    /// <returns>服务集合</returns>
-    public static IServiceCollection AddQuartzUIFromConfiguration(this IServiceCollection services, IConfiguration configuration)
-    {
-        var quartzUIOptions = configuration.GetSection("QuartzUI").Get<QuartzUIOptions>();
-
-        if (quartzUIOptions?.StorageType == StorageType.File)
-        {
-            services.AddQuartzUI();
-        }
-        else if (quartzUIOptions?.StorageType == StorageType.Database)
-        {
-            // 这里需要引用EFCore项目，在应用层配置
-            throw new NotSupportedException("数据库版本需要在应用层显式配置，请使用AddQuartzUI重载方法");
-        }
-
-        // 如果启用了Basic认证
-        if (quartzUIOptions?.EnableBasicAuth == true)
-        {
-            services.AddQuartzUIBasicAuthentication(configuration);
-        }
-
-        return services;
-    }
-
-    private static ILogger? _logger = null;
 
     /// <summary>
     /// 作业调度初始化服务，用于在应用启动时将存储中的作业重新调度到Quartz调度器
@@ -429,17 +432,27 @@ public static class ServiceCollectionExtensions
 
                             // 调用ScheduleJobAsync方法重新调度作业
                             // 由于ScheduleJobAsync是私有方法，我们需要使用反射来调用
-                            var scheduleMethod = typeof(QuartzJobService).GetMethod("ScheduleJobAsync",
-                                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                            var jobServiceImpl = jobService as QuartzJobService;
+                            if (jobServiceImpl != null)
+                            {
+                                // 调用ScheduleJobAsync方法重新调度作业
+                                // 由于ScheduleJobAsync是私有方法，我们需要使用反射来调用
+                                var scheduleMethod = typeof(QuartzJobService).GetMethod("ScheduleJobAsync",
+                                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
-                            if (scheduleMethod != null)
-                            {
-                                await (Task)scheduleMethod.Invoke(jobService, new object[] { jobInfo, cancellationToken });
-                                _logger.LogInformation("作业 {JobKey} 调度成功", $"{jobInfo.JobGroup}.{jobInfo.JobName}");
-                            }
-                            else
-                            {
-                                _logger.LogError("无法找到ScheduleJobAsync方法");
+                                if (scheduleMethod != null)
+                                {
+                                    var result = scheduleMethod.Invoke(jobServiceImpl, new object[] { jobInfo, cancellationToken });
+                                    if (result is Task task)
+                                    {
+                                        await task;
+                                        _logger.LogInformation("作业 {JobKey} 调度成功", $"{jobInfo.JobGroup}.{jobInfo.JobName}");
+                                    }
+                                }
+                                else
+                                {
+                                    _logger.LogError("无法找到ScheduleJobAsync方法");
+                                }
                             }
                         }
                         catch (Exception ex)
@@ -462,91 +475,3 @@ public static class ServiceCollectionExtensions
     }
 }
 
-/// <summary>
-/// Basic认证选项
-/// </summary>
-public class BasicAuthenticationSchemeOptions : AuthenticationSchemeOptions
-{
-    public string UserName { get; set; } = "Admin";
-    public string Password { get; set; } = "123456";
-}
-
-/// <summary>
-/// Basic认证处理器
-/// </summary>
-public class BasicAuthenticationHandler : AuthenticationHandler<BasicAuthenticationSchemeOptions>
-{
-    private readonly IConfiguration _configuration;
-
-    public BasicAuthenticationHandler(
-        IOptionsMonitor<BasicAuthenticationSchemeOptions> options,
-        ILoggerFactory logger,
-        UrlEncoder encoder,
-        IConfiguration configuration) : base(options, logger, encoder)
-    {
-        _configuration = configuration;
-    }
-
-    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
-    {
-        if (!Request.Headers.ContainsKey("Authorization"))
-        {
-            return Task.FromResult(AuthenticateResult.Fail("缺少Authorization头"));
-        }
-
-        var authHeader = Request.Headers["Authorization"].ToString();
-        if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
-        {
-            return Task.FromResult(AuthenticateResult.Fail("无效的Authorization头格式"));
-        }
-
-        try
-        {
-            var credentials = authHeader.Substring("Basic ".Length).Trim();
-            var decodedCredentials = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(credentials));
-            var parts = decodedCredentials.Split(':');
-
-            if (parts.Length != 2)
-            {
-                return Task.FromResult(AuthenticateResult.Fail("无效的认证格式"));
-            }
-
-            var username = parts[0];
-            var password = parts[1];
-
-            // 从配置文件中读取用户名密码
-            var quartzUIOptions = _configuration.GetSection("QuartzUI").Get<QuartzUIOptions>();
-            var validUsername = quartzUIOptions?.UserName ?? Options.UserName;
-            var validPassword = quartzUIOptions?.Password ?? Options.Password;
-
-            if (username == validUsername && password == validPassword)
-            {
-                var claims = new[]
-                {
-                    new Claim(ClaimTypes.Name, username),
-                    new Claim(ClaimTypes.Role, "QuartzUIAdmin")
-                };
-
-                var identity = new ClaimsIdentity(claims, Scheme.Name);
-                var principal = new ClaimsPrincipal(identity);
-                var ticket = new AuthenticationTicket(principal, Scheme.Name);
-
-                return Task.FromResult(AuthenticateResult.Success(ticket));
-            }
-
-            return Task.FromResult(AuthenticateResult.Fail("用户名或密码错误"));
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Basic认证处理失败");
-            return Task.FromResult(AuthenticateResult.Fail("认证处理失败"));
-        }
-    }
-
-    protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
-    {
-        Response.StatusCode = 401;
-        Response.Headers["WWW-Authenticate"] = "Basic realm=\"QuartzUI\"";
-        await Response.WriteAsync("需要认证");
-    }
-}

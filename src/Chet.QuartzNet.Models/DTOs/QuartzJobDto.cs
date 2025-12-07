@@ -53,25 +53,23 @@ public class QuartzJobDto
     public string JobGroup { get; set; } = "DEFAULT";
 
     /// <summary>
-    /// 触发器名称
+    /// 触发器名称（可选，若为空则自动根据作业名称生成）
     /// </summary>
-    [Required(ErrorMessage = "触发器名称不能为空")]
     [StringLength(100, ErrorMessage = "触发器名称长度不能超过100个字符")]
-    public string TriggerName { get; set; } = string.Empty;
+    public string? TriggerName { get; set; }
 
     /// <summary>
-    /// 触发器分组
+    /// 触发器分组（可选，默认与作业分组相同）
     /// </summary>
-    [Required(ErrorMessage = "触发器分组不能为空")]
     [StringLength(100, ErrorMessage = "触发器分组长度不能超过100个字符")]
-    public string TriggerGroup { get; set; } = "DEFAULT";
+    public string? TriggerGroup { get; set; }
 
     /// <summary>
     /// Cron表达式
     /// </summary>
     [Required(ErrorMessage = "Cron表达式不能为空")]
     [StringLength(200, ErrorMessage = "Cron表达式长度不能超过200个字符")]
-    public string CronExpression { get; set; } = string.Empty;
+    public string CronExpression { get; set; } = "0 0/1 * * * ?";
 
     /// <summary>
     /// 作业描述
@@ -80,16 +78,16 @@ public class QuartzJobDto
     public string? Description { get; set; }
 
     /// <summary>
-    /// 作业类型枚举
+    /// 作业类型
     /// </summary>
-    public JobTypeEnum JobTypeEnum { get; set; } = JobTypeEnum.DLL;
+    public JobTypeEnum JobType { get; set; } = JobTypeEnum.DLL;
 
     /// <summary>
-    /// 作业类型（类名或API URL）
+    /// 作业类名或API URL
     /// </summary>
-    [Required(ErrorMessage = "作业类型不能为空")]
-    [StringLength(500, ErrorMessage = "作业类型长度不能超过500个字符")]
-    public string JobType { get; set; } = string.Empty;
+    [Required(ErrorMessage = "作业类名或API URL不能为空")]
+    [StringLength(500, ErrorMessage = "作业类名或API URL长度不能超过500个字符")]
+    public string JobClassOrApi { get; set; } = string.Empty;
 
     /// <summary>
     /// 作业数据（JSON格式）
@@ -113,10 +111,10 @@ public class QuartzJobDto
     public string? ApiBody { get; set; }
 
     /// <summary>
-    /// API超时时间（毫秒）
+    /// API超时时间（秒）
     /// </summary>
-    [ConditionalRange(1, 3600, nameof(JobTypeEnum), JobTypeEnum.API, ErrorMessage = "API超时时间必须在1秒到1小时之间")]
-    public int ApiTimeout { get; set; } = 30; // 默认30秒
+    [ConditionalRange(1, 3600, nameof(JobType), JobTypeEnum.API, ErrorMessage = "API超时时间必须在1秒到1小时之间")]
+    public int ApiTimeout { get; set; } = 60; // 默认60秒
 
     /// <summary>
     /// 跳过SSL验证
@@ -221,14 +219,14 @@ public class QuartzJobResponseDto
     public string? Description { get; set; }
 
     /// <summary>
-    /// 作业类型枚举
+    /// 作业类型
     /// </summary>
-    public JobTypeEnum JobTypeEnum { get; set; }
+    public JobTypeEnum JobType { get; set; }
 
     /// <summary>
-    /// 作业类型（类名或API URL）
+    /// 作业类名或API URL
     /// </summary>
-    public string JobType { get; set; } = string.Empty;
+    public string JobClassOrApi { get; set; } = string.Empty;
 
     /// <summary>
     /// 作业数据（JSON格式）

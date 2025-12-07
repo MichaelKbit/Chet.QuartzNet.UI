@@ -80,18 +80,10 @@ public interface IQuartzJobService
     /// <summary>
     /// 获取作业日志列表
     /// </summary>
-    /// <param name="jobName">作业名称</param>
-    /// <param name="jobGroup">作业分组</param>
-    /// <param name="status">状态</param>
-    /// <param name="startTime">开始时间</param>
-    /// <param name="endTime">结束时间</param>
-    /// <param name="pageIndex">页码</param>
-    /// <param name="pageSize">每页条数</param>
-    /// <param name="sortBy">排序字段</param>
-    /// <param name="sortOrder">排序方向（asc或desc）</param>
+    /// <param name="queryDto">查询条件</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>作业日志列表</returns>
-    Task<ApiResponseDto<PagedResponseDto<QuartzJobLog>>> GetJobLogsAsync(string? jobName, string? jobGroup, LogStatus? status, DateTime? startTime, DateTime? endTime, int pageIndex = 1, int pageSize = 20, string? sortBy = null, string? sortOrder = null, CancellationToken cancellationToken = default);
+    Task<ApiResponseDto<PagedResponseDto<QuartzJobLog>>> GetJobLogsAsync(QuartzJobLogQueryDto queryDto, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 获取调度器状态
@@ -152,6 +144,54 @@ public interface IQuartzJobService
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>操作结果</returns>
     Task<ApiResponseDto<bool>> UpdateJobExecutionTimesAsync(string jobName, string jobGroup, Quartz.ITrigger trigger, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// 清空作业日志
+    /// </summary>
+    /// <param name="queryDto">查询条件，用于指定清空哪些日志</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>操作结果</returns>
+    Task<ApiResponseDto<bool>> ClearJobLogsAsync(QuartzJobLogQueryDto queryDto, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取作业统计数据
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>作业统计数据</returns>
+    Task<ApiResponseDto<JobStatsDto>> GetJobStatsAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取作业状态分布数据
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>作业状态分布数据</returns>
+    Task<ApiResponseDto<List<JobStatusDistributionDto>>> GetJobStatusDistributionAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取作业执行趋势数据
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>作业执行趋势数据</returns>
+    Task<ApiResponseDto<List<JobExecutionTrendDto>>> GetJobExecutionTrendAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取作业类型分布数据
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>作业类型分布数据</returns>
+    Task<ApiResponseDto<List<JobTypeDistributionDto>>> GetJobTypeDistributionAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取作业执行耗时数据
+    /// </summary>
+    /// <param name="queryDto">查询条件</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>作业执行耗时数据</returns>
+    Task<ApiResponseDto<List<JobExecutionTimeDto>>> GetJobExecutionTimeAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
