@@ -25,11 +25,8 @@ Chet.QuartzNet.EFCore 包已经集成到 Chet.QuartzNet.UI 包中，您无需单
 由于我们已经修改了内部代码，将 `EnsureCreatedAsync` 替换为 `MigrateAsync`，系统会在应用启动时自动应用所有未应用的迁移：
 
 ```csharp
-// 在 Program.cs 中配置数据库存储
-builder.Services.AddQuartzUI();
-builder.Services.AddQuartzUIDatabaseFromConfiguration(builder.Configuration);
-// 或者使用特定数据库的配置方法
-// builder.Services.AddQuartzUISqlServer(connectionString);
+// 在 Program.cs 中配置数据库存储（StorageType=Database，DatabaseProvider 已在配置中指定）
+builder.Services.AddQuartzUI(builder.Configuration);
 ```
 
 ### 3.2 手动迁移（通过命令行）
@@ -55,17 +52,13 @@ dotnet ef database update --project YourProjectName
 ```csharp
 // Program.cs
 using Chet.QuartzNet.UI.Extensions;
-using Chet.QuartzNet.EFCore.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 添加 Quartz UI 服务
-builder.Services.AddQuartzUI();
+// 添加 Quartz UI 服务（读取 QuartzUI 节 & ConnectionStrings:QuartzUI，自动选择数据库提供程序）
+builder.Services.AddQuartzUI(builder.Configuration);
 
-// 配置数据库存储（从配置文件）
-builder.Services.AddQuartzUIDatabaseFromConfiguration(builder.Configuration);
-
-// 配置 Basic 认证（可选）
+// 配置 Basic 认证（可选，若启用 Basic 中间件）
 builder.Services.AddQuartzUIBasicAuthentication(builder.Configuration);
 
 var app = builder.Build();

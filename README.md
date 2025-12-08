@@ -54,10 +54,10 @@ dotnet add package Microsoft.EntityFrameworkCore.Sqlite      # SQLite
 在 `Program.cs` 中添加服务：
 
 ```csharp
-// 添加 Quartz UI 服务（文件存储模式）
-builder.Services.AddQuartzUI();
+// 添加 Quartz UI 服务（读取 appsettings 的 QuartzUI 节 & ConnectionStrings:QuartzUI）
+builder.Services.AddQuartzUI(builder.Configuration);
 
-// 添加 ClassJob 支持（可选）
+// 可选：ClassJob 自动扫描注册
 builder.Services.AddQuartzClassJobs();
 
 // 启用中间件
@@ -72,8 +72,8 @@ app.UseQuartz();
 // 安装 Pomelo.EntityFrameworkCore.MySql
 dotnet add package Pomelo.EntityFrameworkCore.MySql
 
-// 配置服务
-builder.Services.AddQuartzUIMySql(connectionString);
+// 配置服务（StorageType=Database，DatabaseProvider=MySql，ConnectionStrings:QuartzUI 已配置）
+builder.Services.AddQuartzUI(builder.Configuration);
 ```
 
 #### PostgreSQL
@@ -82,8 +82,8 @@ builder.Services.AddQuartzUIMySql(connectionString);
 // 安装 Npgsql.EntityFrameworkCore.PostgreSQL
 dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
 
-// 配置服务
-builder.Services.AddQuartzUIPostgreSQL(connectionString);
+// 配置服务（StorageType=Database，DatabaseProvider=PostgreSql，ConnectionStrings:QuartzUI 已配置）
+builder.Services.AddQuartzUI(builder.Configuration);
 ```
 
 #### SQL Server
@@ -92,8 +92,8 @@ builder.Services.AddQuartzUIPostgreSQL(connectionString);
 // 安装 Microsoft.EntityFrameworkCore.SqlServer
 dotnet add package Microsoft.EntityFrameworkCore.SqlServer
 
-// 配置服务
-builder.Services.AddQuartzUISqlServer(connectionString);
+// 配置服务（StorageType=Database，DatabaseProvider=SqlServer，ConnectionStrings:QuartzUI 已配置）
+builder.Services.AddQuartzUI(builder.Configuration);
 ```
 
 #### SQLite
@@ -102,8 +102,8 @@ builder.Services.AddQuartzUISqlServer(connectionString);
 // 安装 Microsoft.EntityFrameworkCore.Sqlite
 dotnet add package Microsoft.EntityFrameworkCore.Sqlite
 
-// 配置服务
-builder.Services.AddQuartzUISQLite(connectionString);
+// 配置服务（StorageType=Database，DatabaseProvider=SQLite，ConnectionStrings:QuartzUI 已配置）
+builder.Services.AddQuartzUI(builder.Configuration);
 ```
 
 ### 3. 访问管理界面
@@ -161,9 +161,8 @@ builder.Services.AddQuartzClassJobs();
 启用 JWT 认证：
 
 ```csharp
-// 添加 Quartz UI 服务时启用 JWT 认证
-builder.Services.AddQuartzUI();
-builder.Services.AddQuartzUIAuthentication(builder.Configuration);
+// 添加 Quartz UI 服务（自动读取 JWT 配置）
+builder.Services.AddQuartzUI(builder.Configuration);
 // 在 appsettings.json 中配置 JWT 相关选项
 "QuartzUI": {
   "UserName": "admin",

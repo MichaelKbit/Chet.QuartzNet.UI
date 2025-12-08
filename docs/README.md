@@ -50,8 +50,8 @@ dotnet add package Microsoft.EntityFrameworkCore.Sqlite      # SQLite
 
 ```csharp
 // Program.cs
-// 添加 Quartz UI 服务（文件存储模式）
-builder.Services.AddQuartzUI();
+// 添加 Quartz UI 服务（文件存储模式，读取 QuartzUI 节）
+builder.Services.AddQuartzUI(builder.Configuration);
 
 // 添加 ClassJob 自动注册（可选，用于自动扫描作业类）
 builder.Services.AddQuartzClassJobs();
@@ -64,9 +64,8 @@ app.UseQuartz();
 
 ```csharp
 // Program.cs
-// 添加 Quartz UI 服务
-string connectionString = builder.Configuration.GetConnectionString("QuartzDB");
-builder.Services.AddQuartzUISqlServer(connectionString); // 以 SQL Server 为例
+// 添加 Quartz UI 服务（StorageType=Database，DatabaseProvider=SqlServer，读取 ConnectionStrings:QuartzUI）
+builder.Services.AddQuartzUI(builder.Configuration);
 
 // 添加 ClassJob 自动注册（可选）
 builder.Services.AddQuartzClassJobs();
@@ -124,8 +123,8 @@ public class SampleJob : IJob
 
 ```csharp
 // Program.cs
-// 添加 Quartz UI 服务时自动启用 JWT 认证
-builder.Services.AddQuartzUI();
+// 添加 Quartz UI 服务时自动启用 JWT 认证（读取 QuartzUI 节）
+builder.Services.AddQuartzUI(builder.Configuration);
 
 // 启用中间件
 app.UseQuartz();
@@ -160,8 +159,8 @@ app.UseQuartz();
 // 安装 Pomelo.EntityFrameworkCore.MySql
 dotnet add package Pomelo.EntityFrameworkCore.MySql
 
-// 配置服务
-builder.Services.AddQuartzUIMySql(connectionString);
+// 配置服务（appsettings 设置 StorageType=Database，DatabaseProvider=MySql，ConnectionStrings:QuartzUI）
+builder.Services.AddQuartzUI(builder.Configuration);
 ```
 
 ### PostgreSQL
@@ -170,8 +169,8 @@ builder.Services.AddQuartzUIMySql(connectionString);
 // 安装 Npgsql.EntityFrameworkCore.PostgreSQL
 dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
 
-// 配置服务
-builder.Services.AddQuartzUIPostgreSQL(connectionString);
+// 配置服务（DatabaseProvider=PostgreSql）
+builder.Services.AddQuartzUI(builder.Configuration);
 ```
 
 ### SQL Server
@@ -180,8 +179,8 @@ builder.Services.AddQuartzUIPostgreSQL(connectionString);
 // 安装 Microsoft.EntityFrameworkCore.SqlServer
 dotnet add package Microsoft.EntityFrameworkCore.SqlServer
 
-// 配置服务
-builder.Services.AddQuartzUISqlServer(connectionString);
+// 配置服务（DatabaseProvider=SqlServer）
+builder.Services.AddQuartzUI(builder.Configuration);
 ```
 
 ### SQLite
@@ -190,8 +189,8 @@ builder.Services.AddQuartzUISqlServer(connectionString);
 // 安装 Microsoft.EntityFrameworkCore.Sqlite
 dotnet add package Microsoft.EntityFrameworkCore.Sqlite
 
-// 配置服务
-builder.Services.AddQuartzUISQLite(connectionString);
+// 配置服务（DatabaseProvider=SQLite）
+builder.Services.AddQuartzUI(builder.Configuration);
 ```
 
 ## 项目结构
