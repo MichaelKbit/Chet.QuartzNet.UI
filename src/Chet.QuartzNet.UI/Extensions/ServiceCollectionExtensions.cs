@@ -72,61 +72,11 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// 兼容旧签名（默认文件存储，无配置绑定）。建议使用带 IConfiguration 的重载。
+    /// 绑定Quartz配置项
     /// </summary>
-    public static IServiceCollection AddQuartzUI(this IServiceCollection services, Action<QuartzUIOptions>? configureOptions = null)
-    {
-        var configuration = new ConfigurationBuilder().Build();
-        var options = new QuartzUIOptions { StorageType = StorageType.File };
-        configureOptions?.Invoke(options);
-
-        services.Configure<QuartzUIOptions>(opts =>
-        {
-            opts.StorageType = StorageType.File;
-            configureOptions?.Invoke(opts);
-        });
-
-        RegisterFileStorage(services, options);
-        RegisterQuartzCore(services, options);
-        AddQuartzUIAuthentication(services, options);
-
-        // 单独暴露 EmailOptions
-        services.AddSingleton(provider =>
-        {
-            var quartzUIOptions = provider.GetRequiredService<IOptions<QuartzUIOptions>>().Value;
-            return quartzUIOptions.EmailOptions;
-        });
-
-        return services;
-    }
-
-    /// <summary>
-    /// 兼容旧数据库签名。建议改用 AddQuartzUI(IConfiguration,...)
-    /// </summary>
-    public static IServiceCollection AddQuartzUI(this IServiceCollection services, Action<QuartzUIOptions, IServiceProvider> configureOptions)
-    {
-        var options = new QuartzUIOptions { StorageType = StorageType.Database };
-        configureOptions?.Invoke(options, services.BuildServiceProvider());
-
-        services.Configure<QuartzUIOptions>(opts =>
-        {
-            opts.StorageType = StorageType.Database;
-        });
-
-        // 默认使用文件存储作为回退（需调用方迁移到新重载）
-        RegisterFileStorage(services, options);
-        RegisterQuartzCore(services, options);
-        AddQuartzUIAuthentication(services, options);
-
-        services.AddSingleton(provider =>
-        {
-            var quartzUIOptions = provider.GetRequiredService<IOptions<QuartzUIOptions>>().Value;
-            return quartzUIOptions.EmailOptions;
-        });
-
-        return services;
-    }
-
+    /// <param name="configuration"></param>
+    /// <param name="configureOptions"></param>
+    /// <returns></returns>
     private static QuartzUIOptions BindQuartzOptions(IConfiguration configuration, Action<QuartzUIOptions>? configureOptions)
     {
         var options = new QuartzUIOptions();
@@ -135,11 +85,24 @@ public static class ServiceCollectionExtensions
         return options;
     }
 
+    /// <summary>
+    /// 注册文件存储服务
+    /// </summary>
+    /// <param name="services"></param>
+    /// <param name="options"></param>
     private static void RegisterFileStorage(IServiceCollection services, QuartzUIOptions options)
     {
         services.TryAddScoped<IJobStorage, FileJobStorage>();
     }
 
+    /// <summary>
+    /// 注册数据库存储服务
+    /// </summary>
+    /// <param name="services"></param>
+    /// <param name="configuration"></param>
+    /// <param name="options"></param>
+    /// <exception cref="ArgumentException"></exception>
+    /// <exception cref="InvalidOperationException"></exception>
     private static void RegisterDatabaseStorage(IServiceCollection services, IConfiguration configuration, QuartzUIOptions options)
     {
         var connectionString = configuration.GetConnectionString("QuartzUI");
@@ -176,6 +139,11 @@ public static class ServiceCollectionExtensions
         method.Invoke(null, new object[] { services, connectionString });
     }
 
+    /// <summary>
+    /// 注册QuartzUI核心服务
+    /// </summary>
+    /// <param name="services"></param>
+    /// <param name="options"></param>
     private static void RegisterQuartzCore(IServiceCollection services, QuartzUIOptions options)
     {
         services.TryAddScoped<IQuartzJobService, QuartzJobService>();
@@ -209,6 +177,11 @@ public static class ServiceCollectionExtensions
         services.AddHostedService<JobSchedulerInitializer>();
     }
 
+    /// <summary>
+    /// 注册JWT认证服务
+    /// </summary>
+    /// <param name="services"></param>
+    /// <param name="options"></param>
     private static void AddQuartzUIAuthentication(IServiceCollection services, QuartzUIOptions options)
     {
         if (!options.EnableJwtAuth)
