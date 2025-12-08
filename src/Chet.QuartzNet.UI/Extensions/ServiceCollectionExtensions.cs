@@ -45,12 +45,6 @@ public static class ServiceCollectionExtensions
             services.PostConfigure(configureOptions);
         }
 
-        // 将 EmailOptions 单独暴露
-        services.AddSingleton(provider =>
-        {
-            var quartzUIOptions = provider.GetRequiredService<IOptions<QuartzUIOptions>>().Value;
-            return quartzUIOptions.EmailOptions;
-        });
 
         // 存储注册
         if (options.StorageType == StorageType.Database)
@@ -67,6 +61,10 @@ public static class ServiceCollectionExtensions
 
         // 认证
         AddQuartzUIAuthentication(services, options);
+
+        // 注册RCL中的控制器
+        services.AddControllers()
+            .AddApplicationPart(typeof(ServiceCollectionExtensions).Assembly);
 
         return services;
     }
@@ -147,9 +145,14 @@ public static class ServiceCollectionExtensions
     private static void RegisterQuartzCore(IServiceCollection services, QuartzUIOptions options)
     {
         services.TryAddScoped<IQuartzJobService, QuartzJobService>();
-        services.TryAddScoped<IEmailNotificationService, EmailNotificationService>();
         services.TryAddScoped<QuartzJobListener>();
         services.TryAddSingleton<JobClassScanner>();
+        
+        // 添加HTTP客户端支持
+        services.AddHttpClient();
+        
+        // 注册推送通知服务
+        services.TryAddScoped<INotificationService, PushPlusNotificationService>();
 
         services.AddQuartz(q =>
         {
@@ -382,17 +385,6 @@ public static class ServiceCollectionExtensions
         {
             return Task.CompletedTask;
         }
-    }
-
-    /// <summary>
-    /// 添加JWT认证（兼容旧签名）。推荐直接使用 AddQuartzUI 的内置注册。
-    /// </summary>
-    public static IServiceCollection AddQuartzUIAuthentication(this IServiceCollection services, IConfiguration configuration)
-    {
-        var quartzUIOptions = configuration.GetSection("QuartzUI").Get<QuartzUIOptions>() ?? new QuartzUIOptions();
-        services.Configure<QuartzUIOptions>(configuration.GetSection("QuartzUI"));
-        AddQuartzUIAuthentication(services, quartzUIOptions);
-        return services;
     }
 
     /// <summary>

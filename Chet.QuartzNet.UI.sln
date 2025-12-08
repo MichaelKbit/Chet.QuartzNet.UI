@@ -6,6 +6,7 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{A34BE231-6D0F-4548-AFC6-F3C11BF28E9F}"
 	ProjectSection(SolutionItems) = preProject
 		docs\Chet.QuartzNet.UI 发布指南.md = docs\Chet.QuartzNet.UI 发布指南.md
+		docs\QuartzNet.UI 通知功能使用指南.md = docs\QuartzNet.UI 通知功能使用指南.md
 		docs\README.md = docs\README.md
 		docs\QuartzNet.UI 邮件通知功能使用指南.md = docs\QuartzNet.UI 邮件通知功能使用指南.md
 		docs\数据库迁移生成指南与使用说明.md = docs\数据库迁移生成指南与使用说明.md
