@@ -90,15 +90,11 @@ const columns = computed(() => [
     title: '通知标题',
     dataIndex: 'title',
     ellipsis: true,
-    sorter: true,
-    sortOrder: sortBy.value === 'title' ? sortOrder.value : undefined,
   },
   {
     title: '触发来源',
     dataIndex: 'triggeredBy',
     ellipsis: true,
-    sorter: true,
-    sortOrder: sortBy.value === 'triggeredBy' ? sortOrder.value : undefined,
   },
   {
     title: '状态',
@@ -107,7 +103,11 @@ const columns = computed(() => [
     customRender: ({ record }: { record: QuartzNotificationDto }) => {
       const status = notificationStatusMap[record.status];
       return {
-        children: h(Tag, { color: status?.status || 'default' }, status?.text || record.status || '未知'),
+        children: h(
+          Tag,
+          { color: status?.status || 'default' },
+          status?.text || record.status || '未知',
+        ),
       };
     },
   },
@@ -148,25 +148,37 @@ const columns = computed(() => [
     width: 80,
     customRender: ({ record }: { record: QuartzNotificationDto }) => {
       // 创建删除菜单项
-      const deleteMenuItem = h(Menu.Item, {
-        onClick: () => handleDelete(record),
-        danger: true
-      }, '删除');
+      const deleteMenuItem = h(
+        Menu.Item,
+        {
+          onClick: () => handleDelete(record),
+          danger: true,
+        },
+        '删除',
+      );
 
       // 创建菜单
       const menu = h(Menu, null, [deleteMenuItem]);
 
       // 创建按钮
-      const button = h(Button, {
-        type: 'primary',
-        disabled: loading.value
-      }, '操作');
+      const button = h(
+        Button,
+        {
+          type: 'primary',
+          disabled: loading.value,
+        },
+        '操作',
+      );
 
       // 创建下拉菜单
-      const dropdown = h(Dropdown, {
-        trigger: ['click'],
-        overlay: menu
-      }, () => button);
+      const dropdown = h(
+        Dropdown,
+        {
+          trigger: ['click'],
+          overlay: menu,
+        },
+        () => button,
+      );
 
       return {
         children: dropdown,
@@ -199,7 +211,12 @@ const handleTableChange = (pagination: any, _filters: any, sorter: any) => {
   // 处理排序变化
   if (sorter.field !== undefined) {
     sortBy.value = sorter.field;
-    sortOrder.value = sorter.order === 'ascend' ? 'ascend' : sorter.order === 'descend' ? 'descend' : undefined;
+    sortOrder.value =
+      sorter.order === 'ascend'
+        ? 'ascend'
+        : sorter.order === 'descend'
+          ? 'descend'
+          : undefined;
   }
 
   // 重新加载数据
@@ -288,7 +305,7 @@ const handleSaveConfig = async () => {
   } finally {
     loading.value = false;
   }
-}
+};
 
 // 发送测试通知
 const handleSendTest = async () => {
@@ -307,7 +324,7 @@ const handleSendTest = async () => {
   } finally {
     loading.value = false;
   }
-}
+};
 
 // 删除通知
 const handleDelete = async (notification: QuartzNotificationDto) => {
@@ -323,7 +340,7 @@ const handleDelete = async (notification: QuartzNotificationDto) => {
     message.error('通知删除失败');
     console.error('删除通知失败:', error);
   }
-}
+};
 
 // 清空通知
 const handleClearNotifications = async () => {
@@ -355,21 +372,40 @@ onMounted(() => {
 <template>
   <Page>
     <Card class="mb-4">
-      <Form ref="searchFormRef" :model="searchForm" layout="horizontal" :label-col="{ span: 6 }"
-        :wrapper-col="{ span: 18 }" :label-align="'right'">
+      <Form
+        ref="searchFormRef"
+        :model="searchForm"
+        layout="horizontal"
+        :label-col="{ span: 6 }"
+        :wrapper-col="{ span: 18 }"
+        :label-align="'right'"
+      >
         <Row :gutter="16">
           <Col :xs="24" :sm="12" :md="8" :lg="8">
             <Form.Item label="通知状态" name="status">
-              <Select v-model:value="searchForm.status" placeholder="请选择状态" allowClear>
-                <Select.Option :value="NotificationStatusEnum.Pending">待发送</Select.Option>
-                <Select.Option :value="NotificationStatusEnum.Sent">发送成功</Select.Option>
-                <Select.Option :value="NotificationStatusEnum.Failed">发送失败</Select.Option>
+              <Select
+                v-model:value="searchForm.status"
+                placeholder="请选择状态"
+                allowClear
+              >
+                <Select.Option :value="NotificationStatusEnum.Pending"
+                  >待发送</Select.Option
+                >
+                <Select.Option :value="NotificationStatusEnum.Sent"
+                  >发送成功</Select.Option
+                >
+                <Select.Option :value="NotificationStatusEnum.Failed"
+                  >发送失败</Select.Option
+                >
               </Select>
             </Form.Item>
           </Col>
           <Col :xs="24" :sm="12" :md="8" :lg="8">
             <Form.Item label="触发来源" name="triggeredBy">
-              <Input v-model:value="searchForm.triggeredBy" placeholder="请输入触发来源" />
+              <Input
+                v-model:value="searchForm.triggeredBy"
+                placeholder="请输入触发来源"
+              />
             </Form.Item>
           </Col>
           <Col :xs="24" :sm="24" :md="24" :lg="8" class="text-right">
@@ -387,21 +423,42 @@ onMounted(() => {
     <Card>
       <div class="mb-4 flex items-center justify-between">
         <Space>
-          <Button type="primary" @click="handleOpenConfigModal">通知配置</Button>
+          <Button type="primary" @click="handleOpenConfigModal"
+            >通知配置</Button
+          >
           <Button type="default" @click="handleSendTest">发送测试通知</Button>
         </Space>
       </div>
       <!-- 通知列表 -->
-      <Table :columns="columns" :data-source="dataSource" :pagination="pagination" :loading="loading"
-        :rowKey="(record) => record.notificationId" @change="handleTableChange" size="middle"
-        :scroll="{ x: 'max-content' }" />
+      <Table
+        :columns="columns"
+        :data-source="dataSource"
+        :pagination="pagination"
+        :loading="loading"
+        :rowKey="(record) => record.notificationId"
+        @change="handleTableChange"
+        size="middle"
+        :scroll="{ x: 'max-content' }"
+      />
     </Card>
 
     <!-- 配置对话框 -->
-    <Modal v-model:visible="configModalVisible" :title="configModalTitle" width="800px"
-      :body-style="{ padding: '24px' }" destroyOnClose @cancel="configModalVisible = false">
-      <Form ref="formRef" :model="configForm" layout="horizontal" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }"
-        :label-align="'right'">
+    <Modal
+      v-model:visible="configModalVisible"
+      :title="configModalTitle"
+      width="800px"
+      :body-style="{ padding: '24px' }"
+      destroyOnClose
+      @cancel="configModalVisible = false"
+    >
+      <Form
+        ref="formRef"
+        :model="configForm"
+        layout="horizontal"
+        :label-col="{ span: 6 }"
+        :wrapper-col="{ span: 18 }"
+        :label-align="'right'"
+      >
         <Row :gutter="16">
           <Col :xs="24" :sm="24" :md="24">
             <Form.Item label="是否启用" name="enable" valuePropName="checked">
@@ -409,9 +466,20 @@ onMounted(() => {
             </Form.Item>
           </Col>
           <Col :xs="24" :sm="24" :md="24">
-            <Form.Item label="Token" name="token"
-              :rules="[{ required: configForm.enable, message: '请输入PushPlus Token' }]">
-              <Input v-model:value="configForm.token" placeholder="请输入PushPlus Token" />
+            <Form.Item
+              label="Token"
+              name="token"
+              :rules="[
+                {
+                  required: configForm.enable,
+                  message: '请输入PushPlus Token',
+                },
+              ]"
+            >
+              <Input
+                v-model:value="configForm.token"
+                placeholder="请输入PushPlus Token"
+              />
             </Form.Item>
           </Col>
           <Col :xs="24" :sm="24" :md="24">
@@ -436,21 +504,42 @@ onMounted(() => {
           </Col>
           <Col :xs="24" :sm="24" :md="24">
             <Form.Item label="主题" name="topic">
-              <Input v-model:value="configForm.topic" placeholder="请输入主题（可选）" />
+              <Input
+                v-model:value="configForm.topic"
+                placeholder="请输入主题（可选）"
+              />
             </Form.Item>
           </Col>
 
           <Col :xs="24" :sm="24" :md="24">
             <Form.Item label="通知策略" class="mt-4">
-              <Form.Item label="作业成功时发送" name="strategy.notifyOnJobSuccess" valuePropName="checked">
-                  <Switch v-model:checked="configForm.strategy.notifyOnJobSuccess" />
-                </Form.Item>
-                <Form.Item label="作业失败时发送" name="strategy.notifyOnJobFailure" valuePropName="checked">
-                  <Switch v-model:checked="configForm.strategy.notifyOnJobFailure" />
-                </Form.Item>
-                <Form.Item label="调度器异常时发送" name="strategy.notifyOnSchedulerError" valuePropName="checked">
-                  <Switch v-model:checked="configForm.strategy.notifyOnSchedulerError" />
-                </Form.Item>
+              <Form.Item
+                label="作业成功时发送"
+                name="strategy.notifyOnJobSuccess"
+                valuePropName="checked"
+              >
+                <Switch
+                  v-model:checked="configForm.strategy.notifyOnJobSuccess"
+                />
+              </Form.Item>
+              <Form.Item
+                label="作业失败时发送"
+                name="strategy.notifyOnJobFailure"
+                valuePropName="checked"
+              >
+                <Switch
+                  v-model:checked="configForm.strategy.notifyOnJobFailure"
+                />
+              </Form.Item>
+              <Form.Item
+                label="调度器异常时发送"
+                name="strategy.notifyOnSchedulerError"
+                valuePropName="checked"
+              >
+                <Switch
+                  v-model:checked="configForm.strategy.notifyOnSchedulerError"
+                />
+              </Form.Item>
             </Form.Item>
           </Col>
         </Row>
