@@ -19,6 +19,7 @@ import {
   Col,
   Dropdown,
   Menu,
+  Typography,
 } from 'ant-design-vue';
 import type { FormInstance, PaginationProps } from 'ant-design-vue';
 
@@ -54,6 +55,11 @@ const dataSource = ref<QuartzNotificationDto[]>([]);
 const total = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(10);
+
+// 详情对话框
+const detailModalVisible = ref(false);
+const detailModalTitle = ref('通知详情');
+const currentNotification = ref<QuartzNotificationDto | null>(null);
 
 // 搜索条件
 const searchFormRef = ref<FormInstance>();
@@ -112,18 +118,6 @@ const columns = computed(() => [
     },
   },
   {
-    title: '创建时间',
-    dataIndex: 'createTime',
-    ellipsis: true,
-    sorter: true,
-    sortOrder: sortBy.value === 'createTime' ? sortOrder.value : undefined,
-    customRender: ({ record }: { record: QuartzNotificationDto }) => {
-      return {
-        children: record.createTime ? formatDateTime(record.createTime) : '-',
-      };
-    },
-  },
-  {
     title: '发送时间',
     dataIndex: 'sendTime',
     ellipsis: true,
@@ -143,10 +137,31 @@ const columns = computed(() => [
     sortOrder: sortBy.value === 'duration' ? sortOrder.value : undefined,
   },
   {
+    title: '创建时间',
+    dataIndex: 'createTime',
+    ellipsis: true,
+    sorter: true,
+    sortOrder: sortBy.value === 'createTime' ? sortOrder.value : undefined,
+    customRender: ({ record }: { record: QuartzNotificationDto }) => {
+      return {
+        children: record.createTime ? formatDateTime(record.createTime) : '-',
+      };
+    },
+  },
+  {
     title: '操作',
     key: 'action',
     width: 80,
     customRender: ({ record }: { record: QuartzNotificationDto }) => {
+      // 创建详情菜单项
+      const detailMenuItem = h(
+        Menu.Item,
+        {
+          onClick: () => handleDetail(record),
+        },
+        '详情',
+      );
+
       // 创建删除菜单项
       const deleteMenuItem = h(
         Menu.Item,
@@ -158,7 +173,7 @@ const columns = computed(() => [
       );
 
       // 创建菜单
-      const menu = h(Menu, null, [deleteMenuItem]);
+      const menu = h(Menu, null, [detailMenuItem, deleteMenuItem]);
 
       // 创建按钮
       const button = h(
@@ -324,6 +339,12 @@ const handleSendTest = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+// 查看详情
+const handleDetail = (notification: QuartzNotificationDto) => {
+  currentNotification.value = notification;
+  detailModalVisible.value = true;
 };
 
 // 删除通知
@@ -552,6 +573,94 @@ onMounted(() => {
         </Space>
       </template>
     </Modal>
+
+    <!-- 详情对话框 -->
+    <Modal
+      v-model:open="detailModalVisible"
+      :title="detailModalTitle"
+      width="1000px"
+      :footer="null"
+      :destroyOnClose="true"
+    >
+      <div v-if="currentNotification" class="notification-detail">
+        <!-- 头部信息 -->
+        <div class="detail-header mb-4 rounded-lg bg-gray-50 p-4">
+          <div class="mb-3 flex items-center justify-between">
+            <Typography.Title :level="4" class="m-0">
+              {{ currentNotification.title }}
+            </Typography.Title>
+            <Tag
+              :color="notificationStatusMap[currentNotification.status].status"
+              class="text-lg"
+            >
+              {{ notificationStatusMap[currentNotification.status].text }}
+            </Tag>
+          </div>
+
+          <!-- 基本信息行 -->
+          <div class="mt-2 grid grid-cols-1 gap-4 md:grid-cols-4">
+            <div class="flex items-center">
+              <span class="mr-2 font-bold">触发来源:</span>
+              <span>{{ currentNotification.triggeredBy || '-' }}</span>
+            </div>
+            <div class="flex items-center">
+              <span class="mr-2 font-bold">发送时间:</span>
+              <span>{{
+                currentNotification.sendTime
+                  ? formatDateTime(currentNotification.sendTime)
+                  : '-'
+              }}</span>
+            </div>
+            <div class="flex items-center">
+              <span class="mr-2 font-bold">发送耗时:</span>
+              <span>{{
+                currentNotification.duration
+                  ? `${currentNotification.duration} ms`
+                  : '0 ms'
+              }}</span>
+            </div>
+            <div class="flex items-center">
+              <span class="mr-2 font-bold">创建时间:</span>
+              <span>{{ formatDateTime(currentNotification.createTime) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 内容区域 -->
+        <div class="detail-content">
+          <!-- 通知内容 -->
+          <div class="mb-6">
+            <Typography.Title :level="5" class="mb-2"
+              >通知内容</Typography.Title
+            >
+            <div
+              class="content-box rounded-lg border border-gray-200 bg-gray-50 p-4"
+            >
+              <div v-html="currentNotification.content"></div>
+            </div>
+          </div>
+
+          <!-- 错误信息 -->
+          <div v-if="currentNotification.errorMessage" class="mb-6">
+            <Typography.Title :level="5" class="mb-2"
+              >错误信息</Typography.Title
+            >
+            <div class="rounded-lg border border-red-200 bg-red-50 p-4">
+              <pre
+                class="word-break-break-word m-0 whitespace-pre-wrap text-sm text-red-800"
+              >
+                {{ currentNotification.errorMessage }}
+              </pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 底部按钮 -->
+      <div class="mt-4 flex justify-end">
+        <Button @click="detailModalVisible = false" type="primary">关闭</Button>
+      </div>
+    </Modal>
   </Page>
 </template>
 
@@ -571,5 +680,12 @@ onMounted(() => {
 
 .mt-4 {
   margin-top: 16px;
+}
+
+/* 通知详情样式 */
+.content-box {
+  min-height: 150px;
+  max-height: 500px;
+  overflow-y: auto;
 }
 </style>

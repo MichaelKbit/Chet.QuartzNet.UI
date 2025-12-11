@@ -105,7 +105,14 @@ const columns = computed<ColumnsType<LogResponseDto>[]>(() => [
     dataIndex: 'startTime',
     ellipsis: true,
     sorter: true,
-    sortOrder: sortBy.value === 'startTime' ? (sortOrder.value === 'asc' ? 'ascend' : sortOrder.value === 'desc' ? 'descend' : undefined) : undefined,
+    sortOrder:
+      sortBy.value === 'startTime'
+        ? sortOrder.value === 'asc'
+          ? 'ascend'
+          : sortOrder.value === 'desc'
+            ? 'descend'
+            : undefined
+        : undefined,
     customRender: ({ record }: { record: LogResponseDto }) => {
       return record.startTime ? formatDateTime(record.startTime) : '-';
     },
@@ -115,7 +122,14 @@ const columns = computed<ColumnsType<LogResponseDto>[]>(() => [
     dataIndex: 'endTime',
     ellipsis: true,
     sorter: true,
-    sortOrder: sortBy.value === 'endTime' ? (sortOrder.value === 'asc' ? 'ascend' : sortOrder.value === 'desc' ? 'descend' : undefined) : undefined,
+    sortOrder:
+      sortBy.value === 'endTime'
+        ? sortOrder.value === 'asc'
+          ? 'ascend'
+          : sortOrder.value === 'desc'
+            ? 'descend'
+            : undefined
+        : undefined,
     customRender: ({ record }: { record: LogResponseDto }) => {
       return record.endTime ? formatDateTime(record.endTime) : '-';
     },
@@ -125,10 +139,18 @@ const columns = computed<ColumnsType<LogResponseDto>[]>(() => [
     dataIndex: 'duration',
     ellipsis: true,
     sorter: true,
-    sortOrder: sortBy.value === 'duration' ? (sortOrder.value === 'asc' ? 'ascend' : sortOrder.value === 'desc' ? 'descend' : undefined) : undefined,
+    sortOrder:
+      sortBy.value === 'duration'
+        ? sortOrder.value === 'asc'
+          ? 'ascend'
+          : sortOrder.value === 'desc'
+            ? 'descend'
+            : undefined
+        : undefined,
   },
   {
     title: '操作',
+    width: 80,
     key: 'action',
     slots: {
       customRender: 'action',
@@ -202,8 +224,6 @@ const loadLogList = async () => {
   }
 };
 
-
-
 // 处理表格变化事件（分页、排序）
 const handleTableChange = (pagination: any, filters: any, sorter: any) => {
   // 处理分页变化
@@ -218,7 +238,12 @@ const handleTableChange = (pagination: any, filters: any, sorter: any) => {
   if (sorter.field !== undefined) {
     sortBy.value = sorter.field;
     // 根据表格组件返回的排序状态直接设置，表格组件会自动处理切换逻辑（升序→降序→取消）
-    sortOrder.value = sorter.order === 'ascend' ? 'asc' : sorter.order === 'descend' ? 'desc' : '';
+    sortOrder.value =
+      sorter.order === 'ascend'
+        ? 'asc'
+        : sorter.order === 'descend'
+          ? 'desc'
+          : '';
   }
 
   // 重新加载数据
@@ -244,8 +269,6 @@ const handleReset = () => {
   currentPage.value = 1;
   loadLogList();
 };
-
-
 
 // 清空日志
 const handleClear = () => {
@@ -300,54 +323,81 @@ initData();
 <template>
   <Page>
     <Card class="mb-4">
-
-      <Form ref="searchFormRef" :model="searchForm" layout="horizontal" :label-col="{ span: 6 }"
-        :wrapper-col="{ span: 18 }" :label-align="'right'">
+      <Form
+        ref="searchFormRef"
+        :model="searchForm"
+        layout="horizontal"
+        :label-col="{ span: 6 }"
+        :wrapper-col="{ span: 18 }"
+        :label-align="'right'"
+      >
         <Row :gutter="16">
           <!-- 默认显示的3个搜索条件 -->
           <Col :xs="24" :sm="12" :md="8" :lg="8">
-          <Form.Item label="作业名称" name="jobName">
-            <Input v-model:value="searchForm.jobName" placeholder="请输入作业名称" />
-          </Form.Item>
+            <Form.Item label="作业名称" name="jobName">
+              <Input
+                v-model:value="searchForm.jobName"
+                placeholder="请输入作业名称"
+              />
+            </Form.Item>
           </Col>
           <Col :xs="24" :sm="12" :md="8" :lg="8">
-          <Form.Item label="作业分组" name="jobGroup">
-            <Input v-model:value="searchForm.jobGroup" placeholder="请输入作业分组" />
-          </Form.Item>
+            <Form.Item label="作业分组" name="jobGroup">
+              <Input
+                v-model:value="searchForm.jobGroup"
+                placeholder="请输入作业分组"
+              />
+            </Form.Item>
           </Col>
           <Col :xs="24" :sm="12" :md="8" :lg="8">
-          <Form.Item label="执行状态" name="status">
-            <Select v-model:value="searchForm.status" placeholder="请选择状态" allowClear>
-              <Select.Option :value="LogStatusEnum.SUCCESS">成功</Select.Option>
-              <Select.Option :value="LogStatusEnum.ERROR">失败</Select.Option>
-              <Select.Option :value="LogStatusEnum.RUNNING">运行中</Select.Option>
-            </Select>
-          </Form.Item>
+            <Form.Item label="执行状态" name="status">
+              <Select
+                v-model:value="searchForm.status"
+                placeholder="请选择状态"
+                allowClear
+              >
+                <Select.Option :value="LogStatusEnum.SUCCESS"
+                  >成功</Select.Option
+                >
+                <Select.Option :value="LogStatusEnum.ERROR">失败</Select.Option>
+                <Select.Option :value="LogStatusEnum.RUNNING"
+                  >运行中</Select.Option
+                >
+              </Select>
+            </Form.Item>
           </Col>
-          
+
           <!-- 展开显示的搜索条件 -->
           <template v-if="isSearchExpanded">
             <Col :xs="24" :sm="12" :md="8" :lg="8">
-            <Form.Item label="开始时间" name="startTime">
-              <DatePicker v-model:value="searchForm.startTime" showTime placeholder="选择开始时间" />
-            </Form.Item>
+              <Form.Item label="开始时间" name="startTime">
+                <DatePicker
+                  v-model:value="searchForm.startTime"
+                  showTime
+                  placeholder="选择开始时间"
+                />
+              </Form.Item>
             </Col>
             <Col :xs="24" :sm="12" :md="8" :lg="8">
-            <Form.Item label="结束时间" name="endTime">
-              <DatePicker v-model:value="searchForm.endTime" showTime placeholder="选择结束时间" />
-            </Form.Item>
+              <Form.Item label="结束时间" name="endTime">
+                <DatePicker
+                  v-model:value="searchForm.endTime"
+                  showTime
+                  placeholder="选择结束时间"
+                />
+              </Form.Item>
             </Col>
           </template>
-          
+
           <!-- 搜索按钮和展开/收起按钮 -->
           <Col :xs="24" :sm="24" :md="24" :lg="24" class="text-right">
-          <Space>
-            <Button type="primary" @click="handleSearch"> 搜索 </Button>
-            <Button @click="handleReset"> 重置 </Button>
-            <Button type="link" @click="isSearchExpanded = !isSearchExpanded">
-              {{ isSearchExpanded ? '收起' : '展开' }}
-            </Button>
-          </Space>
+            <Space>
+              <Button type="primary" @click="handleSearch"> 搜索 </Button>
+              <Button @click="handleReset"> 重置 </Button>
+              <Button type="link" @click="isSearchExpanded = !isSearchExpanded">
+                {{ isSearchExpanded ? '收起' : '展开' }}
+              </Button>
+            </Space>
           </Col>
         </Row>
       </Form>
@@ -360,11 +410,24 @@ initData();
         </Space>
       </div>
       <!-- 日志列表 -->
-      <Table :columns="columns" :data-source="dataSource" :pagination="pagination" :loading="loading"
-        :rowKey="(record) => record.logId" size="middle" @change="handleTableChange" :scroll="{ x: 'max-content' }")>}">
+      <Table
+        :columns="columns"
+        :data-source="dataSource"
+        :pagination="pagination"
+        :loading="loading"
+        :rowKey="(record) => record.logId"
+        size="middle"
+        @change="handleTableChange"
+        :scroll="{ x: 'max-content' }"
+        )
+        >}">
         <template #action="{ record }">
           <Space size="middle">
-            <Button type="primary" @click="handleDetail(record)" :disabled="loading">
+            <Button
+              type="primary"
+              @click="handleDetail(record)"
+              :disabled="loading"
+            >
               详情
             </Button>
           </Space>
@@ -373,12 +436,17 @@ initData();
     </Card>
 
     <!-- 详情对话框 -->
-    <Modal v-model:open="detailModalVisible" :title="detailModalTitle" width="1000px"
-      :footer="null" :destroyOnClose="true">
+    <Modal
+      v-model:open="detailModalVisible"
+      :title="detailModalTitle"
+      width="1000px"
+      :footer="null"
+      :destroyOnClose="true"
+    >
       <div v-if="logDetail" class="log-detail">
         <!-- 头部信息 -->
-        <div class="detail-header mb-4 p-4 bg-gray-50 rounded-lg">
-          <div class="flex justify-between items-center mb-3">
+        <div class="detail-header mb-4 rounded-lg bg-gray-50 p-4">
+          <div class="mb-3 flex items-center justify-between">
             <Typography.Title :level="4" class="m-0">
               {{ logDetail.jobName }} - {{ logDetail.jobGroup }}
             </Typography.Title>
@@ -386,20 +454,22 @@ initData();
               {{ logStatusMap[logDetail.status].text }}
             </Tag>
           </div>
-          
+
           <!-- 基本信息行 -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+          <div class="mt-2 grid grid-cols-1 gap-4 md:grid-cols-3">
             <div class="flex items-center">
-              <span class="font-bold mr-2">执行时长:</span>
+              <span class="mr-2 font-bold">执行时长:</span>
               <span>{{ logDetail.duration || 0 }} ms</span>
             </div>
             <div class="flex items-center">
-              <span class="font-bold mr-2">开始时间:</span>
+              <span class="mr-2 font-bold">开始时间:</span>
               <span>{{ formatDateTime(logDetail.startTime) }}</span>
             </div>
             <div class="flex items-center">
-              <span class="font-bold mr-2">结束时间:</span>
-              <span>{{ logDetail.endTime ? formatDateTime(logDetail.endTime) : '-' }}</span>
+              <span class="mr-2 font-bold">结束时间:</span>
+              <span>{{
+                logDetail.endTime ? formatDateTime(logDetail.endTime) : '-'
+              }}</span>
             </div>
           </div>
         </div>
@@ -408,19 +478,34 @@ initData();
         <div class="detail-content">
           <!-- 执行信息 -->
           <div class="mb-6">
-            <Typography.Title :level="5" class="mb-2">执行信息</Typography.Title>
-            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <pre class="m-0 whitespace-pre-wrap word-break-break-word text-sm">
-                {{ logDetail.executionInfo || logDetail.message || '暂无执行信息' }}
+            <Typography.Title :level="5" class="mb-2"
+              >执行信息</Typography.Title
+            >
+            <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <pre
+                class="word-break-break-word m-0 whitespace-pre-wrap text-sm"
+              >
+                {{
+                  logDetail.executionInfo ||
+                  logDetail.message ||
+                  '暂无执行信息'
+                }}
               </pre>
             </div>
           </div>
 
           <!-- 错误信息 -->
-          <div v-if="logDetail.errorMessage || logDetail.exception" class="mb-6">
-            <Typography.Title :level="5" class="mb-2">错误信息</Typography.Title>
-            <div class="bg-red-50 p-4 rounded-lg border border-red-200">
-              <pre class="m-0 whitespace-pre-wrap word-break-break-word text-sm text-red-800">
+          <div
+            v-if="logDetail.errorMessage || logDetail.exception"
+            class="mb-6"
+          >
+            <Typography.Title :level="5" class="mb-2"
+              >错误信息</Typography.Title
+            >
+            <div class="rounded-lg border border-red-200 bg-red-50 p-4">
+              <pre
+                class="word-break-break-word m-0 whitespace-pre-wrap text-sm text-red-800"
+              >
                 {{ logDetail.errorMessage || logDetail.exception }}
               </pre>
             </div>
@@ -428,10 +513,14 @@ initData();
 
           <!-- 执行结果 -->
           <div v-if="logDetail.result" class="mb-6">
-            <Typography.Title :level="5" class="mb-2">执行结果</Typography.Title>
-            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <pre class="m-0 whitespace-pre-wrap word-break-break-word text-sm">
-                {{ 
+            <Typography.Title :level="5" class="mb-2"
+              >执行结果</Typography.Title
+            >
+            <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+              <pre
+                class="word-break-break-word m-0 whitespace-pre-wrap text-sm"
+              >
+                {{
                   typeof logDetail.result === 'string'
                     ? logDetail.result
                     : JSON.stringify(logDetail.result, null, 2)
@@ -442,10 +531,14 @@ initData();
 
           <!-- 作业数据 -->
           <div v-if="logDetail.jobData" class="mb-6">
-            <Typography.Title :level="5" class="mb-2">作业数据</Typography.Title>
-            <div class="bg-green-50 p-4 rounded-lg border border-green-200">
-              <pre class="m-0 whitespace-pre-wrap word-break-break-word text-sm">
-                {{ 
+            <Typography.Title :level="5" class="mb-2"
+              >作业数据</Typography.Title
+            >
+            <div class="rounded-lg border border-green-200 bg-green-50 p-4">
+              <pre
+                class="word-break-break-word m-0 whitespace-pre-wrap text-sm"
+              >
+                {{
                   typeof logDetail.jobData === 'string'
                     ? logDetail.jobData
                     : JSON.stringify(logDetail.jobData, null, 2)
@@ -455,9 +548,9 @@ initData();
           </div>
         </div>
       </div>
-      
+
       <!-- 底部按钮 -->
-      <div class="flex justify-end mt-4">
+      <div class="mt-4 flex justify-end">
         <Button @click="detailModalVisible = false" type="primary">关闭</Button>
       </div>
     </Modal>
