@@ -84,12 +84,25 @@ jobs:
         run: dotnet pack src/Chet.QuartzNet.UI/Chet.QuartzNet.UI.csproj --configuration Release --no-build --output ./artifacts -p:PackageVersion=$VERSION
 
       # 5. 数据库存储包打包
-      - name: Pack database packages
-        run: |
-          dotnet pack src/Chet.QuartzNet.EFCore.MySql/Chet.QuartzNet.EFCore.MySQL.csproj --configuration Release --output ./artifacts -p:PackageVersion=$VERSION
-          dotnet pack src/Chet.QuartzNet.EFCore.PostgreSql/Chet.QuartzNet.EFCore.PostgreSQL.csproj --configuration Release --output ./artifacts -p:PackageVersion=$VERSION
-          dotnet pack src/Chet.QuartzNet.EFCore.SQLite/Chet.QuartzNet.EFCore.SQLite.csproj --configuration Release --output ./artifacts -p:PackageVersion=$VERSION
-          dotnet pack src/Chet.QuartzNet.EFCore.SqlServer/Chet.QuartzNet.EFCore.SqlServer.csproj --configuration Release --output ./artifacts -p:PackageVersion=$VERSION
+      - name: Build MySQL package
+        run: dotnet build src/Chet.QuartzNet.EFCore.MySql/Chet.QuartzNet.EFCore.MySQL.csproj --configuration Release -p:PackageVersion=$VERSION
+      - name: Pack MySQL package
+        run: dotnet pack src/Chet.QuartzNet.EFCore.MySql/Chet.QuartzNet.EFCore.MySQL.csproj --configuration Release --output ./artifacts -p:PackageVersion=$VERSION
+      
+      - name: Build PostgreSQL package
+        run: dotnet build src/Chet.QuartzNet.EFCore.PostgreSql/Chet.QuartzNet.EFCore.PostgreSQL.csproj --configuration Release -p:PackageVersion=$VERSION
+      - name: Pack PostgreSQL package
+        run: dotnet pack src/Chet.QuartzNet.EFCore.PostgreSql/Chet.QuartzNet.EFCore.PostgreSQL.csproj --configuration Release --output ./artifacts -p:PackageVersion=$VERSION
+      
+      - name: Build SQLite package
+        run: dotnet build src/Chet.QuartzNet.EFCore.SQLite/Chet.QuartzNet.EFCore.SQLite.csproj --configuration Release -p:PackageVersion=$VERSION
+      - name: Pack SQLite package
+        run: dotnet pack src/Chet.QuartzNet.EFCore.SQLite/Chet.QuartzNet.EFCore.SQLite.csproj --configuration Release --output ./artifacts -p:PackageVersion=$VERSION
+      
+      - name: Build SqlServer package
+        run: dotnet build src/Chet.QuartzNet.EFCore.SqlServer/Chet.QuartzNet.EFCore.SqlServer.csproj --configuration Release -p:PackageVersion=$VERSION
+      - name: Pack SqlServer package
+        run: dotnet pack src/Chet.QuartzNet.EFCore.SqlServer/Chet.QuartzNet.EFCore.SqlServer.csproj --configuration Release --output ./artifacts -p:PackageVersion=$VERSION
 
       # 6. NuGet 包发布
       - name: Publish NuGet packages (Trusted Publishing)
