@@ -50,7 +50,7 @@ jobs:
       # 2. 前端项目构建
       - name: Install frontend dependencies
         working-directory: src/Chet.QuartzNet.Web/apps/web-antd
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build frontend project
         working-directory: src/Chet.QuartzNet.Web/apps/web-antd
