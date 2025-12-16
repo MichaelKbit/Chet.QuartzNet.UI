@@ -10,6 +10,7 @@
 		<Product>Chet.QuartzNet.UI 可视化作业调度管理系统</Product>
 		<Description>基于QuartzNet的可视化作业调度管理平台，支持文件存储和数据库存储、JWT认证登录</Description>
 		<PackageProjectUrl>https://github.com/qiect/Chet.QuartzNet.UI</PackageProjectUrl>
+		<PackageReleaseNotes></PackageReleaseNotes>
 		<IncludeRazorContentInPack>false</IncludeRazorContentInPack>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<NoWarn>$(NoWarn);1591</NoWarn>
