@@ -20,10 +20,15 @@
     </dependencies>
   </metadata>
   <files>
+
     <!-- Chet.QuartzNet.EFCore -->
     <file src="..\Chet.QuartzNet.EFCore\bin\Release\net8.0\Chet.QuartzNet.EFCore.dll" target="lib\net8.0" />
     <file src="..\Chet.QuartzNet.EFCore\bin\Release\net8.0\Chet.QuartzNet.EFCore.pdb" target="lib\net8.0" />
     
+    <!-- Chet.QuartzNet.EFCore.MySQL -->
+    <file src="bin\Release\net8.0\Chet.QuartzNet.EFCore.MySQL.dll" target="lib\net8.0" />
+    <file src="bin\Release\net8.0\Chet.QuartzNet.EFCore.MySQL.pdb" target="lib\net8.0" />
+
     <!-- Additional files -->
     <file src="..\..\icon.png" target="" />
     <file src="..\..\docs\nuget\README.md" target="" />
