@@ -4,7 +4,6 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageId>Chet.QuartzNet.UI</PackageId>
 		<PackageVersion>1.3.1</PackageVersion>
 		<Product>Chet.QuartzNet.UI 可视化作业调度管理系统</Product>

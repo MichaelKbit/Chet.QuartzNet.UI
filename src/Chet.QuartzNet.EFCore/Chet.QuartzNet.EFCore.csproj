@@ -10,7 +10,7 @@
     <Description>Quartz.Net UI EFCore数据访问层</Description>
     <PackageProjectUrl>https://github.com/qiect/Chet.QuartzNet.UI</PackageProjectUrl>
     <RepositoryUrl>https://github.com/qiect/Chet.QuartzNet.UI</RepositoryUrl>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    
   </PropertyGroup>
 
   <ItemGroup>

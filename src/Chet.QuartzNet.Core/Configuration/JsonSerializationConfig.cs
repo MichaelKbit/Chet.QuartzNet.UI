@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Tasks;
+﻿using System.Text.Json;
 
 namespace Chet.QuartzNet.Core.Configuration
 {
@@ -22,18 +17,18 @@ namespace Chet.QuartzNet.Core.Configuration
             {
                 // 格式化JSON输出，增加可读性，便于调试和查看
                 WriteIndented = true,
-                
+
                 // 使用不安全的宽松JSON转义编码器，允许输出更多字符而不转义
                 // 适合内部系统之间的数据交换，提高JSON可读性
                 Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-                
+
                 // 序列化时忽略值为null的属性，减少JSON大小
                 DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-                
+
                 // 反序列化时忽略属性名大小写，提高兼容性
                 // 允许处理不同命名约定的JSON数据（如驼峰式、 PascalCase等）
                 PropertyNameCaseInsensitive = true,
-                
+
                 // 注册自定义UTC时间转换器，确保DateTime值以统一格式序列化
                 // 避免时区偏移问题，提高跨系统数据交换的可靠性
                 Converters = { new UtcDateTimeConverter() }
