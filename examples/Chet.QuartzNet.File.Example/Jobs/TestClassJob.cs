@@ -35,12 +35,7 @@ namespace Chet.QuartzNet.File.Example.Jobs
                 // 从作业数据中获取参数
                 var jobDataMap = context.JobDetail.JobDataMap;
                 var json = JsonSerializer.Serialize(jobDataMap.WrappedMap);
-                if (jobDataMap.ContainsKey("TestParam"))
-                {
-                    var testParam = jobDataMap.GetString("TestParam");
-                    _logger.LogInformation("TestClassJob 获取到参数: {Param}", testParam);
-                }
-
+                context.Result = json;
                 // 模拟作业执行逻辑
                 await Task.Delay(1000);
 

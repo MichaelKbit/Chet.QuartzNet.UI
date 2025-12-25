@@ -36,9 +36,9 @@ namespace Chet.QuartzNet.Core.Services
         /// 作业执行完成后调用
         /// </summary>
         /// <param name="context">作业执行上下文</param>
-        /// <param name="result">作业执行结果</param>
+        /// <param name="executionException">作业执行结果</param>
         /// <param name="cancellationToken">取消令牌</param>
-        public async Task JobWasExecuted(IJobExecutionContext context, JobExecutionException? result, CancellationToken cancellationToken = default)
+        public async Task JobWasExecuted(IJobExecutionContext context, JobExecutionException? executionException, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -50,11 +50,12 @@ namespace Chet.QuartzNet.Core.Services
                     TriggerGroup = context.Trigger.Key.Group,
                     StartTime = context.FireTimeUtc.LocalDateTime,
                     EndTime = DateTime.Now,
-                    Duration = (long)(DateTime.Now - context.FireTimeUtc.LocalDateTime).TotalMilliseconds
+                    Duration = (long)(DateTime.Now - context.FireTimeUtc.LocalDateTime).TotalMilliseconds,
+                    Result = context.Result?.ToString()
                 };
 
                 // 处理执行结果
-                if (result == null)
+                if (executionException == null)
                 {
                     jobLog.Status = LogStatus.Success;
                     jobLog.Message = "作业执行成功";
@@ -63,9 +64,9 @@ namespace Chet.QuartzNet.Core.Services
                 {
                     jobLog.Status = LogStatus.Failed;
                     jobLog.Message = "作业执行失败";
-                    jobLog.Exception = result.ToString();
-                    jobLog.ErrorMessage = result.Message;
-                    jobLog.ErrorStackTrace = result.StackTrace;
+                    jobLog.Exception = executionException.ToString();
+                    jobLog.ErrorMessage = executionException.Message;
+                    jobLog.ErrorStackTrace = executionException.StackTrace;
                 }
 
                 // 记录作业数据
@@ -93,7 +94,7 @@ namespace Chet.QuartzNet.Core.Services
                     await notificationService.SendJobExecutionNotificationAsync(
                         context.JobDetail.Key.Name,
                         context.JobDetail.Key.Group,
-                        result == null,
+                        executionException == null,
                         jobLog.Message,
                         jobLog.Duration ?? 0,
                         jobLog.ErrorMessage,
