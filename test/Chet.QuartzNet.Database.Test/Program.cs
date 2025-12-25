@@ -8,7 +8,7 @@ builder.Services.AddQuartzUI(builder.Configuration);
 builder.Services.AddQuartzClassJobs();
 
 var app = builder.Build();
-
+app.MapGet("/", () => Results.Redirect("/quartz-ui"));
 // 然后启用Quartz UI中间件
 app.UseQuartz();
 

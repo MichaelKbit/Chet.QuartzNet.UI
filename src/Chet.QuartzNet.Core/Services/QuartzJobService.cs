@@ -1,4 +1,5 @@
 using Chet.QuartzNet.Core.Configuration;
+using Chet.QuartzNet.Core.Helpers;
 using Chet.QuartzNet.Core.Interfaces;
 using Chet.QuartzNet.Core.Jobs;
 using Chet.QuartzNet.Models.DTOs;
@@ -123,7 +124,7 @@ public class QuartzJobService : IQuartzJobService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取调度器状态失败");
+            _logger.LogFailure("GetSchedulerStatus", ex);
             return ApiResponseDto<SchedulerStatusDto>.ErrorResponse($"获取调度器状态失败: {ex.Message}");
         }
     }
@@ -141,13 +142,13 @@ public class QuartzJobService : IQuartzJobService
             {
                 // 如果调度器已关闭，重新创建调度器实例
                 _scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
-                _logger.LogInformation("重新创建调度器实例");
+                _logger.LogInfoStructured("重新创建调度器实例");
             }
 
             if (!_scheduler.IsStarted)
             {
                 await _scheduler.Start(cancellationToken);
-                _logger.LogInformation("调度器启动成功");
+                _logger.LogSuccess("启动调度器");
             }
 
             // 重新加载所有正常状态的作业到调度器
@@ -157,7 +158,7 @@ public class QuartzJobService : IQuartzJobService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "启动调度器失败");
+            _logger.LogFailure("启动调度器", ex);
             return ApiResponseDto<bool>.ErrorResponse($"启动调度器失败: {ex.Message}");
         }
     }
@@ -173,7 +174,7 @@ public class QuartzJobService : IQuartzJobService
         {
             // 获取所有存储的作业
             var allJobs = await _jobStorage.GetAllJobsAsync(cancellationToken);
-            _logger.LogInformation("开始重新加载 {JobCount} 个作业到调度器", allJobs.Count);
+            _logger.LogInfo("重新加载作业到调度器", "共计 {JobCount} 个", allJobs.Count);
 
             foreach (var jobInfo in allJobs)
             {
@@ -185,7 +186,7 @@ public class QuartzJobService : IQuartzJobService
 
                     if (triggers.Any())
                     {
-                        _logger.LogInformation("作业 {JobKey} 已存在 {TriggerCount} 个触发器，跳过重新加载",
+                        _logger.LogInfo("作业 {JobKey} 已存在 {TriggerCount} 个触发器，跳过重新加载",
                             $"{jobInfo.JobGroup}.{jobInfo.JobName}", triggers.Count);
                         continue;
                     }
@@ -193,7 +194,7 @@ public class QuartzJobService : IQuartzJobService
                     // 检查作业是否被禁用，如果是禁用状态，不重新加载
                     if (!jobInfo.IsEnabled)
                     {
-                        _logger.LogInformation("作业 {JobKey} 处于禁用状态，跳过重新加载",
+                        _logger.LogInfo("作业 {JobKey} 处于禁用状态，跳过重新加载",
                             $"{jobInfo.JobGroup}.{jobInfo.JobName}");
                         continue;
                     }
@@ -201,14 +202,14 @@ public class QuartzJobService : IQuartzJobService
                     // 检查作业状态，如果是暂停状态，不重新加载
                     if (jobInfo.Status == Chet.QuartzNet.Models.Entities.JobStatus.Paused)
                     {
-                        _logger.LogInformation("作业 {JobKey} 处于暂停状态，跳过重新加载",
+                        _logger.LogInfo("作业 {JobKey} 处于暂停状态，跳过重新加载",
                             $"{jobInfo.JobGroup}.{jobInfo.JobName}");
                         continue;
                     }
 
                     // 重新调度作业
                     await ScheduleJobAsync(jobInfo, cancellationToken);
-                    _logger.LogInformation("作业 {JobKey} 重新加载成功", $"{jobInfo.JobGroup}.{jobInfo.JobName}");
+                    _logger.LogSuccess("ReloadNormalJobs", $"作业 {jobInfo.JobGroup}.{jobInfo.JobName} 重新加载成功");
                 }
                 catch (Exception ex)
                 {
@@ -217,11 +218,11 @@ public class QuartzJobService : IQuartzJobService
                 }
             }
 
-            _logger.LogInformation("作业重新加载完成");
+            _logger.LogSuccess("ReloadNormalJobs", "作业重新加载完成");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "重新加载作业失败");
+            _logger.LogFailure("ReloadNormalJobs", ex);
         }
     }
 
@@ -237,14 +238,14 @@ public class QuartzJobService : IQuartzJobService
             if (!_scheduler.IsShutdown)
             {
                 await _scheduler.Shutdown(cancellationToken);
-                _logger.LogInformation("调度器停止成功");
+                _logger.LogSuccess("ShutdownScheduler");
             }
 
             return ApiResponseDto<bool>.SuccessResponse(true, "调度器停止成功");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "停止调度器失败");
+            _logger.LogFailure("ShutdownScheduler", ex);
             return ApiResponseDto<bool>.ErrorResponse($"停止调度器失败: {ex.Message}");
         }
     }
@@ -343,12 +344,12 @@ public class QuartzJobService : IQuartzJobService
                 await ScheduleJobAsync(jobInfo, cancellationToken);
             }
 
-            _logger.LogInformation("作业添加成功: {JobKey}", jobInfo.GetJobKey());
+            _logger.LogSuccess("AddJob", jobInfo.GetJobKey());
             return ApiResponseDto<bool>.SuccessResponse(true, "作业添加成功");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "添加作业失败: {JobName}", jobDto.JobName);
+            _logger.LogFailure("AddJob", ex);
             return ApiResponseDto<bool>.ErrorResponse($"添加作业失败: {ex.Message}");
         }
     }
@@ -433,12 +434,12 @@ public class QuartzJobService : IQuartzJobService
                 }
             }
 
-            _logger.LogInformation("作业更新成功: {JobKey}", existingJob.GetJobKey());
+            _logger.LogSuccess("UpdateJob", existingJob.GetJobKey());
             return ApiResponseDto<bool>.SuccessResponse(true, "作业更新成功");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "更新作业失败: {JobName}", jobDto.JobName);
+            _logger.LogFailure("UpdateJob", ex);
             return ApiResponseDto<bool>.ErrorResponse($"更新作业失败: {ex.Message}");
         }
     }
@@ -460,18 +461,18 @@ public class QuartzJobService : IQuartzJobService
             var deleteResult = await _scheduler.DeleteJob(jobKey, cancellationToken);
             if (!deleteResult)
             {
-                _logger.LogWarning("从调度器删除作业失败: {JobKey}", $"{jobGroup}.{jobName}");
+                _logger.LogWarn("DeleteJob", $"从调度器删除作业失败: {jobGroup}.{jobName}");
             }
 
             // 删除存储中的作业信息
             var storageResult = await _jobStorage.DeleteJobAsync(jobName, jobGroup, cancellationToken);
 
-            _logger.LogInformation("作业删除成功: {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogSuccess("DeleteJob", $"{jobGroup}.{jobName}");
             return ApiResponseDto<bool>.SuccessResponse(true, "作业删除成功");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "删除作业失败: {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogFailure("DeleteJob", ex);
             return ApiResponseDto<bool>.ErrorResponse($"删除作业失败: {ex.Message}");
         }
     }
@@ -501,12 +502,12 @@ public class QuartzJobService : IQuartzJobService
                 await _jobStorage.UpdateJobAsync(jobInfo, cancellationToken);
             }
 
-            _logger.LogInformation("作业暂停成功: {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogSuccess("PauseJob", $"{jobGroup}.{jobName}");
             return ApiResponseDto<bool>.SuccessResponse(true, "作业暂停成功");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "暂停作业失败: {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogFailure("PauseJob", ex);
             return ApiResponseDto<bool>.ErrorResponse($"暂停作业失败: {ex.Message}");
         }
     }
@@ -543,7 +544,7 @@ public class QuartzJobService : IQuartzJobService
                 var triggers = await _scheduler.GetTriggersOfJob(jobKey, cancellationToken);
                 if (!triggers.Any())
                 {
-                    _logger.LogInformation("作业 {JobKey} 恢复后没有触发器，重新调度作业", $"{jobGroup}.{jobName}");
+                    _logger.LogInfo("作业 {JobKey} 恢复后没有触发器，重新调度作业", $"{jobGroup}.{jobName}");
                     await ScheduleJobAsync(jobInfo, cancellationToken);
                 }
                 else
@@ -579,7 +580,7 @@ public class QuartzJobService : IQuartzJobService
             else
             {
                 // 如果作业不存在，重新调度作业
-                _logger.LogInformation("作业 {JobKey} 在调度器中不存在，重新调度作业", $"{jobGroup}.{jobName}");
+                _logger.LogInfo("作业 {JobKey} 在调度器中不存在，重新调度作业", $"{jobGroup}.{jobName}");
                 await ScheduleJobAsync(jobInfo, cancellationToken);
             }
 
@@ -616,12 +617,12 @@ public class QuartzJobService : IQuartzJobService
 
             await _jobStorage.UpdateJobAsync(jobInfo, cancellationToken);
 
-            _logger.LogInformation("作业恢复成功: {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogSuccess("ResumeJob", $"{jobGroup}.{jobName}");
             return ApiResponseDto<bool>.SuccessResponse(true, "作业恢复成功");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "恢复作业失败: {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogFailure("ResumeJob", ex);
             return ApiResponseDto<bool>.ErrorResponse($"恢复作业失败: {ex.Message}");
         }
     }
@@ -655,7 +656,7 @@ public class QuartzJobService : IQuartzJobService
             // 如果作业不存在，先添加到调度器
             if (!jobExists)
             {
-                _logger.LogInformation("作业不在调度器中，先添加作业到调度器: {JobKey}", $"{jobGroup}.{jobName}");
+                _logger.LogInfo("作业不在调度器中，先添加作业到调度器: {JobKey}", $"{jobGroup}.{jobName}");
 
                 // 创建作业构建器
                 var jobBuilder = JobBuilder.Create()
@@ -696,15 +697,15 @@ public class QuartzJobService : IQuartzJobService
             {
                 // 直接触发作业，Quartz允许手动触发暂停的作业，无需修改作业状态
                 await _scheduler.TriggerJob(jobKey, jobDataMap, cancellationToken);
-                _logger.LogInformation("手动触发作业成功: {JobKey}", $"{jobGroup}.{jobName}");
+                _logger.LogSuccess("TriggerJob", $"手动触发作业成功: {jobGroup}.{jobName}");
             }
 
-            _logger.LogInformation("作业触发成功: {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogSuccess("TriggerJob", $"{jobGroup}.{jobName}");
             return ApiResponseDto<bool>.SuccessResponse(true, "作业触发成功");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "触发作业失败: {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogFailure("TriggerJob", ex);
             return ApiResponseDto<bool>.ErrorResponse($"触发作业失败: {ex.Message}");
         }
     }
@@ -741,7 +742,7 @@ public class QuartzJobService : IQuartzJobService
             }
             catch (System.Text.Json.JsonException ex)
             {
-                _logger.LogError(ex, "解析作业数据JSON失败: {JobData}", jobInfo.JobData);
+                _logger.LogFailure("ParseJobData", ex);
                 throw new InvalidOperationException("作业数据JSON格式无效", ex);
             }
         }
@@ -798,7 +799,7 @@ public class QuartzJobService : IQuartzJobService
                 {
                     var jobKey = new JobKey(jobInfo.JobName, jobInfo.JobGroup);
                     var triggers = await _scheduler.GetTriggersOfJob(jobKey, cancellationToken);
-                    _logger.LogInformation("作业 {JobKey} 找到 {TriggerCount} 个触发器", $"{jobInfo.JobGroup}.{jobInfo.JobName}", triggers.Count);
+                    _logger.LogInfo("获取作业列表", "作业: {JobKey} 找到 {TriggerCount} 个触发器", $"{jobInfo.JobGroup}.{jobInfo.JobName}", triggers.Count);
 
                     if (triggers.Any())
                     {
@@ -812,11 +813,11 @@ public class QuartzJobService : IQuartzJobService
                         if (nextFireTimes.Any())
                         {
                             jobResponse.NextRunTime = jobResponse.NextRunTime == null ? nextFireTimes.First().LocalDateTime : jobResponse.NextRunTime;
-                            _logger.LogInformation("作业 {JobKey} 的下次执行时间: {NextRunTime}", $"{jobInfo.JobGroup}.{jobInfo.JobName}", jobResponse.NextRunTime);
+                            _logger.LogInfo("获取作业列表", "作业: {JobKey} 的下次执行时间: {NextRunTime}", $"{jobInfo.JobGroup}.{jobInfo.JobName}", jobResponse.NextRunTime);
                         }
                         else
                         {
-                            _logger.LogInformation("作业 {JobKey} 的所有触发器都没有下一次执行时间", $"{jobInfo.JobGroup}.{jobInfo.JobName}");
+                            _logger.LogInfo("获取作业列表", "作业: {JobKey} 的所有触发器都没有下一次执行时间", $"{jobInfo.JobGroup}.{jobInfo.JobName}");
                         }
 
                         // 找到最近的上一次执行时间
@@ -834,12 +835,12 @@ public class QuartzJobService : IQuartzJobService
                     }
                     else
                     {
-                        _logger.LogInformation("作业 {JobKey} 没有找到触发器", $"{jobInfo.JobGroup}.{jobInfo.JobName}");
+                        _logger.LogInfo("获取作业列表", "作业: {JobKey} 没有找到触发器", $"{jobInfo.JobGroup}.{jobInfo.JobName}");
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    _logger.LogWarning(ex, "获取作业 {JobKey} 的触发信息失败", $"{jobInfo.JobGroup}.{jobInfo.JobName}");
+                    _logger.LogWarn("获取作业触发器", $"获取作业 {jobInfo.JobGroup}.{jobInfo.JobName} 的触发信息失败");
                 }
 
                 responseItems.Add(jobResponse);
@@ -857,7 +858,7 @@ public class QuartzJobService : IQuartzJobService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取作业列表失败");
+            _logger.LogFailure("GetJobs", ex);
             return ApiResponseDto<PagedResponseDto<QuartzJobResponseDto>>.ErrorResponse($"获取作业列表失败: {ex.Message}");
         }
     }
@@ -897,7 +898,7 @@ public class QuartzJobService : IQuartzJobService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取作业详情失败: {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogFailure("GetJobDetail", ex);
             return ApiResponseDto<QuartzJobResponseDto>.ErrorResponse($"获取作业详情失败: {ex.Message}");
         }
     }
@@ -918,12 +919,12 @@ public class QuartzJobService : IQuartzJobService
                 await _scheduler.DeleteJob(jobKey, cancellationToken);
             }
 
-            _logger.LogInformation("清除所有作业成功");
+            _logger.LogSuccess("ClearAllJobs");
             return ApiResponseDto<bool>.SuccessResponse(true, "清除所有作业成功");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "清除所有作业失败");
+            _logger.LogFailure("ClearAllJobs", ex);
             return ApiResponseDto<bool>.ErrorResponse($"清除所有作业失败: {ex.Message}");
         }
     }
@@ -959,18 +960,18 @@ public class QuartzJobService : IQuartzJobService
                 return ApiResponseDto<bool>.ErrorResponse("更新作业执行时间失败");
             }
 
-            _logger.LogDebug("作业执行时间更新成功: {JobKey}", new JobKey(jobName, jobGroup));
+            _logger.LogInfo("更新作业执行时间信息", new JobKey(jobName, jobGroup).ToString());
             return ApiResponseDto<bool>.SuccessResponse(true, "作业执行时间更新成功");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "更新作业执行时间失败: {JobKey}", new JobKey(jobName, jobGroup));
+            _logger.LogFailure("更新作业执行时间信息", ex);
             return ApiResponseDto<bool>.ErrorResponse($"更新作业执行时间失败: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// 获取所有可用的作业类列表
+    /// 获取ClassJobs列表
     /// </summary>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>作业类列表</returns>
@@ -978,15 +979,15 @@ public class QuartzJobService : IQuartzJobService
     {
         try
         {
-            _logger.LogInformation("开始获取作业类列表");
+            _logger.LogInfoStructured("获取ClassJobs列表");
             var jobClasses = _jobClassScanner.ScanJobClasses();
-            _logger.LogInformation("获取作业类列表成功，共找到 {Count} 个作业类", jobClasses.Count);
-            return ApiResponseDto<List<string>>.SuccessResponse(jobClasses, "获取作业类列表成功");
+            _logger.LogSuccess("获取ClassJobs列表", $"共计 {jobClasses.Count} 个");
+            return ApiResponseDto<List<string>>.SuccessResponse(jobClasses, "获取ClassJobs列表成功");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取作业类列表失败");
-            return ApiResponseDto<List<string>>.ErrorResponse($"获取作业类列表失败: {ex.Message}");
+            _logger.LogFailure("获取ClassJobs列表", ex);
+            return ApiResponseDto<List<string>>.ErrorResponse($"获取ClassJobs列表失败: {ex.Message}");
         }
     }
 
@@ -1100,7 +1101,7 @@ public class QuartzJobService : IQuartzJobService
             }
             catch (System.Text.Json.JsonException ex)
             {
-                _logger.LogError(ex, "解析作业数据JSON失败: {JobData}", jobInfo.JobData);
+                _logger.LogFailure("ParseJobData", ex);
             }
             jobBuilder.UsingJobData(jobDataMap);
         }
@@ -1211,7 +1212,7 @@ public class QuartzJobService : IQuartzJobService
             var result = await _jobStorage.ClearJobLogsAsync(queryDto, cancellationToken);
             if (result)
             {
-                _logger.LogInformation("清空作业日志成功");
+                _logger.LogSuccess("ClearJobLogs", "清空作业日志成功");
                 return ApiResponseDto<bool>.SuccessResponse(true, "清空作业日志成功");
             }
             else
@@ -1303,7 +1304,7 @@ public class QuartzJobService : IQuartzJobService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取作业统计数据失败");
+            _logger.LogFailure("GetJobStats", ex);
             return ApiResponseDto<JobStatsDto>.ErrorResponse($"获取作业统计数据失败: {ex.Message}");
         }
     }
@@ -1323,7 +1324,7 @@ public class QuartzJobService : IQuartzJobService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取作业状态分布数据失败");
+            _logger.LogFailure("GetJobStatusDistribution", ex);
             return ApiResponseDto<List<JobStatusDistributionDto>>.ErrorResponse($"获取作业状态分布数据失败: {ex.Message}");
         }
     }
@@ -1343,7 +1344,7 @@ public class QuartzJobService : IQuartzJobService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取作业执行趋势数据失败");
+            _logger.LogFailure("GetJobExecutionTrend", ex);
             return ApiResponseDto<List<JobExecutionTrendDto>>.ErrorResponse($"获取作业执行趋势数据失败: {ex.Message}");
         }
     }
@@ -1363,7 +1364,7 @@ public class QuartzJobService : IQuartzJobService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取作业类型分布数据失败");
+            _logger.LogFailure("GetJobTypeDistribution", ex);
             return ApiResponseDto<List<JobTypeDistributionDto>>.ErrorResponse($"获取作业类型分布数据失败: {ex.Message}");
         }
     }
@@ -1383,7 +1384,7 @@ public class QuartzJobService : IQuartzJobService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取作业执行耗时数据失败");
+            _logger.LogFailure("GetJobExecutionTime", ex);
             return ApiResponseDto<List<JobExecutionTimeDto>>.ErrorResponse($"获取作业执行耗时数据失败: {ex.Message}");
         }
     }
@@ -1405,7 +1406,7 @@ public class QuartzJobService : IQuartzJobService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取PushPlus配置失败");
+            _logger.LogFailure("GetPushPlusConfig", ex);
             return ApiResponseDto<PushPlusConfigDto>.ErrorResponse($"获取PushPlus配置失败: {ex.Message}");
         }
     }
@@ -1423,18 +1424,18 @@ public class QuartzJobService : IQuartzJobService
             var result = await _notificationService.SavePushPlusConfigAsync(config, cancellationToken);
             if (result)
             {
-                _logger.LogInformation("保存PushPlus配置成功");
+                _logger.LogSuccess("SavePushPlusConfig", "保存PushPlus配置成功");
                 return ApiResponseDto<bool>.SuccessResponse(true, "保存PushPlus配置成功");
             }
             else
             {
-                _logger.LogWarning("保存PushPlus配置失败");
+                _logger.LogWarn("SavePushPlusConfig", "保存PushPlus配置失败");
                 return ApiResponseDto<bool>.ErrorResponse("保存PushPlus配置失败");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "保存PushPlus配置失败");
+            _logger.LogFailure("SavePushPlusConfig", ex);
             return ApiResponseDto<bool>.ErrorResponse($"保存PushPlus配置失败: {ex.Message}");
         }
     }
@@ -1451,18 +1452,18 @@ public class QuartzJobService : IQuartzJobService
             var result = await _notificationService.SendTestNotificationAsync(cancellationToken);
             if (result)
             {
-                _logger.LogInformation("发送测试通知成功");
+                _logger.LogSuccess("SendTestNotification", "发送测试通知成功");
                 return ApiResponseDto<bool>.SuccessResponse(true, "发送测试通知成功");
             }
             else
             {
-                _logger.LogWarning("发送测试通知失败");
+                _logger.LogWarn("SendTestNotification", "发送测试通知失败");
                 return ApiResponseDto<bool>.ErrorResponse("发送测试通知失败");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "发送测试通知失败");
+            _logger.LogFailure("SendTestNotification", ex);
             return ApiResponseDto<bool>.ErrorResponse($"发送测试通知失败: {ex.Message}");
         }
     }
@@ -1493,7 +1494,7 @@ public class QuartzJobService : IQuartzJobService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取通知消息列表失败");
+            _logger.LogFailure("GetNotifications", ex);
             return ApiResponseDto<PagedResponseDto<QuartzNotificationDto>>.ErrorResponse($"获取通知消息列表失败: {ex.Message}");
         }
     }
@@ -1518,7 +1519,7 @@ public class QuartzJobService : IQuartzJobService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取通知消息详情失败: {NotificationId}", notificationId);
+            _logger.LogFailure("GetNotification", ex);
             return ApiResponseDto<QuartzNotificationDto>.ErrorResponse($"获取通知消息详情失败: {ex.Message}");
         }
     }
@@ -1536,7 +1537,7 @@ public class QuartzJobService : IQuartzJobService
             var result = await _jobStorage.DeleteNotificationAsync(notificationId, cancellationToken);
             if (result)
             {
-                _logger.LogInformation("删除通知消息成功: {NotificationId}", notificationId);
+                _logger.LogSuccess("DeleteNotification", $"删除通知消息成功: {notificationId}");
                 return ApiResponseDto<bool>.SuccessResponse(true, "删除通知消息成功");
             }
             else
@@ -1547,7 +1548,7 @@ public class QuartzJobService : IQuartzJobService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "删除通知消息失败: {NotificationId}", notificationId);
+            _logger.LogFailure("DeleteNotification", ex);
             return ApiResponseDto<bool>.ErrorResponse($"删除通知消息失败: {ex.Message}");
         }
     }
@@ -1565,7 +1566,7 @@ public class QuartzJobService : IQuartzJobService
             var result = await _jobStorage.ClearNotificationsAsync(queryDto, cancellationToken);
             if (result)
             {
-                _logger.LogInformation("清空通知消息成功");
+                _logger.LogSuccess("ClearNotifications", "清空通知消息成功");
                 return ApiResponseDto<bool>.SuccessResponse(true, "清空通知消息成功");
             }
             else
@@ -1576,7 +1577,7 @@ public class QuartzJobService : IQuartzJobService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "清空通知消息失败");
+            _logger.LogFailure("ClearNotifications", ex);
             return ApiResponseDto<bool>.ErrorResponse($"清空通知消息失败: {ex.Message}");
         }
     }

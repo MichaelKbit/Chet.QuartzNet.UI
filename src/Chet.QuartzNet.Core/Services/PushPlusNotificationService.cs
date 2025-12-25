@@ -1,3 +1,4 @@
+using Chet.QuartzNet.Core.Helpers;
 using Chet.QuartzNet.Core.Interfaces;
 using Chet.QuartzNet.Models.DTOs;
 using Chet.QuartzNet.Models.Entities;
@@ -38,10 +39,7 @@ public class PushPlusNotificationService : INotificationService
     /// <summary>
     /// 发送作业执行通知
     /// </summary>
-    public async Task SendJobExecutionNotificationAsync(
-        string jobName, string jobGroup, bool success, string message,
-        long duration, string? errorMessage = null,
-        CancellationToken cancellationToken = default)
+    public async Task SendJobExecutionNotificationAsync(string jobName, string jobGroup, bool success, string message, long duration, string? errorMessage = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -49,20 +47,20 @@ public class PushPlusNotificationService : INotificationService
             var config = await GetPushPlusConfigAsync(cancellationToken);
             if (!config.Enable)
             {
-                _logger.LogInformation("PushPlus通知已禁用，跳过发送作业执行通知");
+                _logger.LogInfo("PushPlus通知", "已禁用, 跳过");
                 return;
             }
 
             // 检查通知策略
             if (success && !config.Strategy.NotifyOnJobSuccess)
             {
-                _logger.LogInformation("作业执行成功，但根据策略不发送通知");
+                _logger.LogInfo("PushPlus通知", "作业执行成功, 但根据策略不发送通知");
                 return;
             }
 
             if (!success && !config.Strategy.NotifyOnJobFailure)
             {
-                _logger.LogInformation("作业执行失败，但根据策略不发送通知");
+                _logger.LogInfo("PushPlus通知", "作业执行失败, 但根据策略不发送通知");
                 return;
             }
 
@@ -88,15 +86,14 @@ public class PushPlusNotificationService : INotificationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "发送作业执行通知失败");
+            _logger.LogFailure("PushPlus通知", "发送作业执行通知", ex);
         }
     }
 
     /// <summary>
     /// 发送调度器异常通知
     /// </summary>
-    public async Task SendSchedulerErrorNotificationAsync(
-        Exception exception, CancellationToken cancellationToken = default)
+    public async Task SendSchedulerErrorNotificationAsync(Exception exception, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -104,14 +101,14 @@ public class PushPlusNotificationService : INotificationService
             var config = await GetPushPlusConfigAsync(cancellationToken);
             if (!config.Enable)
             {
-                _logger.LogInformation("PushPlus通知已禁用，跳过发送调度器异常通知");
+                _logger.LogInfo("PushPlus通知", "已禁用, 跳过");
                 return;
             }
 
             // 检查通知策略
             if (!config.Strategy.NotifyOnSchedulerError)
             {
-                _logger.LogInformation("调度器异常，但根据策略不发送通知");
+                _logger.LogInfo("PushPlus通知", "调度器异常, 但根据策略不发送通知");
                 return;
             }
 
@@ -137,7 +134,7 @@ public class PushPlusNotificationService : INotificationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "发送调度器异常通知失败");
+            _logger.LogFailure("PushPlus通知", "发送调度器异常通知", ex);
         }
     }
 
@@ -152,18 +149,18 @@ public class PushPlusNotificationService : INotificationService
             var config = await GetPushPlusConfigAsync(cancellationToken);
             if (!config.Enable)
             {
-                _logger.LogInformation("PushPlus通知已禁用，测试通知发送失败");
+                _logger.LogInfo("PushPlus通知", "已禁用, 测试通知发送失败");
                 return false;
             }
 
             // 发送测试通知
             var title = "测试通知";
-            var content = "这是一条测试通知，用于验证PushPlus配置是否正确。";
+            var content = "这是一条测试通知, 用于验证PushPlus配置是否正确。";
             return await SendPushPlusNotificationAsync(config, title, content, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "发送测试通知失败");
+            _logger.LogFailure("PushPlus通知", "发送测试通知", ex);
             return false;
         }
     }
@@ -215,7 +212,7 @@ public class PushPlusNotificationService : INotificationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取PushPlus配置失败");
+            _logger.LogFailure("GetPushPlusConfig", ex);
             return new PushPlusConfigDto
             {
                 Enable = false,
@@ -257,7 +254,7 @@ public class PushPlusNotificationService : INotificationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "保存PushPlus配置失败");
+            _logger.LogFailure("SavePushPlusConfig", ex);
             return false;
         }
     }
@@ -270,12 +267,12 @@ public class PushPlusNotificationService : INotificationService
     {
         try
         {
-            // 创建HttpClient时配置显式禁用代理，避免系统代理导致的连接问题
+            // 创建HttpClient时配置显式禁用代理, 避免系统代理导致的连接问题
             var handler = new HttpClientHandler
             {
-                // 显式禁用代理，解决127.0.0.1:7890连接拒绝问题
+                // 显式禁用代理, 解决127.0.0.1:7890连接拒绝问题
                 UseProxy = false,
-                // 禁用SSL验证（仅开发环境使用，生产环境建议启用）
+                // 禁用SSL验证（仅开发环境使用, 生产环境建议启用）
                 ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true
             };
 
@@ -302,7 +299,7 @@ public class PushPlusNotificationService : INotificationService
             var responseBody = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>();
             if (responseBody == null || !responseBody.TryGetValue("code", out var codeObj))
             {
-                _logger.LogError("PushPlus API响应格式错误");
+                _logger.LogFailure("PushPlus通知", "PushPlus API响应格式错误");
                 return false;
             }
 
@@ -310,16 +307,16 @@ public class PushPlusNotificationService : INotificationService
             if (code != "200")
             {
                 var msg = responseBody.TryGetValue("msg", out var msgObj) ? Convert.ToString(msgObj) : "未知错误";
-                _logger.LogError("PushPlus API调用失败: {Msg}", msg);
+                _logger.LogFailure("PushPlus通知", $"PushPlus API调用失败: {msg}");
                 return false;
             }
 
-            _logger.LogInformation("PushPlus通知发送成功");
+            _logger.LogSuccess("PushPlus通知", "发送PushPlus通知");
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "发送PushPlus通知失败");
+            _logger.LogFailure("PushPlus通知", "发送PushPlus通知", ex);
             return false;
         }
     }
@@ -356,7 +353,7 @@ public class PushPlusNotificationService : INotificationService
         var statusColor = success ? "#2da44e" : "#cf222e";
         var headerBg = success ? "#f0fff4" : "#fff5f5";
 
-        // 使用简单的字符串拼接，避免复杂的转义问题
+        // 使用简单的字符串拼接, 避免复杂的转义问题
         return $"<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #24292f; max-width: 720px; margin: 0 auto; padding: 20px;\">" +
                $"<div style=\"background-color: #ffffff; border: 1px solid #e1e4e8; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;\">" +
                $"<div style=\"background-color: {headerBg}; border-bottom: 1px solid #e1e4e8; padding: 16px 20px;\">" +
@@ -401,7 +398,7 @@ public class PushPlusNotificationService : INotificationService
                $"</div>" +
                $"</div>" +
                $"<div style=\"background-color: #f6f8fa; border-top: 1px solid #e1e4e8; padding: 16px 20px; font-size: 12px; color: #656d76;\">" +
-               $"<p style=\"margin: 0;\">此消息由 Chet.QuartzNET.UI 调度系统自动发送，请勿回复。</p>" +
+               $"<p style=\"margin: 0;\">此消息由 Chet.QuartzNET.UI 调度系统自动发送, 请勿回复。</p>" +
                $"</div>" +
                $"</div>" +
                $"</div>";
@@ -432,7 +429,7 @@ public class PushPlusNotificationService : INotificationService
         content += $@"
 
 ---
-此消息由 Chet.QuartzNET.UI 调度系统自动发送，请勿回复。";
+此消息由 Chet.QuartzNET.UI 调度系统自动发送, 请勿回复。";
 
         return content;
     }
@@ -467,7 +464,7 @@ public class PushPlusNotificationService : INotificationService
         content += $@"
 
 ---
-此消息由 Chet.QuartzNET.UI 调度系统自动发送，请勿回复。";
+此消息由 Chet.QuartzNET.UI 调度系统自动发送, 请勿回复。";
 
         return content;
     }
@@ -498,7 +495,7 @@ public class PushPlusNotificationService : INotificationService
     {
         var statusColor = "#cf222e";
 
-        // 使用简单的字符串拼接，避免复杂的转义问题
+        // 使用简单的字符串拼接, 避免复杂的转义问题
         return $"<div style=\"font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #24292f; max-width: 720px; margin: 0 auto; padding: 20px;\">" +
                $"<div style=\"background-color: #ffffff; border: 1px solid #e1e4e8; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;\">" +
                $"<div style=\"background-color: #fff5f5; border-bottom: 1px solid #e1e4e8; padding: 16px 20px;\">" +
@@ -532,7 +529,7 @@ public class PushPlusNotificationService : INotificationService
                $"</div>" +
                $"</div>" +
                $"<div style=\"background-color: #f6f8fa; border-top: 1px solid #e1e4e8; padding: 16px 20px; font-size: 12px; color: #656d76;\">" +
-               $"<p style=\"margin: 0;\">此消息由 Chet.QuartzNET.UI 调度系统自动发送，请勿回复。</p>" +
+               $"<p style=\"margin: 0;\">此消息由 Chet.QuartzNET.UI 调度系统自动发送, 请勿回复。</p>" +
                $"</div>" +
                $"</div>" +
                $"</div>";
@@ -551,7 +548,7 @@ public class PushPlusNotificationService : INotificationService
 堆栈跟踪: {exception.StackTrace}
 
 ---
-此消息由 Chet.QuartzNET.UI 调度系统自动发送，请勿回复。";
+此消息由 Chet.QuartzNET.UI 调度系统自动发送, 请勿回复。";
     }
 
     /// <summary>
@@ -574,6 +571,6 @@ public class PushPlusNotificationService : INotificationService
 ``` |
 
 ---
-此消息由 Chet.QuartzNET.UI 调度系统自动发送，请勿回复。";
+此消息由 Chet.QuartzNET.UI 调度系统自动发送, 请勿回复。";
     }
 }

@@ -33,7 +33,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+app.MapGet("/", () => Results.Redirect("/quartz-ui"));
 // 使用CORS策略
 app.UseCors("AllowAll");
 // 然后启用Quartz UI中间件

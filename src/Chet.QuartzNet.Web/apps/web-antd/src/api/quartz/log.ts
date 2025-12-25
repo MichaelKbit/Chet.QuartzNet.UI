@@ -28,9 +28,9 @@ export interface PageResponse<T> {
 
 // 日志状态枚举
 export enum LogStatusEnum {
+  RUNNING = 0,
   SUCCESS = 1,
-  ERROR = 0,
-  RUNNING = 2,
+  ERROR = 2,
 }
 
 // 日志查询参数
