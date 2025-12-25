@@ -332,12 +332,41 @@ public static class ServiceCollectionExtensions
                         await jobStorage.AddJobAsync(jobInfo, cancellationToken);
                         _logger.LogSuccess("ClassJob初始化", "ClassJob添加到存储: {JobKey}, 启用状态: {IsEnabled}, Cron表达式: {CronExpression}",
                                 $"{attribute.Name}.{attribute.Group}", attribute.Enabled, attribute.CronExpression);
+
+                        // 立即调度作业到Quartz调度器，只有启用状态的作业才调度
+                        if (attribute.Enabled)
+                        {
+                            try
+                            {
+                                var jobService = scope.ServiceProvider.GetRequiredService<IQuartzJobService>();
+                                var jobServiceImpl = jobService as QuartzJobService;
+                                if (jobServiceImpl != null)
+                                {
+                                    var scheduleMethod = typeof(QuartzJobService).GetMethod("ScheduleJobAsync",
+                                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                                    if (scheduleMethod != null)
+                                    {
+                                        var result = scheduleMethod.Invoke(jobServiceImpl, new object[] { jobInfo, cancellationToken });
+                                        if (result is Task task)
+                                        {
+                                            await task;
+                                            _logger.LogSuccess("ClassJob初始化", "ClassJob调度成功: {JobKey}", $"{attribute.Name}.{attribute.Group}");
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogFailure("ClassJob初始化", $"ClassJob调度失败: {attribute.Name}.{attribute.Group}", ex);
+                            }
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "初始化ClassJob失败");
+                _logger.LogFailure("初始化ClassJob", ex);
             }
         }
 
