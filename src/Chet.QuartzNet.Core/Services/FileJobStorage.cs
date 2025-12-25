@@ -1,4 +1,5 @@
 using Chet.QuartzNet.Core.Configuration;
+using Chet.QuartzNet.Core.Helpers;
 using Chet.QuartzNet.Core.Interfaces;
 using Chet.QuartzNet.Models.DTOs;
 using Chet.QuartzNet.Models.Entities;
@@ -98,12 +99,12 @@ public class FileJobStorage : IJobStorage
             jobs.Add(jobInfo);
             await SaveJobsAsync(jobs);
 
-            _logger.LogInformation("作业添加成功: {JobKey}", jobInfo.GetJobKey());
+            _logger.LogSuccess("添加作业", "作业: {jobKey}", jobInfo.GetJobKey());
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "添加作业失败: {JobKey}", jobInfo.GetJobKey());
+            _logger.LogFailure("添加作业", ex);
             return false;
         }
     }
@@ -150,12 +151,12 @@ public class FileJobStorage : IJobStorage
 
             await SaveJobsAsync(jobs);
 
-            _logger.LogInformation("作业更新成功: {JobKey}", jobInfo.GetJobKey());
+            _logger.LogSuccess("更新作业", "作业: {jobKey}", jobInfo.GetJobKey());
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "更新作业失败: {JobKey}", jobInfo.GetJobKey());
+            _logger.LogFailure("更新作业", ex);
             return false;
         }
     }
@@ -182,12 +183,12 @@ public class FileJobStorage : IJobStorage
             jobs.Remove(jobToRemove);
             await SaveJobsAsync(jobs);
 
-            _logger.LogInformation("作业删除成功: {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogSuccess("删除作业", $"{jobGroup}.{jobName}");
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "删除作业失败: {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogFailure("删除作业", ex);
             return false;
         }
     }
@@ -208,7 +209,7 @@ public class FileJobStorage : IJobStorage
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取作业失败: {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogFailure("获取作业信息", ex);
             return null;
         }
     }
@@ -307,7 +308,7 @@ public class FileJobStorage : IJobStorage
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取作业列表失败");
+            _logger.LogFailure("获取作业列表", ex);
             return new PagedResponseDto<QuartzJobInfo>();
         }
     }
@@ -325,7 +326,7 @@ public class FileJobStorage : IJobStorage
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取所有作业失败");
+            _logger.LogFailure("获取所有作业", ex);
             return new List<QuartzJobInfo>();
         }
     }
@@ -355,12 +356,12 @@ public class FileJobStorage : IJobStorage
 
             await SaveJobsAsync(jobs);
 
-            _logger.LogInformation("作业状态更新成功: {JobKey}, 状态: {Status}", $"{jobGroup}.{jobName}", status);
+            _logger.LogSuccess("更新作业状态", "作业: {jobKey}, 状态: {status}", job.GetJobKey(), status);
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "更新作业状态失败: {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogFailure("更新作业状态", ex);
             return false;
         }
     }
@@ -383,12 +384,12 @@ public class FileJobStorage : IJobStorage
             logs.Add(jobLog);
             await SaveLogsAsync(logs);
 
-            _logger.LogInformation("作业日志添加成功: {LogId}", jobLog.LogId);
+            _logger.LogSuccess("添加作业日志", $"作业日志Id: {jobLog.LogId}");
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "添加作业日志失败");
+            _logger.LogFailure("添加作业日志", ex);
             return false;
         }
     }
@@ -489,7 +490,7 @@ public class FileJobStorage : IJobStorage
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取作业日志失败");
+            _logger.LogFailure("获取作业日志列表", ex);
             return new PagedResponseDto<QuartzJobLog>();
         }
     }
@@ -521,14 +522,14 @@ public class FileJobStorage : IJobStorage
 
                 // 保存更新后的日志列表
                 await SaveLogsAsync(logs);
-                _logger.LogInformation("清除过期日志成功: {Count} 条", expiredCount);
+                _logger.LogSuccess("清理过期作业日志", $"共计: {expiredCount} 条");
             }
 
             return expiredCount;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "清除过期日志失败");
+            _logger.LogFailure("清理过期作业日志", ex);
             return 0;
         }
     }
@@ -598,13 +599,13 @@ public class FileJobStorage : IJobStorage
 
             // 计算清空的日志数量
             var clearedCount = logsToDelete.Count;
-            _logger.LogInformation("清空作业日志成功: 共清空 {Count} 条日志", clearedCount);
+            _logger.LogSuccess("清理作业日志", $"共计: {clearedCount} 条");
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "清空作业日志失败");
+            _logger.LogFailure("清理作业日志", ex);
             return false;
         }
     }
@@ -656,12 +657,12 @@ public class FileJobStorage : IJobStorage
                 await SaveNotificationsAsync(new List<QuartzNotification>());
             }
 
-            _logger.LogInformation("文件存储初始化成功");
+            _logger.LogSuccess("初始化文件存储");
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "文件存储初始化失败");
+            _logger.LogFailure("初始化文件存储", ex);
             return false;
         }
     }
@@ -706,7 +707,7 @@ public class FileJobStorage : IJobStorage
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "加载作业数据失败");
+                _logger.LogFailure("加载作业", ex);
                 return Task.FromResult(new List<QuartzJobInfo>());
             }
         }
@@ -743,7 +744,7 @@ public class FileJobStorage : IJobStorage
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "保存作业数据失败");
+                _logger.LogFailure("保存作业", ex);
                 throw;
             }
         }
@@ -773,7 +774,7 @@ public class FileJobStorage : IJobStorage
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "加载日志数据失败");
+                _logger.LogFailure("加载作业日志", ex);
                 return Task.FromResult(new List<QuartzJobLog>());
             }
         }
@@ -799,7 +800,7 @@ public class FileJobStorage : IJobStorage
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "保存日志数据失败");
+                _logger.LogFailure("保存作业日志", ex);
                 throw;
             }
         }
@@ -838,7 +839,7 @@ public class FileJobStorage : IJobStorage
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "创建备份失败");
+            _logger.LogFailure("创建备份", ex);
         }
     }
 
@@ -858,12 +859,12 @@ public class FileJobStorage : IJobStorage
                     File.Delete(file);
                 }
 
-                _logger.LogInformation("清理旧备份文件: {Count} 个", filesToDelete.Count);
+                _logger.LogSuccess("清理旧备份", "共计 {count} 个", filesToDelete.Count);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "清理旧备份文件失败");
+            _logger.LogFailure("清理旧备份", ex);
         }
     }
 
@@ -871,6 +872,12 @@ public class FileJobStorage : IJobStorage
 
     #region 统计分析
 
+    /// <summary>
+    /// 获取作业统计数据
+    /// </summary>
+    /// <param name="queryDto"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     public async Task<JobStatsDto> GetJobStatsAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
     {
         try
@@ -901,11 +908,17 @@ public class FileJobStorage : IJobStorage
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取作业统计数据失败");
+            _logger.LogFailure("获取作业统计数据", ex);
             return new JobStatsDto();
         }
     }
 
+    /// <summary>
+    /// 获取作业状态分布数据
+    /// </summary>
+    /// <param name="queryDto"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     public async Task<List<JobStatusDistributionDto>> GetJobStatusDistributionAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
     {
         try
@@ -928,11 +941,17 @@ public class FileJobStorage : IJobStorage
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取作业状态分布数据失败");
+            _logger.LogFailure("获取作业状态分布数据", ex);
             return new List<JobStatusDistributionDto>();
         }
     }
 
+    /// <summary>
+    /// 获取作业执行趋势数据
+    /// </summary>
+    /// <param name="queryDto"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     public async Task<List<JobExecutionTrendDto>> GetJobExecutionTrendAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
     {
         try
@@ -961,11 +980,17 @@ public class FileJobStorage : IJobStorage
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取作业执行趋势数据失败");
+            _logger.LogFailure("获取作业执行趋势数据", ex);
             return new List<JobExecutionTrendDto>();
         }
     }
 
+    /// <summary>
+    /// 获取作业类型分布数据
+    /// </summary>
+    /// <param name="queryDto"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     public async Task<List<JobTypeDistributionDto>> GetJobTypeDistributionAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
     {
         try
@@ -988,11 +1013,17 @@ public class FileJobStorage : IJobStorage
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取作业类型分布数据失败");
+            _logger.LogFailure("获取作业类型分布数据", ex);
             return new List<JobTypeDistributionDto>();
         }
     }
 
+    /// <summary>
+    /// 获取作业执行时间数据
+    /// </summary>
+    /// <param name="queryDto"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     public async Task<List<JobExecutionTimeDto>> GetJobExecutionTimeAsync(StatsQueryDto queryDto, CancellationToken cancellationToken = default)
     {
         try
@@ -1028,7 +1059,7 @@ public class FileJobStorage : IJobStorage
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取作业执行耗时数据失败");
+            _logger.LogFailure("获取作业执行时间数据", ex);
             return new List<JobExecutionTimeDto>();
         }
     }
@@ -1111,7 +1142,7 @@ public class FileJobStorage : IJobStorage
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "加载设置数据失败");
+                _logger.LogFailure("加载设置数据", ex);
                 return Task.FromResult(new List<QuartzSetting>());
             }
         }
@@ -1146,7 +1177,7 @@ public class FileJobStorage : IJobStorage
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "保存设置数据失败");
+                _logger.LogFailure("保存设置", ex);
                 throw;
             }
         }
@@ -1184,7 +1215,7 @@ public class FileJobStorage : IJobStorage
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "加载通知数据失败");
+                _logger.LogFailure("加载通知数据", ex);
                 return Task.FromResult(new List<QuartzNotification>());
             }
         }
@@ -1219,7 +1250,7 @@ public class FileJobStorage : IJobStorage
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "保存通知数据失败");
+                _logger.LogFailure("保存通知数据", ex);
                 throw;
             }
         }
@@ -1258,12 +1289,12 @@ public class FileJobStorage : IJobStorage
             }
 
             await SaveSettingsAsync(settings);
-            _logger.LogInformation("保存设置成功: {Key}", setting.Key);
+            _logger.LogSuccess("保存设置", setting.Key);
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "保存设置失败: {Key}", setting.Key);
+            _logger.LogFailure("保存设置", ex);
             return false;
         }
     }
@@ -1283,7 +1314,7 @@ public class FileJobStorage : IJobStorage
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取设置失败: {Key}", key);
+            _logger.LogFailure("获取设置", ex);
             return null;
         }
     }
@@ -1301,7 +1332,7 @@ public class FileJobStorage : IJobStorage
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取所有设置失败");
+            _logger.LogFailure("获取所有设置", ex);
             return new List<QuartzSetting>();
         }
     }
@@ -1321,12 +1352,12 @@ public class FileJobStorage : IJobStorage
             notification.CreateTime = DateTime.Now;
             notifications.Add(notification);
             await SaveNotificationsAsync(notifications);
-            _logger.LogInformation("添加通知消息成功: {NotificationId}", notification.NotificationId);
+            _logger.LogSuccess("添加通知消息", notification.NotificationId.ToString());
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "添加通知消息失败");
+            _logger.LogFailure("添加通知消息", ex);
             return false;
         }
     }
@@ -1346,7 +1377,7 @@ public class FileJobStorage : IJobStorage
 
             if (existingNotification == null)
             {
-                _logger.LogWarning("更新通知消息失败: 通知不存在 {NotificationId}", notification.NotificationId);
+                _logger.LogWarn("更新通知消息", $"通知: {notification.NotificationId} 不存在");
                 return false;
             }
 
@@ -1360,12 +1391,12 @@ public class FileJobStorage : IJobStorage
             existingNotification.Duration = notification.Duration;
 
             await SaveNotificationsAsync(notifications);
-            _logger.LogInformation("更新通知消息成功: {NotificationId}", notification.NotificationId);
+            _logger.LogSuccess("更新通知消息", notification.NotificationId.ToString());
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "更新通知消息失败: {NotificationId}", notification.NotificationId);
+            _logger.LogFailure("更新通知消息", ex);
             return false;
         }
     }
@@ -1385,7 +1416,7 @@ public class FileJobStorage : IJobStorage
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取通知消息失败: {NotificationId}", notificationId);
+            _logger.LogFailure("获取通知消息", ex);
             return null;
         }
     }
@@ -1472,7 +1503,7 @@ public class FileJobStorage : IJobStorage
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取通知消息列表失败");
+            _logger.LogFailure("获取通知消息列表", ex);
             return new PagedResponseDto<QuartzNotification>();
         }
     }
@@ -1492,18 +1523,18 @@ public class FileJobStorage : IJobStorage
 
             if (notificationToDelete == null)
             {
-                _logger.LogWarning("删除通知消息失败: 通知不存在 {NotificationId}", notificationId);
+                _logger.LogWarn("删除通知消息", "通知Id {notificationId} 不存在", notificationId);
                 return false;
             }
 
             notifications.Remove(notificationToDelete);
             await SaveNotificationsAsync(notifications);
-            _logger.LogInformation("删除通知消息成功: {NotificationId}", notificationId);
+            _logger.LogSuccess("删除通知消息", notificationId.ToString());
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "删除通知消息失败: {NotificationId}", notificationId);
+            _logger.LogFailure("删除通知消息", ex);
             return false;
         }
     }
@@ -1567,13 +1598,13 @@ public class FileJobStorage : IJobStorage
 
             // 计算清空的通知数量
             var clearedCount = notificationsToDelete.Count;
-            _logger.LogInformation("清空通知消息成功: 共清空 {Count} 条通知", clearedCount);
+            _logger.LogSuccess("清空通知消息", "共清空 {clearedCount} 条通知", clearedCount);
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "清空通知消息失败");
+            _logger.LogFailure("清空通知消息", ex);
             return false;
         }
     }

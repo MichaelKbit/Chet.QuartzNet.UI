@@ -485,7 +485,6 @@ initData();
                 class="word-break-break-word m-0 whitespace-pre-wrap text-sm"
               >
                 {{
-                  logDetail.executionInfo ||
                   logDetail.message ||
                   '暂无执行信息'
                 }}
@@ -495,7 +494,7 @@ initData();
 
           <!-- 错误信息 -->
           <div
-            v-if="logDetail.errorMessage || logDetail.exception"
+            v-if="logDetail.errorMessage"
             class="mb-6"
           >
             <Typography.Title :level="5" class="mb-2"
@@ -505,7 +504,24 @@ initData();
               <pre
                 class="word-break-break-word m-0 whitespace-pre-wrap text-sm text-red-800"
               >
-                {{ logDetail.errorMessage || logDetail.exception }}
+                {{ logDetail.errorMessage}}
+              </pre>
+            </div>
+          </div>
+
+                    <!-- 错误信息 -->
+          <div
+            v-if="logDetail.exception"
+            class="mb-6"
+          >
+            <Typography.Title :level="5" class="mb-2"
+              >异常</Typography.Title
+            >
+            <div class="rounded-lg border border-red-200 bg-red-50 p-4">
+              <pre
+                class="word-break-break-word m-0 whitespace-pre-wrap text-sm text-red-800"
+              >
+                {{logDetail.exception }}
               </pre>
             </div>
           </div>

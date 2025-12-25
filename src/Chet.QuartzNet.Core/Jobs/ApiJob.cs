@@ -1,3 +1,4 @@
+using Chet.QuartzNet.Core.Helpers;
 using Chet.QuartzNet.Core.Interfaces;
 using Chet.QuartzNet.Models.Entities;
 using Microsoft.Extensions.Logging;
@@ -15,7 +16,7 @@ public class ApiJob : IJob
 {
     private readonly IJobStorage _jobStorage;
     private readonly ILogger<ApiJob> _logger;
-    // 创建一个静态HttpClient实例，避免频繁创建和销毁
+    // 创建一个静态HttpClient实例, 避免频繁创建和销毁
     private static readonly HttpClient _httpClient = new HttpClient();
     // 当需要跳过SSL验证时使用的处理程序
     private static readonly HttpClientHandler _sslHandler = new HttpClientHandler
@@ -40,20 +41,20 @@ public class ApiJob : IJob
         var jobInfo = await _jobStorage.GetJobAsync(jobName, jobGroup, context.CancellationToken);
         if (jobInfo == null)
         {
-            _logger.LogError("API作业执行失败: 作业信息不存在 - {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogFailure("执行API作业", $"作业信息不存在 - {jobGroup}.{jobName}");
             throw new JobExecutionException("作业信息不存在");
         }
 
         // 检查作业是否被暂停
         if (jobInfo.Status == JobStatus.Paused)
         {
-            _logger.LogWarning("API作业执行被跳过: 作业已被暂停 - {JobKey}", $"{jobGroup}.{jobName}");
-            return; // 直接返回，不执行作业
+            _logger.LogWarn("执行API作业", $"作业执行被跳过, 作业已被暂停 - {jobGroup}.{jobName}");
+            return; // 直接返回, 不执行作业
         }
 
         try
         {
-            _logger.LogInformation("开始执行API作业: {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogInfo("执行API作业", $"开始执行API作业: {jobGroup}.{jobName}");
 
             // 验证作业类型
             if (jobInfo.JobType != JobTypeEnum.API)
@@ -72,7 +73,7 @@ public class ApiJob : IJob
                 throw new InvalidOperationException("API请求方法不能为空");
             }
 
-            // 选择合适的HttpClient实例，不修改共享实例的属性
+            // 选择合适的HttpClient实例, 不修改共享实例的属性
             var httpClient = jobInfo.SkipSslValidation && jobInfo.JobClassOrApi.StartsWith("https://")
                 ? _sslHttpClient
                 : _httpClient;
@@ -114,7 +115,7 @@ public class ApiJob : IJob
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "解析API请求头失败: {JobKey}", $"{jobGroup}.{jobName}");
+                    _logger.LogFailure("执行API作业", $"解析API请求头失败: {jobGroup}.{jobName}, 错误: {ex.Message}", ex);
                 }
             }
 
@@ -124,7 +125,7 @@ public class ApiJob : IJob
                 request.Content = new StringContent(jobInfo.ApiBody, Encoding.UTF8, "application/json");
             }
 
-            // 使用CancellationTokenSource来设置请求超时，而不是修改HttpClient的Timeout属性
+            // 使用CancellationTokenSource来设置请求超时, 而不是修改HttpClient的Timeout属性
             using var cts = new CancellationTokenSource(timeout);
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken, cts.Token);
 
@@ -137,11 +138,11 @@ public class ApiJob : IJob
             // 检查响应状态码
             response.EnsureSuccessStatusCode();
 
-            _logger.LogInformation("API作业执行成功: {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogSuccess("执行API作业", $"{jobGroup}.{jobName}");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "API作业执行失败: {JobKey}", $"{jobGroup}.{jobName}");
+            _logger.LogFailure("执行API作业", ex);
             throw new JobExecutionException(ex);
         }
     }

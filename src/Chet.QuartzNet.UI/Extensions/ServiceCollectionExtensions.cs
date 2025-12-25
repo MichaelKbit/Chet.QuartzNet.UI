@@ -1,4 +1,5 @@
 using Chet.QuartzNet.Core.Configuration;
+using Chet.QuartzNet.Core.Helpers;
 using Chet.QuartzNet.Core.Interfaces;
 using Chet.QuartzNet.Core.Services;
 using Chet.QuartzNet.Models.Entities;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Configuration;
 using Quartz;
 using Quartz.Impl.Matchers;
 using System.Reflection;
@@ -28,6 +30,11 @@ public static class ServiceCollectionExtensions
     /// <param name="configureOptions">可选：追加/覆写配置</param>
     public static IServiceCollection AddQuartzUI(this IServiceCollection services, IConfiguration configuration, Action<QuartzUIOptions>? configureOptions = null)
     {
+
+        // 获取或创建日志记录器
+        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        _logger = loggerFactory.CreateLogger("Chet.QuartzNet.UI");
+
         // 绑定配置到选项，并让 DI 管道也感知
         var options = BindQuartzOptions(configuration, configureOptions);
         services.Configure<QuartzUIOptions>(configuration.GetSection("QuartzUI"));
@@ -54,8 +61,7 @@ public static class ServiceCollectionExtensions
         AddQuartzUIAuthentication(services, options);
 
         // 注册RCL中的控制器
-        services.AddControllers()
-            .AddApplicationPart(typeof(ServiceCollectionExtensions).Assembly);
+        services.AddControllers().AddApplicationPart(typeof(ServiceCollectionExtensions).Assembly);
 
         return services;
     }
@@ -238,67 +244,13 @@ public static class ServiceCollectionExtensions
     /// <returns>服务集合</returns>
     public static IServiceCollection AddQuartzClassJobs(this IServiceCollection services)
     {
-        // 获取或创建日志记录器
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-        _logger = loggerFactory.CreateLogger("QuartzClassJobRegistration");
-
-        _logger.LogInformation("开始扫描标记了QuartzJobAttribute特性的ClassJob");
-
-        // 获取所有程序集
-        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-        _logger.LogInformation("找到 {AssemblyCount} 个程序集", assemblies.Length);
-
-        // 扫描并注册所有标记了QuartzJobAttribute特性的类
-        var jobTypes = assemblies
-            .SelectMany(a =>
-            {
-                try
-                {
-                    return a.GetTypes();
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    _logger.LogWarning(ex, "无法加载程序集 {AssemblyName} 中的类型", a.FullName);
-                    return ex.Types.Where(t => t != null);
-                }
-            })
-            .Where(t => typeof(IJob).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract && !(t.Namespace?.StartsWith("Chet.QuartzNet") == true))
-            .ToList();
-
-        _logger.LogInformation("找到 {JobTypeCount} 个实现IJob接口的类", jobTypes.Count);
-
-        // 筛选出标记了QuartzJobAttribute特性的类
-        var attributeType = typeof(Chet.QuartzNet.Core.Attributes.QuartzJobAttribute);
-        var attributedJobTypes = jobTypes
-            .Where(t => (t.GetCustomAttributes(attributeType, false) ?? Array.Empty<object>()).Any())
-            .ToList();
-
-        _logger.LogInformation("找到 {AttributedJobCount} 个标记了QuartzJobAttribute特性的类", attributedJobTypes.Count);
-
-        services.AddQuartz(q =>
-        {
-            foreach (var jobType in attributedJobTypes)
-            {
-                var attributes = jobType.GetCustomAttributes(attributeType, false) ?? Array.Empty<object>();
-                if (attributes.Any())
-                {
-                    var attribute = (Chet.QuartzNet.Core.Attributes.QuartzJobAttribute)attributes.First();
-                    var jobKey = new JobKey(attribute.Name, attribute.Group);
-                    q.AddJob(jobType, jobKey, j => j.WithDescription(attribute.Description).StoreDurably());
-                    _logger.LogInformation("注册ClassJob: {JobName} 分组: {JobGroup}, 表达式: {CronExpression}",
-                        attribute.Name, attribute.Group, attribute.CronExpression);
-                }
-            }
-        });
-
-        // 注册一个初始化服务，用于在应用启动时将ClassJob保存到作业存储
+        // 注册ClassJob初始化服务
         services.AddHostedService<ClassJobInitializer>();
-
         return services;
     }
 
     /// <summary>
-    /// ClassJob初始化服务，用于在应用启动时将自动注册的ClassJob保存到作业存储
+    /// ClassJob初始化服务，用于在应用启动时将标记了QuartzJobAttribute特性的作业保存到存储
     /// </summary>
     private class ClassJobInitializer : IHostedService
     {
@@ -315,7 +267,7 @@ public static class ServiceCollectionExtensions
         {
             try
             {
-                _logger.LogInformation("开始初始化ClassJob到作业存储");
+                _logger.LogInfoStructured("初始化ClassJob到作业存储");
 
                 // 获取所有标记了QuartzJobAttribute特性的作业类型
                 var attributeType = typeof(Chet.QuartzNet.Core.Attributes.QuartzJobAttribute);
@@ -336,7 +288,7 @@ public static class ServiceCollectionExtensions
                     .Where(t => t.GetCustomAttributes(attributeType, false)?.Any() == true)
                     .ToList();
 
-                _logger.LogInformation("找到 {JobCount} 个标记了QuartzJobAttribute特性的作业类型", jobTypes.Count);
+                _logger.LogInfo("ClassJob初始化", "找到 {JobCount} 个标记了QuartzJobAttribute特性的作业类型", jobTypes.Count);
 
                 // 创建一个作用域来获取IJobStorage
                 using (var scope = _scopeFactory.CreateScope())
@@ -349,7 +301,7 @@ public static class ServiceCollectionExtensions
                         var attribute = attributes.FirstOrDefault() as Chet.QuartzNet.Core.Attributes.QuartzJobAttribute;
                         if (attribute == null)
                         {
-                            _logger.LogWarning("无法获取QuartzJobAttribute特性: {JobType}", jobType.FullName);
+                            _logger.LogWarn("ClassJob初始化", "无法获取QuartzJobAttribute特性: {JobType}", jobType.FullName);
                             continue;
                         }
 
@@ -357,7 +309,7 @@ public static class ServiceCollectionExtensions
                         var existingJob = await jobStorage.GetJobAsync(attribute.Name, attribute.Group, cancellationToken);
                         if (existingJob != null)
                         {
-                            _logger.LogInformation("作业已存在于存储中，跳过: {JobName} - {JobGroup}", attribute.Name, attribute.Group);
+                            _logger.LogInfo("ClassJob初始化", "作业已存在于存储中，跳过: {JobKey}", $"{attribute.Name}.{attribute.Group}");
                             continue;
                         }
 
@@ -378,8 +330,8 @@ public static class ServiceCollectionExtensions
                         };
 
                         await jobStorage.AddJobAsync(jobInfo, cancellationToken);
-                        _logger.LogInformation("ClassJob添加到存储: {JobName} - {JobGroup}, 启用状态: {IsEnabled}, Cron表达式: {CronExpression}",
-                            attribute.Name, attribute.Group, attribute.Enabled, attribute.CronExpression);
+                        _logger.LogSuccess("ClassJob初始化", "ClassJob添加到存储: {JobKey}, 启用状态: {IsEnabled}, Cron表达式: {CronExpression}",
+                                $"{attribute.Name}.{attribute.Group}", attribute.Enabled, attribute.CronExpression);
                     }
                 }
             }
@@ -396,7 +348,7 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// 作业调度初始化服务，用于在应用启动时将存储中的作业重新调度到Quartz调度器
+    /// JobScheduler初始化服务，用于在应用启动时将存储中的作业重新调度到Quartz调度器
     /// </summary>
     private class JobSchedulerInitializer : IHostedService
     {
@@ -413,7 +365,7 @@ public static class ServiceCollectionExtensions
         {
             try
             {
-                _logger.LogInformation("开始初始化作业调度");
+                _logger.LogInfoStructured("初始化作业调度");
 
                 // 创建一个作用域来获取服务
                 using (var scope = _scopeFactory.CreateScope())
@@ -423,7 +375,7 @@ public static class ServiceCollectionExtensions
 
                     // 获取所有存储的作业
                     var allJobs = await jobStorage.GetAllJobsAsync(cancellationToken);
-                    _logger.LogInformation("找到 {JobCount} 个存储的作业", allJobs.Count);
+                    _logger.LogInfo("作业调度", "找到 {JobCount} 个存储的作业", allJobs.Count);
 
                     foreach (var jobInfo in allJobs)
                     {
@@ -435,7 +387,7 @@ public static class ServiceCollectionExtensions
 
                             if (triggers.Any())
                             {
-                                _logger.LogInformation("作业 {JobKey} 已存在 {TriggerCount} 个触发器，跳过调度",
+                                _logger.LogInfo("作业调度", "作业 {JobKey} 已存在 {TriggerCount} 个触发器，跳过调度",
                                     $"{jobInfo.JobGroup}.{jobInfo.JobName}", triggers.Count);
                                 continue;
                             }
@@ -443,7 +395,7 @@ public static class ServiceCollectionExtensions
                             // 检查作业是否被禁用，如果是禁用状态，不重新调度
                             if (!jobInfo.IsEnabled)
                             {
-                                _logger.LogInformation("作业 {JobKey} 处于禁用状态，跳过调度",
+                                _logger.LogWarn("作业调度", "作业 {JobKey} 处于禁用状态，跳过调度",
                                     $"{jobInfo.JobGroup}.{jobInfo.JobName}");
                                 continue;
                             }
@@ -451,7 +403,7 @@ public static class ServiceCollectionExtensions
                             // 检查作业状态，如果是暂停状态，不重新调度
                             if (jobInfo.Status == Chet.QuartzNet.Models.Entities.JobStatus.Paused)
                             {
-                                _logger.LogInformation("作业 {JobKey} 处于暂停状态，跳过调度",
+                                _logger.LogWarn("作业调度", "作业 {JobKey} 处于暂停状态，跳过调度",
                                     $"{jobInfo.JobGroup}.{jobInfo.JobName}");
                                 continue;
                             }
@@ -475,25 +427,25 @@ public static class ServiceCollectionExtensions
                                     if (result is Task task)
                                     {
                                         await task;
-                                        _logger.LogInformation("作业 {JobKey} 调度成功", $"{jobInfo.JobGroup}.{jobInfo.JobName}");
+                                        _logger.LogSuccess("作业调度", $"{jobInfo.JobGroup}.{jobInfo.JobName}");
                                     }
                                 }
                                 else
                                 {
-                                    _logger.LogError("无法找到ScheduleJobAsync方法");
+                                    _logger.LogFailure("作业调度", "无法找到ScheduleJobAsync方法");
                                 }
                             }
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "调度作业失败: {JobKey}", $"{jobInfo.JobGroup}.{jobInfo.JobName}");
+                            _logger.LogFailure("调度作业: {JobKey}", $"{jobInfo.JobGroup}.{jobInfo.JobName}", ex);
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "初始化作业调度失败");
+                _logger.LogFailure("初始化作业调度", ex);
             }
         }
 
