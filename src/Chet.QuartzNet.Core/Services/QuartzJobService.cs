@@ -1083,7 +1083,7 @@ public class QuartzJobService : IQuartzJobService
         // 设置作业数据
         if (!string.IsNullOrEmpty(jobInfo.JobData))
         {
-            jobBuilder.UsingJobData(QuartzJobConstants.JobData, jobInfo.JobData);
+            jobBuilder.UsingJobData(QuartzJobConst.JobData, jobInfo.JobData);
         }
 
         var jobDetail = jobBuilder.Build();

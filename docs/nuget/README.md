@@ -235,37 +235,33 @@ builder.Services.AddQuartzClassJobs();
 | SQLite | Chet.QuartzNet.EFCore.SQLite | `Install-Package Chet.QuartzNet.EFCore.SQLite` 或 `dotnet add package Chet.QuartzNet.EFCore.SQLite` |
 
 
-## 📁 项目结构
-
-```
-Chet.QuartzNet.UI/
-├── src/
-│   ├── Chet.QuartzNet.EFCore/                # EF Core 数据访问层核心
-│   │   ├── Data/                           # 数据库上下文
-│   │   ├── Extensions/                      # 扩展方法
-│   │   └── Services/                        # 数据库存储服务
-│   ├── Chet.QuartzNet.EFCore.MySql/          # MySQL 数据库支持
-│   ├── Chet.QuartzNet.EFCore.PostgreSql/     # PostgreSQL 数据库支持
-│   ├── Chet.QuartzNet.EFCore.SQLite/         # SQLite 数据库支持
-│   ├── Chet.QuartzNet.EFCore.SqlServer/     # SQL Server 数据库支持
-│   ├── Chet.QuartzNet.Models/               # 数据模型和 DTO
-│   │   ├── DTOs/                            # 数据传输对象
-│   │   └── Entities/                         # 实体类
-│   ├── Chet.QuartzNet.UI/                   # UI 组件和控制器
-│   │   ├── Controllers/                     # API 控制器
-│   │   ├── Extensions/                      # 扩展方法
-│   │   ├── Middleware/                      # 中间件
-│   │   └── wwwroot/                         # 静态资源
-│   └── Chet.QuartzNet.Web/                  # Web 应用示例
-├── examples/
-│   ├── Chet.QuartzNet.Database.Example/      # 数据库存储示例项目
-│   └── Chet.QuartzNet.File.Example/          # 文件存储示例项目
-├── README.md                                # 项目根目录文档
-├── LICENSE                                  # 许可证文件
-└── Chet.QuartzNet.UI.sln                    # 解决方案文件
-```
-
 ## 📝 更新说明
+
+### [1.5.0] - 2025-12-27
+
+#### 优化
+- 为了提升作业数据访问的便利性，现已对JobDataMap封装了两个扩展方法：
+GetJobDataJson —— 用于直接获取JSON字符串；
+GetJobData —— 可将数据反序列化为指定类型的对象
+
+由
+```csharp
+var jobDataMap = context.JobDetail.JobDataMap;
+var json = JsonSerializer.Serialize(jobDataMap.WrappedMap);
+```
+调整为
+
+```csharp
+var jobDataJson = context.JobDetail.JobDataMap.GetJobDataJson();
+var jobData = context.JobDetail.JobDataMap.GetJobData<SampleParam>();
+```
+原来的方式仍然可用，但只能通过JobDataMap的JobData键值对进行访问。建议优先使用新的扩展方法来简化操作。
+
+- 选择API方式时去掉了多余的作业数据输入框，对现有功能无任何影响
+
+#### 兼容性
+- 获取作业数据方式会受影响，建议使用新的扩展方法调整
+- 无需数据库迁移或配置更改
 
 ### [1.4.0] - 2025-12-25
 

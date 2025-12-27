@@ -16,7 +16,7 @@ public static class JobDataMapExtensions
     /// <returns>作业数据JSON字符串</returns>
     public static string GetJobDataJson(this JobDataMap jobDataMap)
     {
-        return jobDataMap.GetString(QuartzJobConstants.JobData) ?? string.Empty;
+        return jobDataMap.Keys.Any(p => p.Equals(QuartzJobConst.JobData)) ? jobDataMap.GetString(QuartzJobConst.JobData) : null;
     }
 
     /// <summary>

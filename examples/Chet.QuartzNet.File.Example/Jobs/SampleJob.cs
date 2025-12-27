@@ -27,6 +27,7 @@ namespace Chet.QuartzNet.File.Example.Jobs
 
                 // 获取作业数据
                 var jobDataJson = context.JobDetail.JobDataMap.GetJobDataJson();
+                var jobData = context.JobDetail.JobDataMap.GetJobData<SampleParam>();
                 if (!string.IsNullOrEmpty(jobDataJson))
                 {
                     _logger.LogInformation("获取到作业数据JSON: {JobDataJson}", jobDataJson);
@@ -119,5 +120,15 @@ namespace Chet.QuartzNet.File.Example.Jobs
                 throw;
             }
         }
+    }
+
+
+    /// <summary>
+    /// 简单参数
+    /// </summary>
+    public class SampleParam
+    {
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
     }
 }

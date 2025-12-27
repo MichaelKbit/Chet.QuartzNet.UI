@@ -168,22 +168,31 @@ public class SampleJob : IJob
         _logger = logger;
     }
 
-    public async Task Execute(IJobExecutionContext context)
-    {
-        _logger.LogInformation("SampleJob开始执行，执行时间: {ExecuteTime}", DateTime.Now);
-        
-        try
+        public async Task Execute(IJobExecutionContext context)
         {
-            // 业务逻辑处理
-            await Task.Delay(1000);
-            _logger.LogInformation("SampleJob执行完成");
+            _logger.LogInformation("SampleJob开始执行，执行时间: {ExecuteTime}", DateTime.Now);
+            try
+            {
+                // 模拟业务逻辑处理
+                await Task.Delay(1000);
+
+                // 获取作业数据
+                var jobDataJson = context.JobDetail.JobDataMap.GetJobDataJson();
+                var jobData = context.JobDetail.JobDataMap.GetJobData<SampleParam>();
+                if (!string.IsNullOrEmpty(jobDataJson))
+                {
+                    _logger.LogInformation("获取到作业数据JSON: {JobDataJson}", jobDataJson);
+
+                }
+
+                _logger.LogInformation("SampleJob执行完成");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SampleJob执行失败");
+                throw;
+            }
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "SampleJob执行失败");
-            throw;
-        }
-    }
 }
 ```
 
@@ -280,6 +289,32 @@ Chet.QuartzNet.UI/
 ```
 
 ## 📝 更新说明
+
+### [1.5.0] - 2025-12-27
+
+#### 优化
+- 为了提升作业数据访问的便利性，现已对JobDataMap封装了两个扩展方法：
+GetJobDataJson —— 用于直接获取JSON字符串；
+GetJobData —— 可将数据反序列化为指定类型的对象
+
+由
+```csharp
+var jobDataMap = context.JobDetail.JobDataMap;
+var json = JsonSerializer.Serialize(jobDataMap.WrappedMap);
+```
+调整为
+
+```csharp
+var jobDataJson = context.JobDetail.JobDataMap.GetJobDataJson();
+var jobData = context.JobDetail.JobDataMap.GetJobData<SampleParam>();
+```
+原来的方式仍然可用，但只能通过JobDataMap的JobData键值对进行访问。建议优先使用新的扩展方法来简化操作。
+
+- 选择API方式时去掉了多余的作业数据输入框，对现有功能无任何影响
+
+#### 兼容性
+- 获取作业数据方式会受影响，建议使用新的扩展方法调整
+- 无需数据库迁移或配置更改
 
 ### [1.4.0] - 2025-12-25
 
