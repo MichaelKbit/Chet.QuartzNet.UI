@@ -1,5 +1,4 @@
 using Chet.QuartzNet.Core.Attributes;
-using Chet.QuartzNet.Core.Extensions;
 using Quartz;
 
 namespace Chet.QuartzNet.Database.Example.Jobs
@@ -20,19 +19,19 @@ namespace Chet.QuartzNet.Database.Example.Jobs
         public async Task Execute(IJobExecutionContext context)
         {
             _logger.LogInformation("定时清理作业开始执行: {Time}", DateTime.Now);
-            
+
             try
             {
                 // 模拟清理逻辑
                 _logger.LogInformation("开始清理临时文件");
                 await Task.Delay(1000);
-                
+
                 _logger.LogInformation("开始清理日志文件");
                 await Task.Delay(1500);
-                
+
                 _logger.LogInformation("开始清理缓存数据");
                 await Task.Delay(1200);
-                
+
                 _logger.LogInformation("定时清理作业执行完成: {Time}", DateTime.Now);
             }
             catch (Exception ex)

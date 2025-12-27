@@ -1,4 +1,4 @@
-namespace Chet.QuartzNet.Core;
+namespace Chet.QuartzNet.Core.Consts;
 
 /// <summary>
 /// Quartz作业常量类

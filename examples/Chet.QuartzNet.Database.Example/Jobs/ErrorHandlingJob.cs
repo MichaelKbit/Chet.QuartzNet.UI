@@ -1,5 +1,4 @@
 using Chet.QuartzNet.Core.Attributes;
-using Chet.QuartzNet.Core.Extensions;
 using Quartz;
 
 namespace Chet.QuartzNet.Database.Example.Jobs
@@ -20,18 +19,18 @@ namespace Chet.QuartzNet.Database.Example.Jobs
         public async Task Execute(IJobExecutionContext context)
         {
             _logger.LogInformation("错误处理作业开始执行: {Time}", DateTime.Now);
-            
+
             try
             {
                 // 模拟业务逻辑
                 await Task.Delay(1000);
-                
+
                 // 模拟随机错误
                 if (DateTime.Now.Second % 2 == 0)
                 {
                     throw new InvalidOperationException("模拟随机错误");
                 }
-                
+
                 _logger.LogInformation("错误处理作业执行成功: {Time}", DateTime.Now);
             }
             catch (Exception ex)

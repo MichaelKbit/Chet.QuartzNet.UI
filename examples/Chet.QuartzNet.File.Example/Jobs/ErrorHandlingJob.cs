@@ -24,7 +24,7 @@ namespace Chet.QuartzNet.File.Example.Jobs
             {
                 // 模拟业务逻辑
                 await Task.Delay(500);
-                
+
                 // 模拟随机异常
                 if (DateTime.Now.Second % 2 == 0)
                 {
@@ -37,7 +37,7 @@ namespace Chet.QuartzNet.File.Example.Jobs
             {
                 _logger.LogError(ex, "错误处理作业执行失败: {Time}", DateTime.Now);
                 // 可以在这里添加自定义错误处理逻辑，如发送通知等
-                
+
                 // 重新抛出异常，让Quartz处理重试逻辑
                 throw;
             }

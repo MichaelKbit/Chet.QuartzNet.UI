@@ -20,17 +20,17 @@ namespace Chet.QuartzNet.Database.Example.Jobs
         public async Task Execute(IJobExecutionContext context)
         {
             _logger.LogInformation("多参数复杂作业开始执行: {Time}", DateTime.Now);
-            
+
             // 使用强类型获取作业数据
             var jobData = context.JobDetail.JobDataMap.GetJobData<ComplexJobData>();
-            
+
             if (jobData != null)
             {
                 _logger.LogInformation("作业ID: {JobId}", jobData.JobId);
                 _logger.LogInformation("作业名称: {JobName}", jobData.JobName);
                 _logger.LogInformation("执行次数: {ExecutionCount}", jobData.ExecutionCount);
                 _logger.LogInformation("启用通知: {EnableNotification}", jobData.EnableNotification);
-                
+
                 if (jobData.Parameters != null)
                 {
                     foreach (var param in jobData.Parameters)
@@ -39,7 +39,7 @@ namespace Chet.QuartzNet.Database.Example.Jobs
                     }
                 }
             }
-            
+
             await Task.Delay(2000);
             _logger.LogInformation("多参数复杂作业执行完成: {Time}", DateTime.Now);
         }

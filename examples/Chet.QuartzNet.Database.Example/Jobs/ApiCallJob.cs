@@ -1,5 +1,4 @@
 using Chet.QuartzNet.Core.Attributes;
-using Chet.QuartzNet.Core.Extensions;
 using Quartz;
 
 namespace Chet.QuartzNet.Database.Example.Jobs
@@ -21,13 +20,13 @@ namespace Chet.QuartzNet.Database.Example.Jobs
         public async Task Execute(IJobExecutionContext context)
         {
             _logger.LogInformation("API调用作业开始执行: {Time}", DateTime.Now);
-            
+
             try
             {
                 // 调用示例API
                 var response = await _httpClient.GetAsync("https://jsonplaceholder.typicode.com/todos/1");
                 response.EnsureSuccessStatusCode();
-                
+
                 var content = await response.Content.ReadAsStringAsync();
                 _logger.LogInformation("API调用成功，响应内容: {Content}", content);
             }

@@ -1,4 +1,5 @@
 using Chet.QuartzNet.Core.Configuration;
+using Chet.QuartzNet.Core.Consts;
 using Chet.QuartzNet.Core.Helpers;
 using Chet.QuartzNet.Core.Interfaces;
 using Chet.QuartzNet.Core.Jobs;

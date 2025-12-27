@@ -1,5 +1,4 @@
 using Chet.QuartzNet.Core.Attributes;
-using Chet.QuartzNet.Core.Extensions;
 using Quartz;
 
 namespace Chet.QuartzNet.Database.Example.Jobs
@@ -20,22 +19,22 @@ namespace Chet.QuartzNet.Database.Example.Jobs
         public async Task Execute(IJobExecutionContext context)
         {
             _logger.LogInformation("数据处理作业开始执行: {Time}", DateTime.Now);
-            
+
             // 模拟数据处理
             var data = new List<int>();
             for (int i = 0; i < 1000; i++)
             {
                 data.Add(i);
             }
-            
+
             // 模拟复杂数据处理
             var processedData = data.Where(x => x % 2 == 0)
                                    .Select(x => x * 2)
                                    .ToList();
-            
+
             await Task.Delay(1500);
-            
-            _logger.LogInformation("数据处理完成: 原始数据 {OriginalCount} 条，处理后 {ProcessedCount} 条", 
+
+            _logger.LogInformation("数据处理完成: 原始数据 {OriginalCount} 条，处理后 {ProcessedCount} 条",
                                    data.Count, processedData.Count);
         }
     }

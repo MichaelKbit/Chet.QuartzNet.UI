@@ -1,5 +1,4 @@
 using Chet.QuartzNet.Core.Attributes;
-using Chet.QuartzNet.Core.Extensions;
 using Quartz;
 
 namespace Chet.QuartzNet.Database.Example.Jobs
