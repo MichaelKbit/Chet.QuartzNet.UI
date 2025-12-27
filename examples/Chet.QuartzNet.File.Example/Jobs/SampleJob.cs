@@ -1,3 +1,4 @@
+using Chet.QuartzNet.Core.Extensions;
 using Chet.QuartzNet.Core.Attributes;
 using Quartz;
 
@@ -27,10 +28,18 @@ namespace Chet.QuartzNet.File.Example.Jobs
                 await Task.Delay(1000);
 
                 // 获取作业数据
-                var jobData = context.JobDetail.JobDataMap;
-                if (jobData.ContainsKey("customData"))
+                var jobDataJson = context.JobDetail.JobDataMap.GetJobDataJson();
+                if (!string.IsNullOrEmpty(jobDataJson))
                 {
-                    _logger.LogInformation("获取到自定义数据: {CustomData}", jobData.GetString("customData"));
+                    _logger.LogInformation("获取到作业数据JSON: {JobDataJson}", jobDataJson);
+                    
+                    // 示例：解析JSON获取特定字段
+                    var jobDataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(jobDataJson);
+                    if (jobDataDict != null && jobDataDict.ContainsKey("customData"))
+                    {
+                        var customData = jobDataDict["customData"]?.ToString();
+                        _logger.LogInformation("获取到自定义数据: {CustomData}", customData);
+                    }
                 }
 
                 _logger.LogInformation("SampleJob执行完成");

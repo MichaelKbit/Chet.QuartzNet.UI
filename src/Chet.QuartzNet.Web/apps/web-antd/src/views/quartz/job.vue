@@ -780,6 +780,33 @@ onMounted(async () => {
               </Select>
             </Form.Item>
           </Col>
+          <Col :xs="24" :sm="24" :md="24" v-if="editForm.jobType === JobTypeEnum.DLL">
+            <Form.Item label="作业数据" name="jobData" :rules="[
+              {
+                validator: (rule, value, callback) => {
+                  if (!value) return callback();
+                  try {
+                    JSON.parse(value);
+                    callback();
+                  } catch (e) {
+                    callback(new Error('请输入有效的JSON格式'));
+                  }
+                },
+              },
+            ]">
+              <div class="relative" >
+                <Tooltip title="调用作业类时传递的参数">
+                  <Input.TextArea v-model:value="editForm.jobData" placeholder="JSON格式的作业数据" :rows="4" />
+                </Tooltip>
+                <Tooltip title="JSON格式化">
+                  <Button type="link" size="small" style="position: absolute; right: 8px; bottom: 8px;"
+                    @click="formatJson('jobData')">
+                    😄
+                  </Button>
+                </Tooltip>
+              </div>
+            </Form.Item>
+          </Col>
           <!-- API相关配置 -->
           <Col :xs="24" :sm="24" :md="24" v-if="editForm.jobType === JobTypeEnum.API">
             <Form.Item label="API请求方法" name="apiMethod" :rules="[{ required: true, message: '请选择API请求方法' }]">
@@ -853,33 +880,6 @@ onMounted(async () => {
                 <Tooltip title="JSON格式化">
                   <Button type="link" size="small" style="position: absolute; right: 8px; bottom: 8px;"
                     @click="formatJson('apiBody')">
-                    😄
-                  </Button>
-                </Tooltip>
-              </div>
-            </Form.Item>
-          </Col>
-          <Col :xs="24" :sm="24" :md="24">
-            <Form.Item label="作业数据" name="jobData" :rules="[
-              {
-                validator: (rule, value, callback) => {
-                  if (!value) return callback();
-                  try {
-                    JSON.parse(value);
-                    callback();
-                  } catch (e) {
-                    callback(new Error('请输入有效的JSON格式'));
-                  }
-                },
-              },
-            ]">
-              <div class="relative">
-                <Tooltip title="调用作业类或API时传递的参数">
-                <Input.TextArea v-model:value="editForm.jobData" placeholder="JSON格式的作业数据" :rows="4" />
-                </Tooltip>
-                <Tooltip title="JSON格式化">
-                  <Button type="link" size="small" style="position: absolute; right: 8px; bottom: 8px;"
-                    @click="formatJson('jobData')">
                     😄
                   </Button>
                 </Tooltip>

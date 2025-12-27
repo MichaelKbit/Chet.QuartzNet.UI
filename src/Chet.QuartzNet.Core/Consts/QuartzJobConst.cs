@@ -1,0 +1,12 @@
+namespace Chet.QuartzNet.Core;
+
+/// <summary>
+/// Quartz作业常量类
+/// </summary>
+public static class QuartzJobConstants
+{
+    /// <summary>
+    /// 作业数据JSON字符串的Key
+    /// </summary>
+    public const string JobData = "JobData";
+}

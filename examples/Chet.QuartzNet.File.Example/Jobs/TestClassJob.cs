@@ -1,4 +1,5 @@
 using Chet.QuartzNet.Core.Attributes;
+using Chet.QuartzNet.Core.Extensions;
 using Quartz;
 using System.Text.Json;
 
@@ -33,9 +34,20 @@ namespace Chet.QuartzNet.File.Example.Jobs
             try
             {
                 // 从作业数据中获取参数
-                var jobDataMap = context.JobDetail.JobDataMap;
-                var json = JsonSerializer.Serialize(jobDataMap.WrappedMap);
-                context.Result = json;
+                var jobDataJson = context.JobDetail.JobDataMap.GetJobDataJson();
+                _logger.LogInformation("TestClassJob 作业数据JSON: {JobDataJson}", jobDataJson);
+                
+                // 解析作业数据JSON
+                if (!string.IsNullOrEmpty(jobDataJson))
+                {
+                    var jobDataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(jobDataJson);
+                    if (jobDataDict != null && jobDataDict.ContainsKey("TestParam"))
+                    {
+                        var testParam = jobDataDict["TestParam"]?.ToString();
+                        _logger.LogInformation("TestClassJob 获取到参数: {Param}", testParam);
+                    }
+                }
+
                 // 模拟作业执行逻辑
                 await Task.Delay(1000);
 

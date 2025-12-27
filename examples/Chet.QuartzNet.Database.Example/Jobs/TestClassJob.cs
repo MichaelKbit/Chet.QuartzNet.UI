@@ -1,4 +1,5 @@
 using Chet.QuartzNet.Core.Attributes;
+using Chet.QuartzNet.Core.Extensions;
 using Quartz;
 
 namespace Chet.QuartzNet.Database.Example.Jobs
@@ -32,11 +33,16 @@ namespace Chet.QuartzNet.Database.Example.Jobs
             try
             {
                 // 从作业数据中获取参数
-                var jobDataMap = context.JobDetail.JobDataMap;
-                if (jobDataMap.ContainsKey("TestParam"))
+                var jobDataJson = context.JobDetail.JobDataMap.GetJobDataJson();
+                if (!string.IsNullOrEmpty(jobDataJson))
                 {
-                    var testParam = jobDataMap.GetString("TestParam");
-                    _logger.LogInformation("TestClassJob 获取到参数: {Param}", testParam);
+                    // 解析作业数据JSON
+                    var jobDataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(jobDataJson);
+                    if (jobDataDict != null && jobDataDict.ContainsKey("TestParam"))
+                    {
+                        var testParam = jobDataDict["TestParam"]?.ToString();
+                        _logger.LogInformation("TestClassJob 获取到参数: {Param}", testParam);
+                    }
                 }
 
                 // 模拟作业执行逻辑
