@@ -34,6 +34,42 @@ public class ConditionalRangeAttribute : RangeAttribute
 }
 
 /// <summary>
+/// JSON格式验证属性
+/// </summary>
+public class JsonValidationAttribute : ValidationAttribute
+{
+    public JsonValidationAttribute()
+    {
+        ErrorMessage = "必须是有效的JSON格式";
+    }
+
+    protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
+    {
+        // 如果值为空，则验证通过（可以结合RequiredAttribute使用）
+        if (value == null || string.IsNullOrWhiteSpace(value.ToString()))
+        {
+            return ValidationResult.Success;
+        }
+
+        try
+        {
+            // 尝试解析JSON字符串
+            var jsonString = value.ToString();
+            if (jsonString != null)
+            {
+                System.Text.Json.JsonDocument.Parse(jsonString);
+            }
+            return ValidationResult.Success;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // JSON解析失败，返回验证错误
+            return new ValidationResult(ErrorMessage);
+        }
+    }
+}
+
+/// <summary>
 /// Quartz作业DTO
 /// </summary>
 public class QuartzJobDto
@@ -92,6 +128,7 @@ public class QuartzJobDto
     /// <summary>
     /// 作业数据（JSON格式）
     /// </summary>
+    [JsonValidation(ErrorMessage = "作业数据必须是有效的JSON格式")]
     public string? JobData { get; set; }
 
     /// <summary>
@@ -103,11 +140,13 @@ public class QuartzJobDto
     /// <summary>
     /// API请求头（JSON格式）
     /// </summary>
+    [JsonValidation(ErrorMessage = "API请求头必须是有效的JSON格式")]
     public string? ApiHeaders { get; set; }
 
     /// <summary>
     /// API请求体（JSON格式）
     /// </summary>
+    [JsonValidation(ErrorMessage = "API请求体必须是有效的JSON格式")]
     public string? ApiBody { get; set; }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using Chet.QuartzNet.Core.Configuration;
+using Chet.QuartzNet.Core.Consts;
 using Chet.QuartzNet.Core.Helpers;
 using Chet.QuartzNet.Core.Interfaces;
 using Chet.QuartzNet.Core.Jobs;
@@ -1082,28 +1083,7 @@ public class QuartzJobService : IQuartzJobService
         // 设置作业数据
         if (!string.IsNullOrEmpty(jobInfo.JobData))
         {
-            var jobDataMap = new JobDataMap();
-            try
-            {
-                // 解析JSON数据并添加到jobDataMap
-                var jobDataDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(jobInfo.JobData);
-                if (jobDataDict != null)
-                {
-                    foreach (var kvp in jobDataDict)
-                    {
-                        // 只添加非null值，避免CS8604警告
-                        if (kvp.Value != null)
-                        {
-                            jobDataMap.Add(kvp.Key, kvp.Value);
-                        }
-                    }
-                }
-            }
-            catch (System.Text.Json.JsonException ex)
-            {
-                _logger.LogFailure("ParseJobData", ex);
-            }
-            jobBuilder.UsingJobData(jobDataMap);
+            jobBuilder.UsingJobData(QuartzJobConst.JobData, jobInfo.JobData);
         }
 
         var jobDetail = jobBuilder.Build();

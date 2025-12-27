@@ -254,11 +254,20 @@ public class SampleJob : IJob
     public async Task Execute(IJobExecutionContext context)
     {
         _logger.LogInformation("SampleJob开始执行，执行时间: {ExecuteTime}", DateTime.Now);
-        
         try
         {
-            // 业务逻辑处理
+            // 模拟业务逻辑处理
             await Task.Delay(1000);
+
+            // 获取作业数据
+            var jobDataJson = context.JobDetail.JobDataMap.GetJobDataJson();
+            var jobData = context.JobDetail.JobDataMap.GetJobData<SampleParam>();
+            if (!string.IsNullOrEmpty(jobDataJson))
+            {
+                _logger.LogInformation("获取到作业数据JSON: {JobDataJson}", jobDataJson);
+
+            }
+
             _logger.LogInformation("SampleJob执行完成");
         }
         catch (Exception ex)
