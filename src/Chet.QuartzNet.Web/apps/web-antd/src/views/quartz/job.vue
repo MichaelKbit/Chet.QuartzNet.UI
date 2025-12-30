@@ -35,6 +35,7 @@ import {
   addJob,
   updateJob,
   deleteJob,
+  batchDeleteJob,
   triggerJob,
   pauseJob,
   resumeJob,
@@ -73,6 +74,9 @@ const dataSource = ref<QuartzJobResponseDto[]>([]);
 const total = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(10);
+// 批量删除相关
+const selectedRowKeys = ref<string[]>([]);
+const selectedRows = ref<QuartzJobResponseDto[]>([]);
 
 // 调度器状态
 const schedulerStatus = ref({
@@ -194,7 +198,9 @@ const columns = computed(() => [
     ellipsis: true,
     customRender: ({ record }: { record: QuartzJobResponseDto }) => {
       const type = jobTypeMap[record.jobType];
-      return h(Tag, { color: type?.color || 'default' }, type?.text || '未知');
+      return h(Tag, { color: type?.color || 'default' }, {
+        default: () => type?.text || '未知'
+      });
     },
   },
   {
@@ -238,7 +244,9 @@ const columns = computed(() => [
       return h(
         Tag,
         { color: status?.status || 'default' },
-        status?.text || record.status || '未知',
+        {
+          default: () => status?.text || record.status || '未知'
+        }
       );
     },
   },
@@ -271,14 +279,18 @@ const columns = computed(() => [
             {
               onClick: () => handleEdit(record),
             },
-            '编辑',
+            {
+              default: () => '编辑'
+            },
           ),
           h(
             Menu.Item,
             {
               onClick: () => handleCopyJob(record),
             },
-            '复制',
+            {
+              default: () => '复制'
+            },
           ),
           h(
             Menu.Item,
@@ -286,7 +298,9 @@ const columns = computed(() => [
               onClick: () => handleDelete(record),
               danger: true,
             },
-            '删除',
+            {
+              default: () => '删除'
+            },
           ),
           h(
             Menu.Item,
@@ -299,7 +313,9 @@ const columns = computed(() => [
                 color: record.status === JobStatusEnum.Normal ? '#faad14' : '#52c41a', // 停止-黄色，恢复-绿色
               },
             },
-            record.status === JobStatusEnum.Normal ? '停止' : '恢复',
+            {
+              default: () => (record.status === JobStatusEnum.Normal ? '停止' : '恢复')
+            },
           ),
           h(
             Menu.Item,
@@ -309,7 +325,9 @@ const columns = computed(() => [
                 color: '#1890ff', // 立即执行-蓝色
               },
             },
-            '立即执行',
+            {
+              default: () => '立即执行'
+            },
           ),
         ]);
 
@@ -327,7 +345,9 @@ const columns = computed(() => [
                 type: 'primary',
                 disabled: loading.value,
               },
-              '操作',
+              {
+                default: () => '操作'
+              },
             ),
         },
       );
@@ -658,6 +678,51 @@ const handleExecute = async (job: QuartzJobResponseDto) => {
   }
 };
 
+// 批量删除作业
+const handleBatchDelete = () => {
+  Modal.confirm({
+    title: '确认批量删除',
+    content: `确定要删除选中的 ${selectedRowKeys.value.length} 个作业吗？此操作不可恢复，相关的作业日志和配置也将被删除。`,
+    okText: '确定',
+    okType: 'danger',
+    cancelText: '取消',
+    async onOk() {
+      try {
+        // 检查是否有选中的作业
+        if (selectedRowKeys.value.length === 0) {
+          message.warning('请先选择要删除的作业');
+          return;
+        }
+        
+        // 准备删除参数 - 使用与后端匹配的格式
+        const jobList = selectedRows.value.map(job => {
+          return {
+            JobName: job.jobName,
+            JobGroup: job.jobGroup
+          };
+        });
+        
+        console.log('批量删除作业参数:', jobList);
+        
+        const result = await batchDeleteJob(jobList);
+        
+        if (result.success) {
+          message.success('批量删除作业成功');
+          // 清空选择
+          selectedRowKeys.value = [];
+          selectedRows.value = [];
+          // 重新加载作业列表
+          loadJobList();
+        } else {
+          message.error(result.message || '批量删除作业失败');
+        }
+      } catch (error: any) {
+        message.error(error.message || '批量删除作业失败');
+      }
+    },
+  });
+};
+
 // 获取调度器状态
 const getSchedulerStatusInfo = async () => {
   try {
@@ -786,16 +851,24 @@ onMounted(async () => {
         </Space>
         <Space>
           <Button type="primary" @click="handleAdd"> 新增作业 </Button>
+          <Button danger :disabled="selectedRowKeys.length === 0" @click="handleBatchDelete"> 批量删除 </Button>
         </Space>
       </div>
       <!-- 作业列表 -->
       <Table :columns="columns" :data-source="dataSource" :pagination="pagination" :loading="loading"
         :rowKey="(record) => `${record.jobName}-${record.jobGroup}`" @change="handleTableChange" size="middle"
-        :scroll="{ x: 'max-content' }" />
+        :scroll="{ x: 'max-content' }"
+        :row-selection="{
+          selectedRowKeys: selectedRowKeys,
+          onChange: (keys: string[], rows: QuartzJobResponseDto[]) => {
+            selectedRowKeys = keys;
+            selectedRows = rows;
+          }
+        }" />
     </Card>
 
     <!-- 新增编辑对话框 -->
-    <Modal v-model:visible="editModalVisible" :title="editModalTitle" width="800px" :body-style="{ padding: '24px' }"
+    <Modal v-model:open="editModalVisible" :title="editModalTitle" width="800px" :body-style="{ padding: '24px' }"
       destroyOnClose @cancel="editModalVisible = false">
       <Form ref="formRef" :model="editForm" layout="horizontal" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }"
         :label-align="'right'">
@@ -971,7 +1044,7 @@ onMounted(async () => {
     </Modal>
 
     <!-- Cron帮助模态框 -->
-    <CronHelperModal v-model:visible="cronHelperVisible" @cancel="closeCronHelper" @select="selectCronExpression" />
+    <CronHelperModal v-model:open="cronHelperVisible" @cancel="closeCronHelper" @select="selectCronExpression" />
   </Page>
 </template>
 
