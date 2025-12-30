@@ -169,6 +169,9 @@ const cronColumns: ColumnsType<CronExample>[] = [
     title: '操作',
     key: 'action',
     width: 80,
+        slots: {
+      customRender: 'action',
+    },
   },
 ];
 
