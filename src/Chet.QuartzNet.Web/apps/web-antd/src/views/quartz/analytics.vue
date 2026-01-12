@@ -89,7 +89,7 @@ const timeRangeOptions = [
   { label: '自定义', value: 'custom' },
 ];
 
-const selectedTimeRange = ref('thisMonth');
+const selectedTimeRange = ref('custom');
 const customDateRange = ref<[Date | null, Date | null]>([null, null]);
 
 // Vben ECharts组件引用
@@ -118,8 +118,13 @@ const fetchStatsData = async () => {
 
     // 如果是自定义时间范围，添加开始时间和结束时间
     if (selectedTimeRange.value === 'custom' && customDateRange.value[0] && customDateRange.value[1]) {
-      query.startTime = customDateRange.value[0].toISOString();
-      query.endTime = customDateRange.value[1].toISOString();
+      // query.startTime = customDateRange.value[0].toISOString();
+      // query.endTime = customDateRange.value[1].toISOString();
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - 30);
+      query.startTime = startDate.toISOString();
+      query.endTime = endDate.toISOString();
     }
 
     // 获取作业统计数据
@@ -1317,33 +1322,33 @@ onMounted(async () => {
 
       <!-- 作业执行统计 -->
       <Col :xs="24" :sm="24" :md="24" :lg="24" :xl="24">
-      <Card title="本月作业执行统计" :loading="loading" class="chart-card">
+      <Card title="近30天作业执行统计" :loading="loading" class="chart-card">
         <EchartsUI ref="executionStatsChartRef" :style="{ height: '400px' }" />
       </Card>
       </Col>
 
       <!-- 作业状态分布 + 作业类型分布 -->
       <Col :xs="24" :sm="24" :md="24" :lg="12" :xl="12">
-      <Card title="本月作业状态分布" :loading="loading" class="chart-card">
+      <Card title="作业状态分布" :loading="loading" class="chart-card">
         <EchartsUI ref="statusDistributionChartRef" :style="{ height: '400px' }" />
       </Card>
       </Col>
       <Col :xs="24" :sm="24" :md="24" :lg="12" :xl="12">
-      <Card title="本月作业类型分布" :loading="loading" class="chart-card">
+      <Card title="作业类型分布" :loading="loading" class="chart-card">
         <EchartsUI ref="typeDistributionChartRef" :style="{ height: '400px' }" />
       </Card>
       </Col>
 
       <!-- 作业执行趋势 -->
       <Col :xs="24" :sm="24" :md="24" :lg="24" :xl="24">
-      <Card title="本月作业执行趋势" :loading="loading" class="chart-card">
+      <Card title="近30天作业执行趋势" :loading="loading" class="chart-card">
         <EchartsUI ref="executionTrendChartRef" :style="{ height: '400px' }" />
       </Card>
       </Col>
 
       <!-- 作业执行耗时统计 -->
       <Col :xs="24" :sm="24" :md="24" :lg="24" :xl="24">
-      <Card title="本月作业执行耗时统计" :loading="loading" class="chart-card">
+      <Card title="近30天作业执行耗时统计" :loading="loading" class="chart-card">
         <EchartsUI ref="executionTimeChartRef" :style="{ height: '400px' }" />
       </Card>
       </Col>
