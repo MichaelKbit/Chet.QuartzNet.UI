@@ -528,66 +528,70 @@ onMounted(() => {
       </Modal>
 
       <!-- 详情对话框 -->
-      <Modal v-model:open="detailModalVisible" :title="detailModalTitle" width="1000px" :footer="null"
-        :destroyOnClose="true">
+      <Modal 
+        v-model:open="detailModalVisible" 
+        :title="detailModalTitle" 
+        width="80%"
+        :max-width="1200"
+        :footer="null"
+        :destroyOnClose="true"
+      >
         <div v-if="currentNotification" class="notification-detail">
           <!-- 头部信息 -->
-          <div class="detail-header mb-4 rounded-lg bg-gray-50 p-4">
-            <div class="mb-3 flex items-center justify-between">
-              <Typography.Title :level="4" class="m-0">
+          <div class="detail-header mb-4 rounded-lg p-5">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <Typography.Title :level="4" class="m-0 text-ellipsis max-w-[70%]">
                 {{ currentNotification.title }}
               </Typography.Title>
-              <Tag :color="notificationStatusMap[currentNotification.status].status" class="text-lg">
+              <Tag :color="notificationStatusMap[currentNotification.status].status" class="text-lg px-4 py-1 text-base">
                 {{ notificationStatusMap[currentNotification.status].text }}
               </Tag>
             </div>
 
             <!-- 基本信息行 -->
-            <div class="mt-2 grid grid-cols-1 gap-4">
-              <div class="flex items-center">
-                <span class="mr-2 font-bold">触发来源:</span>
-                <span>{{ currentNotification.triggeredBy || '-' }}</span>
+            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div class="info-item flex items-center gap-2 p-2 rounded">
+                <span class="font-semibold text-sm opacity-80">触发来源:</span>
+                <span class="text-sm">{{ currentNotification.triggeredBy || '-' }}</span>
               </div>
-              <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div class="flex items-center">
-                  <span class="mr-2 font-bold">发送时间:</span>
-                  <span>{{
-                    currentNotification.sendTime
-                      ? formatDateTime(currentNotification.sendTime)
-                      : '-'
-                  }}</span>
-                </div>
-                <div class="flex items-center">
-                  <span class="mr-2 font-bold">发送耗时:</span>
-                  <span>{{
-                    currentNotification.duration
-                      ? `${currentNotification.duration} ms`
-                      : '0 ms'
-                  }}</span>
-                </div>
-                <div class="flex items-center">
-                  <span class="mr-2 font-bold">创建时间:</span>
-                  <span>{{ formatDateTime(currentNotification.createTime) }}</span>
-                </div>
+              <div class="info-item flex items-center gap-2 p-2 rounded">
+                <span class="font-semibold text-sm opacity-80">发送时间:</span>
+                <span class="text-sm">{{
+                  currentNotification.sendTime
+                    ? formatDateTime(currentNotification.sendTime)
+                    : '-'}}
+                </span>
+              </div>
+              <div class="info-item flex items-center gap-2 p-2 rounded">
+                <span class="font-semibold text-sm opacity-80">发送耗时:</span>
+                <span class="text-sm">{{
+                  currentNotification.duration
+                    ? `${currentNotification.duration} ms`
+                    : '0 ms'}}
+                </span>
+              </div>
+              <div class="info-item flex items-center gap-2 p-2 rounded">
+                <span class="font-semibold text-sm opacity-80">创建时间:</span>
+                <span class="text-sm">{{ formatDateTime(currentNotification.createTime) }}</span>
               </div>
             </div>
           </div>
 
           <!-- 内容区域 -->
-          <div class="detail-content">
+          <div class="detail-content space-y-6">
             <!-- 通知内容 -->
-            <div class="mb-6">
-              <Typography.Title :level="5" class="mb-2">通知内容</Typography.Title>
-              <div class="content-box rounded-lg border border-gray-200 bg-gray-50 p-4">
-                <div v-html="currentNotification.content"></div>
+            <div class="content-section">
+              <Typography.Title :level="5" class="mb-3">通知内容</Typography.Title>
+              <div class="content-card info-card rounded-lg p-4">
+                <div class="word-break-break-word text-sm" v-html="currentNotification.content"></div>
               </div>
             </div>
 
             <!-- 错误信息 -->
-            <div v-if="currentNotification.errorMessage" class="mb-6">
-              <Typography.Title :level="5" class="mb-2">错误信息</Typography.Title>
-              <div class="rounded-lg border border-red-200 bg-red-50 p-4">
-                <pre class="word-break-break-word m-0 whitespace-pre-wrap text-sm text-red-800">{{
+            <div v-if="currentNotification.errorMessage" class="content-section">
+              <Typography.Title :level="5" class="mb-3">错误信息</Typography.Title>
+              <div class="content-card error-card rounded-lg p-4">
+                <pre class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{
                   currentNotification.errorMessage }}</pre>
               </div>
             </div>
@@ -595,8 +599,10 @@ onMounted(() => {
         </div>
 
         <!-- 底部按钮 -->
-        <div class="mt-4 flex justify-end">
-          <Button @click="detailModalVisible = false" type="primary">关闭</Button>
+        <div class="mt-6 flex justify-end">
+          <Button @click="detailModalVisible = false" type="primary" size="large" class="px-6">
+            关闭
+          </Button>
         </div>
       </Modal>
     </template>
@@ -604,27 +610,68 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* VbenAdmin 风格样式优化 */
-.mb-4 {
-  margin-bottom: 16px;
+/* 暗色主题兼容样式 */
+.detail-header {
+  background: var(--color-bg-container) !important;
+  border: 1px solid var(--color-border) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-.text-right {
-  text-align: right;
+.info-item {
+  background: rgba(var(--color-text-secondary-rgb), 0.05);
+  border-radius: 4px;
+  transition: all 0.3s ease;
 }
 
-.pl-6 {
-  padding-left: 24px;
+.info-item:hover {
+  background: rgba(var(--color-text-secondary-rgb), 0.1);
 }
 
-.mt-4 {
-  margin-top: 16px;
+.detail-content {
+  :deep(.ant-typography) {
+    color: var(--color-text) !important;
+  }
 }
 
-/* 通知详情样式 */
-.content-box {
-  min-height: 150px;
-  max-height: 500px;
-  overflow-y: auto;
+/* 内容区域样式 */
+.content-card {
+  background: var(--color-bg-container) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.content-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* 错误信息区域 */
+.error-card {
+  background: rgba(var(--color-error-rgb), 0.1) !important;
+  border: 1px solid var(--color-error-light) !important;
+}
+
+/* 信息区域 */
+.info-card {
+  background: rgba(var(--color-success-rgb), 0.1) !important;
+  border: 1px solid var(--color-success-light) !important;
+}
+
+/* 代码块样式 */
+.code-block {
+  color: var(--color-text) !important;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  line-height: 1.6;
+  padding: 0.75rem;
+  border-radius: 4px;
+  background: rgba(var(--color-text-rgb), 0.03) !important;
+  overflow-x: auto;
+  max-height: 400px;
+}
+
+/* 错误信息的代码块样式 */
+.error-card :deep(.code-block) {
+  color: #ff4d4f !important;
 }
 </style>

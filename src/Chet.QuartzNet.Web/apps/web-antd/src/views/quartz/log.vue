@@ -391,82 +391,85 @@ initData();
       </Card>
 
       <!-- 详情对话框 -->
-      <Modal v-model:open="detailModalVisible" :title="detailModalTitle" width="1000px" :footer="null"
-        :destroyOnClose="true">
+      <Modal 
+        v-model:open="detailModalVisible" 
+        :title="detailModalTitle" 
+        width="80%"
+        :max-width="1200"
+        :footer="null"
+        :destroyOnClose="true"
+      >
         <div v-if="logDetail" class="log-detail">
           <!-- 头部信息 -->
-          <div class="detail-header mb-4 rounded-lg bg-gray-50 p-4">
-            <div class="mb-3 flex items-center justify-between">
-              <Typography.Title :level="4" class="m-0">
+          <div class="detail-header mb-4 rounded-lg p-5">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <Typography.Title :level="4" class="m-0 text-ellipsis max-w-[70%]">
                 {{ logDetail.jobName }} - {{ logDetail.jobGroup }}
               </Typography.Title>
-              <Tag :color="logStatusMap[logDetail.status].status" class="text-lg">
+              <Tag :color="logStatusMap[logDetail.status].status" class="text-lg px-4 py-1 text-base">
                 {{ logStatusMap[logDetail.status].text }}
               </Tag>
             </div>
 
             <!-- 基本信息行 -->
-            <div class="mt-2 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div class="flex items-center">
-                <span class="mr-2 font-bold">执行时长:</span>
-                <span>{{ logDetail.duration || 0 }} ms</span>
+            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div class="info-item flex items-center gap-2 p-2 rounded">
+                <span class="font-semibold text-sm opacity-80">执行时长:</span>
+                <span class="text-sm font-medium">{{ logDetail.duration || 0 }} ms</span>
               </div>
-              <div class="flex items-center">
-                <span class="mr-2 font-bold">开始时间:</span>
-                <span>{{ formatDateTime(logDetail.startTime) }}</span>
+              <div class="info-item flex items-center gap-2 p-2 rounded">
+                <span class="font-semibold text-sm opacity-80">开始时间:</span>
+                <span class="text-sm">{{ formatDateTime(logDetail.startTime) }}</span>
               </div>
-              <div class="flex items-center">
-                <span class="mr-2 font-bold">结束时间:</span>
-                <span>{{
-                  logDetail.endTime ? formatDateTime(logDetail.endTime) : '-'
+              <div class="info-item flex items-center gap-2 p-2 rounded">
+                <span class="font-semibold text-sm opacity-80">结束时间:</span>
+                <span class="text-sm">{{
+                  logDetail.endTime ? formatDateTime(logDetail.endTime) : '-' 
                   }}</span>
               </div>
             </div>
           </div>
 
           <!-- 内容区域 -->
-          <div class="detail-content">
+          <div class="detail-content space-y-6">
             <!-- 执行信息 -->
-            <div class="mb-6">
-              <Typography.Title :level="5" class="mb-2">执行信息</Typography.Title>
-              <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                <pre
-                  class="word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ logDetail.message || '暂无执行信息' }}</pre>
+            <div class="content-section">
+              <Typography.Title :level="5" class="mb-3">执行信息</Typography.Title>
+              <div class="content-card exec-info-card rounded-lg p-4">
+                <pre class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ logDetail.message || '暂无执行信息' }}</pre>
               </div>
             </div>
 
             <!-- 错误信息 -->
-            <div v-if="logDetail.errorMessage" class="mb-6">
-              <Typography.Title :level="5" class="mb-2">错误信息</Typography.Title>
-              <div class="rounded-lg border border-red-200 bg-red-50 p-4">
-                <pre class="word-break-break-word m-0 whitespace-pre-wrap text-sm text-red-800">{{ logDetail.errorMessage }}
-          </pre>
+            <div v-if="logDetail.errorMessage" class="content-section">
+              <Typography.Title :level="5" class="mb-3">错误信息</Typography.Title>
+              <div class="content-card error-card rounded-lg p-4">
+                <pre class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ logDetail.errorMessage }}</pre>
               </div>
             </div>
 
-            <!-- 错误信息 -->
-            <div v-if="logDetail.exception" class="mb-6">
-              <Typography.Title :level="5" class="mb-2">异常</Typography.Title>
-              <div class="rounded-lg border border-red-200 bg-red-50 p-4">
-                <pre class="word-break-break-word m-0 whitespace-pre-wrap text-sm text-red-800">{{ logDetail.exception }}
-          </pre>
+            <!-- 异常信息 -->
+            <div v-if="logDetail.exception" class="content-section">
+              <Typography.Title :level="5" class="mb-3">异常</Typography.Title>
+              <div class="content-card error-card rounded-lg p-4">
+                <pre class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ logDetail.exception }}</pre>
               </div>
             </div>
 
             <!-- 执行结果 -->
-            <div v-if="logDetail.result" class="mb-6">
-              <Typography.Title :level="5" class="mb-2">执行结果</Typography.Title>
-              <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                <pre class="word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ typeof logDetail.result === 'string' ?
+            <div v-if="logDetail.result" class="content-section">
+              <Typography.Title :level="5" class="mb-3">执行结果</Typography.Title>
+              <div class="content-card success-card rounded-lg p-4">
+                <pre class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ typeof logDetail.result === 'string' ?
                   logDetail.result : JSON.stringify(logDetail.result, null, 2) }}</pre>
               </div>
             </div>
 
             <!-- 作业数据 -->
-            <div v-if="logDetail.jobData" class="mb-6">
-              <Typography.Title :level="5" class="mb-2">作业数据</Typography.Title>
-              <div class="rounded-lg border border-green-200 bg-green-50 p-4">
-                <pre class="word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ typeof logDetail.jobData === 'string' ?
+            <div v-if="logDetail.jobData" class="content-section">
+              <Typography.Title :level="5" class="mb-3">作业数据</Typography.Title>
+              <div class="content-card info-card rounded-lg p-4">
+                <pre class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ typeof logDetail.jobData === 'string' ?
                   logDetail.jobData : JSON.stringify(logDetail.jobData, null, 2) }}</pre>
               </div>
             </div>
@@ -474,10 +477,110 @@ initData();
         </div>
 
         <!-- 底部按钮 -->
-        <div class="mt-4 flex justify-end">
-          <Button @click="detailModalVisible = false" type="primary">关闭</Button>
+        <div class="mt-6 flex justify-end">
+          <Button @click="detailModalVisible = false" type="primary" size="large" class="px-6">
+            关闭
+          </Button>
         </div>
       </Modal>
     </template>
   </Page>
 </template>
+
+<style scoped>
+/* 暗色主题兼容样式 */
+.detail-header {
+  background: var(--color-bg-container) !important;
+  border: 1px solid var(--color-border) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.info-item {
+  background: rgba(var(--color-text-secondary-rgb), 0.05);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.info-item:hover {
+  background: rgba(var(--color-text-secondary-rgb), 0.1);
+}
+
+.detail-content {
+  :deep(.ant-typography) {
+    color: var(--color-text) !important;
+  }
+}
+
+/* 内容区域样式 */
+.content-section {
+  margin-bottom: 1.5rem;
+}
+
+.content-card {
+  background: var(--color-bg-container) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.content-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* 错误信息和异常区域 */
+.error-card {
+  background: rgba(var(--color-error-rgb), 0.1) !important;
+  border: 1px solid var(--color-error-light) !important;
+}
+
+/* 错误信息和异常的代码块样式 */
+.error-card :deep(.code-block) {
+  color: #ff4d4f !important;
+}
+
+/* 执行结果区域 */
+.success-card {
+  background: rgba(var(--color-primary-rgb), 0.1) !important;
+  border: 1px solid var(--color-primary-light) !important;
+}
+
+/* 作业数据区域 */
+.info-card {
+  background: rgba(var(--color-success-rgb), 0.1) !important;
+  border: 1px solid var(--color-success-light) !important;
+}
+
+/* 执行信息区域 */
+.exec-info-card {
+  background: rgba(var(--color-info-rgb), 0.1) !important;
+  border: 1px solid var(--color-info-light) !important;
+}
+
+/* 代码块样式 */
+.code-block {
+  color: var(--color-text) !important;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  line-height: 1.6;
+  padding: 0.75rem;
+  border-radius: 4px;
+  background: rgba(var(--color-text-rgb), 0.03) !important;
+  overflow-x: auto;
+  max-height: 400px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .detail-header {
+    padding: 1rem;
+  }
+  
+  .content-card {
+    padding: 1rem;
+  }
+  
+  .code-block {
+    font-size: 0.85rem;
+  }
+}
+</style>

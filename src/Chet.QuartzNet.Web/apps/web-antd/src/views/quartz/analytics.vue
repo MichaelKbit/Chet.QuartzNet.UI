@@ -1371,15 +1371,14 @@ onMounted(async () => {
   border-radius: 12px;
   overflow: hidden;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
-  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px var(--color-shadow);
+  border: 1px solid var(--color-border);
 }
 
 .statistic-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-  border-color: #e8e8e8;
+  box-shadow: 0 6px 16px var(--color-shadow-dark);
+  border-color: var(--color-border-hover);
 }
 
 .statistic-content {
@@ -1399,7 +1398,7 @@ onMounted(async () => {
 
 .statistic-title {
   font-size: 14px;
-  color: #8c8c8c;
+  color: var(--color-text-secondary);
   margin-bottom: 8px;
   font-weight: 500;
 }
@@ -1407,7 +1406,7 @@ onMounted(async () => {
 .statistic-value {
   font-size: 24px;
   font-weight: 600;
-  color: #262626;
+  color: var(--color-text-primary);
   line-height: 1.2;
 }
 
@@ -1416,24 +1415,24 @@ onMounted(async () => {
   border-radius: 12px;
   overflow: hidden;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px var(--color-shadow);
+  border: 1px solid var(--color-border);
 }
 
 .chart-card:hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 6px 16px var(--color-shadow-dark);
 }
 
 /* 卡片标题样式 */
 :deep(.ant-card-head) {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--color-border);
   padding: 0 24px;
 }
 
 :deep(.ant-card-head-title) {
   font-size: 16px;
   font-weight: 600;
-  color: #262626;
+  color: var(--color-text-primary);
   padding: 16px 0;
 }
 
