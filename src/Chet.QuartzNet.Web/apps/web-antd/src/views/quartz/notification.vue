@@ -457,85 +457,104 @@ onMounted(() => {
       </Card>
 
       <!-- 配置对话框 -->
-      <Modal v-model:open="configModalVisible" :title="configModalTitle" width="800px" :body-style="{ padding: '24px' }"
-        destroyOnClose @cancel="configModalVisible = false">
-        <Form ref="formRef" :model="configForm" layout="horizontal" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }"
-          :label-align="'right'">
-          <Row :gutter="16">
-            <Col :xs="24" :sm="24" :md="24">
-              <Form.Item label="是否启用" name="enable" valuePropName="checked">
-                <Switch v-model:checked="configForm.enable" />
-              </Form.Item>
-            </Col>
-            <Col :xs="24" :sm="24" :md="24">
-              <Form.Item label="Token" name="token" :rules="[
-                {
-                  required: configForm.enable,
-                  message: '请输入PushPlus Token',
-                },
-              ]">
-                <Input v-model:value="configForm.token" placeholder="请输入PushPlus Token" />
-              </Form.Item>
-            </Col>
-            <Col :xs="24" :sm="24" :md="24">
-              <Form.Item label="推送渠道" name="channel">
-                <Select v-model:value="configForm.channel">
-                  <Select.Option value="wechat">微信</Select.Option>
-                  <Select.Option value="cp">企业微信</Select.Option>
-                  <Select.Option value="webhook">钉钉</Select.Option>
-                  <Select.Option value="mail">邮件</Select.Option>
-                  <Select.Option value="sms">短信</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col :xs="24" :sm="24" :md="24">
-              <Form.Item label="消息模板" name="template">
-                <Select v-model:value="configForm.template">
-                  <Select.Option value="html">HTML</Select.Option>
-                  <Select.Option value="text">TEXT</Select.Option>
-                  <Select.Option value="markdown">Markdown</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col :xs="24" :sm="24" :md="24">
-              <Form.Item label="主题" name="topic">
-                <Input v-model:value="configForm.topic" placeholder="请输入主题（可选）" />
-              </Form.Item>
-            </Col>
+      <Modal v-model:open="configModalVisible" :title="configModalTitle" width="680px" destroyOnClose
+        @cancel="configModalVisible = false" centered>
+        <div class="config-modal-content">
+          <Alert message="配置 PushPlus 通知" description="通过 PushPlus 实时接收作业执行情况，支持微信、钉钉等多种渠道。" type="info" show-icon
+            class="mb-6" />
 
-            <Col :xs="24" :sm="24" :md="24">
-              <Form.Item label="通知策略" class="mt-4">
-                <Form.Item label="作业成功时发送" name="strategy.notifyOnJobSuccess" valuePropName="checked">
+          <Form ref="formRef" :model="configForm" layout="vertical" class="custom-form">
+            <section class="form-section">
+              <div class="section-header">
+                <span class="icon">⚙️</span>
+                <span class="title">基础配置</span>
+                <div class="header-action">
+                  <span class="label">服务启用状态</span>
+                  <Switch v-model:checked="configForm.enable" size="small" />
+                </div>
+              </div>
+
+              <Row :gutter="24">
+                <Col :span="24">
+                  <Form.Item label="PushPlus Token" name="token"
+                    :rules="[{ required: configForm.enable, message: '请输入 Token' }]">
+                    <Input v-model:value="configForm.token" placeholder="从 pushplus.plus 获取的 Token" />
+                  </Form.Item>
+                </Col>
+                <Col :span="12">
+                  <Form.Item label="推送渠道" name="channel">
+                    <Select v-model:value="configForm.channel">
+                      <Select.Option value="wechat">微信公众号</Select.Option>
+                      <Select.Option value="cp">企业微信</Select.Option>
+                      <Select.Option value="webhook">钉钉机器人</Select.Option>
+                      <Select.Option value="mail">电子邮件</Select.Option>
+                      <Select.Option value="sms">手机短信</Select.Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col :span="12">
+                  <Form.Item label="消息模板" name="template">
+                    <Select v-model:value="configForm.template">
+                      <Select.Option value="html">HTML (富文本)</Select.Option>
+                      <Select.Option value="text">TEXT (纯文本)</Select.Option>
+                      <Select.Option value="markdown">Markdown</Select.Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col :span="24">
+                  <Form.Item label="业务主题 (Topic)" name="topic">
+                    <Input v-model:value="configForm.topic" placeholder="群组编码，不填则发送至个人" />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </section>
+
+            <section class="form-section last">
+              <div class="section-header">
+                <span class="icon">🔔</span>
+                <span class="title">通知策略</span>
+              </div>
+
+              <div class="strategy-grid">
+                <div class="strategy-item">
+                  <div class="strategy-info">
+                    <div class="name">作业执行成功</div>
+                    <div class="desc">任务顺利完成时发送通知</div>
+                  </div>
                   <Switch v-model:checked="configForm.strategy.notifyOnJobSuccess" />
-                </Form.Item>
-                <Form.Item label="作业失败时发送" name="strategy.notifyOnJobFailure" valuePropName="checked">
+                </div>
+
+                <div class="strategy-item">
+                  <div class="strategy-info">
+                    <div class="name">作业执行失败</div>
+                    <div class="desc">任务报错或异常中断时发送</div>
+                  </div>
                   <Switch v-model:checked="configForm.strategy.notifyOnJobFailure" />
-                </Form.Item>
-                <Form.Item label="调度器异常时发送" name="strategy.notifyOnSchedulerError" valuePropName="checked">
+                </div>
+
+                <div class="strategy-item">
+                  <div class="strategy-info">
+                    <div class="name">调度器系统异常</div>
+                    <div class="desc">Quartz 核心服务出现故障时</div>
+                  </div>
                   <Switch v-model:checked="configForm.strategy.notifyOnSchedulerError" />
-                </Form.Item>
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
+                </div>
+              </div>
+            </section>
+          </Form>
+        </div>
 
         <template #footer>
-          <Space>
+          <div class="modal-footer">
             <Button @click="configModalVisible = false">取消</Button>
-            <Button type="primary" @click="handleSaveConfig">保存</Button>
-          </Space>
+            <Button type="primary" :loading="saveLoading" @click="handleSaveConfig">保存配置</Button>
+          </div>
         </template>
       </Modal>
 
       <!-- 详情对话框 -->
-      <Modal 
-        v-model:open="detailModalVisible" 
-        :title="detailModalTitle" 
-        width="80%"
-        :max-width="1200"
-        :footer="null"
-        :destroyOnClose="true"
-      >
+      <Modal v-model:open="detailModalVisible" :title="detailModalTitle" width="80%" :max-width="1200" :footer="null"
+        :destroyOnClose="true">
         <div v-if="currentNotification" class="notification-detail">
           <!-- 头部信息 -->
           <div class="detail-header mb-4 rounded-lg p-5">
@@ -543,13 +562,14 @@ onMounted(() => {
               <Typography.Title :level="4" class="m-0 text-ellipsis max-w-[70%]">
                 {{ currentNotification.title }}
               </Typography.Title>
-              <Tag :color="notificationStatusMap[currentNotification.status].status" class="text-lg px-4 py-1 text-base">
+              <Tag :color="notificationStatusMap[currentNotification.status].status"
+                class="text-lg px-4 py-1 text-base">
                 {{ notificationStatusMap[currentNotification.status].text }}
               </Tag>
             </div>
 
             <!-- 基本信息行 -->
-            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
               <div class="info-item flex items-center gap-2 p-2 rounded">
                 <span class="font-semibold text-sm opacity-80">触发来源:</span>
                 <span class="text-sm">{{ currentNotification.triggeredBy || '-' }}</span>
@@ -559,7 +579,7 @@ onMounted(() => {
                 <span class="text-sm">{{
                   currentNotification.sendTime
                     ? formatDateTime(currentNotification.sendTime)
-                    : '-'}}
+                    : '-' }}
                 </span>
               </div>
               <div class="info-item flex items-center gap-2 p-2 rounded">
@@ -567,7 +587,7 @@ onMounted(() => {
                 <span class="text-sm">{{
                   currentNotification.duration
                     ? `${currentNotification.duration} ms`
-                    : '0 ms'}}
+                    : '0 ms' }}
                 </span>
               </div>
               <div class="info-item flex items-center gap-2 p-2 rounded">
@@ -673,5 +693,109 @@ onMounted(() => {
 /* 错误信息的代码块样式 */
 .error-card :deep(.code-block) {
   color: #ff4d4f !important;
+}
+</style>
+
+
+
+<style scoped lang="less">
+.config-modal-content {
+  margin-top: -8px;
+
+  .form-section {
+    padding: 16px;
+    // 使用内置变量：第四级填充色（浅色时微灰，暗色时微黑）
+    background: var(--ant-color-fill-quaternary);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid var(--ant-color-border-secondary);
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--ant-color-border-split);
+
+      .icon {
+        margin-right: 8px;
+        font-size: 18px;
+      }
+
+      .title {
+        font-size: 15px;
+        font-weight: 600;
+        flex: 1;
+        color: var(--ant-color-text);
+      }
+
+      .header-action {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .label {
+          font-size: 12px;
+          color: var(--ant-color-text-description);
+        }
+      }
+    }
+  }
+
+  .strategy-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .strategy-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      // 策略项背景使用组件级背景色
+      background: var(--ant-component-background);
+      border: 1px solid var(--ant-color-border-secondary);
+      border-radius: 6px;
+
+      .strategy-info {
+        .name {
+          font-size: 14px;
+          font-weight: 500;
+          color: var(--ant-color-text);
+        }
+
+        .desc {
+          font-size: 12px;
+          color: var(--ant-color-text-description);
+        }
+      }
+    }
+  }
+}
+
+.modal-footer {
+  padding: 10px 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+// 针对 Vben 暗色模式的微调补丁
+:where(.dark) {
+  .config-modal-content {
+    .form-section {
+      background: rgba(255, 255, 255, 0.04); // 暗色下稍微亮一点点区分层级
+      border-color: #303030;
+    }
+
+    .strategy-item {
+      background: #141414 !important;
+      border-color: #303030 !important;
+    }
+  }
+}
+
+.mb-6 {
+  margin-bottom: 24px;
 }
 </style>

@@ -27,20 +27,30 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     baseURL,
   });
 
-  /**
+/**
    * 重新认证逻辑
    */
   async function doReAuthenticate() {
-    console.warn('Access token or refresh token is invalid or expired. ');
     const accessStore = useAccessStore();
     const authStore = useAuthStore();
+
+    // 如果已经在处理过期逻辑了，直接返回，不再重复执行登出和标记
+    if (accessStore.loginExpired) {
+      return;
+    }
+
+    console.warn('Access token is invalid. Redirecting to login.');
+    
+    // 立即清除当前 token，这会让后续并发请求进入逻辑时感知到状态已变
     accessStore.setAccessToken(null);
-    if (
-      preferences.app.loginExpiredMode === 'modal' &&
-      accessStore.isAccessChecked
-    ) {
-      accessStore.setLoginExpired(true);
+    
+    // 标记为已过期（这在 Vben 内部会被很多逻辑用来做判断锁）
+    accessStore.setLoginExpired(true);
+
+    if (preferences.app.loginExpiredMode === 'modal' && accessStore.isAccessChecked) {
+       // 模式为弹窗时由 UI 层处理
     } else {
+      // 模式为跳转时，执行登出
       await authStore.logout();
     }
   }
@@ -68,7 +78,7 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
       const accessStore = useAccessStore();
 
       // 直接使用Basic认证凭证
-      config.headers.Authorization = accessStore.accessToken;
+      config.headers.Authorization = accessStore.accessToken || '';
       config.headers['Accept-Language'] = preferences.app.locale;
       return config;
     },
@@ -112,14 +122,21 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
     }),
   );
 
-  // 通用的错误处理,如果没有进入上面的错误处理逻辑，就会进入这里
+  // 通用的错误处理
   client.addResponseInterceptor(
     errorMessageResponseInterceptor((msg: string, error) => {
-      // 这里可以根据业务进行定制,你可以拿到 error 内的信息进行定制化处理，根据不同的 code 做不同的提示，而不是直接使用 message.error 提示 msg
-      // 当前mock接口返回的错误字段是 error 或者 message
+      const accessStore = useAccessStore();
+
+      // 【核心修复】
+      // 如果状态码是 401，或者 accessStore 已经标记登录过期
+      // 我们就静默处理，不调用 message.error
+      if (error?.response?.status === 401 || accessStore.loginExpired) {
+        return;
+      }
+
       const responseData = error?.response?.data ?? {};
       const errorMessage = responseData?.error ?? responseData?.message ?? '';
-      // 如果没有错误信息，则会根据状态码进行提示
+      
       message.error(errorMessage || msg);
     }),
   );
