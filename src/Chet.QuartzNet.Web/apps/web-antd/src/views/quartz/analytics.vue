@@ -1,1497 +1,574 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-// 导入日期格式化工具
-import { formatDateTime } from '@vben/utils';
+import { ref, shallowRef, onMounted } from 'vue';
 import { Page } from '@vben/common-ui';
-import {
-  Button,
-  Card,
-  Row,
-  Col,
-  Select,
-  Space,
-  DatePicker,
-  Statistic,
-  // SyncOutlined,
-  Skeleton,
-} from 'ant-design-vue';
+import { Card, Row, Col, Skeleton } from 'ant-design-vue';
 import type { EChartsOption } from 'echarts';
 
-// 导入Vben集成的ECharts组件
+// 导入Vben插件与组件
 import type { EchartsUIType } from '@vben/plugins/echarts';
 import { EchartsUI, useEcharts } from '@vben/plugins/echarts';
 
-// 导入作业API服务
+// 导入API和类型
 import {
   getSchedulerStatus,
   getJobStats,
-  getJobStatusDistribution,
   getJobExecutionTrend,
-  getJobTypeDistribution,
   getJobExecutionTime,
+  getJobStatusDistribution,
+  getJobTypeDistribution,
 } from '../../api/quartz/job';
 import type {
   JobStats,
-  JobStatusDistribution,
   JobExecutionTrend,
-  JobTypeDistribution,
   JobExecutionTime,
   StatsQueryDto,
+  JobStatusDistribution,
+  JobTypeDistribution,
 } from '../../api/quartz/job';
 
-// 作业类型和状态映射
-const jobStatusMap = {
-  0: { text: '正常', status: 'success' },
-  1: { text: '已暂停', status: 'error' },
-  2: { text: '已完成', status: 'default' },
-  3: { text: '错误', status: 'error' },
-  4: { text: '阻塞', status: 'warning' },
-};
-
-// 响应式数据
+/**
+ * 状态与数据初始化
+ * 使用 shallowRef 优化性能，防止大型图表数据被过度代理
+ */
 const loading = ref(false);
+const executionTrendChartRef = ref<EchartsUIType | null>(null);
+const executionTimeChartRef = ref<EchartsUIType | null>(null);
 
-// 统计概览数据
+const { renderEcharts: renderExecutionTrend } = useEcharts(executionTrendChartRef);
+const { renderEcharts: renderExecutionTime } = useEcharts(executionTimeChartRef);
+
 const statsOverview = ref<JobStats>({
   totalJobs: 0,
   enabledJobs: 0,
   disabledJobs: 0,
-  executingJobs: 0,
+  totalExecutions: 0,
   successCount: 0,
   failedCount: 0,
-  pausedCount: 0,
-  blockedCount: 0,
 });
 
-// 统计数据
-const jobStats = ref<JobStats>({
-  totalJobs: 0,
-  enabledJobs: 0,
-  disabledJobs: 0,
-  executingJobs: 0,
-  successCount: 0,
-  failedCount: 0,
-  pausedCount: 0,
-  blockedCount: 0,
-});
+// 使用 shallowRef 存储数组数据
+const jobExecutionTrend = shallowRef<JobExecutionTrend[]>([]);
+const jobExecutionTimeData = shallowRef<JobExecutionTime[]>([]);
+const jobStatusDistribution = shallowRef<JobStatusDistribution[]>([]);
+const jobTypeDistribution = shallowRef<JobTypeDistribution[]>([]);
 
-const jobStatusDistribution = ref<JobStatusDistribution[]>([]);
-const jobExecutionTrend = ref<JobExecutionTrend[]>([]);
-const jobTypeDistribution = ref<JobTypeDistribution[]>([]);
-const jobExecutionTimeData = ref<JobExecutionTime[]>([]);
+/**
+ * 图表配置生成器 (抽离配置逻辑，保持 fetch 函数纯粹)
+ */
+const getExecutionTrendOption = (data: JobExecutionTrend[]): EChartsOption => {
+  const hasData = data.length > 0;
+  const colors = {
+    success: { line: '#52c41a', area: 'rgba(82, 196, 26, 0.1)' },
+    failed: { line: '#ff4d4f', area: 'rgba(255, 77, 79, 0.1)' },
+    total: { line: '#1890ff', area: 'rgba(24, 144, 255, 0.05)' }
+  };
 
-// 时间范围选择
-const timeRangeOptions = [
-  { label: '今日', value: 'today' },
-  { label: '昨日', value: 'yesterday' },
-  { label: '本周', value: 'thisWeek' },
-  { label: '本月', value: 'thisMonth' },
-  { label: '近30天', value: 'last30Days' },
-  { label: '自定义', value: 'custom' },
-];
+  return {
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      extraCssText: 'backdrop-filter: blur(4px); box-shadow: 0 4px 12px rgba(0,0,0,0.1);',
+      formatter: (params: any) => {
+        let html = `<div style="margin-bottom: 8px; font-weight: 500; color: #595959">${params[0].axisValue}</div>`;
+        params.forEach((item: any) => {
+          html += `
+            <div style="display: flex; align-items: center; justify-content: space-between; min-width: 120px; margin-bottom: 4px;">
+              <span style="font-size: 13px; color: #8c8c8c">
+                <span style="display:inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${item.color}; margin-right: 8px;"></span>
+                ${item.seriesName}
+              </span>
+              <span style="font-weight: 600; color: #262626;">${item.value}</span>
+            </div>`;
+        });
+        return html;
+      }
+    },
+    legend: { icon: 'rect', itemWidth: 10, itemHeight: 4, right: 0, top: 0 },
+    grid: { left: '1%', right: '2%', bottom: '5%', top: '15%', containLabel: true },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: hasData ? data.map(i => i.time) : ['无数据'],
+      axisLine: { lineStyle: { color: '#f0f0f0' } },
+      axisLabel: { color: '#8c8c8c' }
+    },
+    yAxis: { type: 'value', splitLine: { lineStyle: { color: '#f5f5f5' } } },
+    series: [
+      {
+        name: '成功',
+        type: 'line',
+        smooth: 0.4,
+        showSymbol: false,
+        data: data.map(i => i.successCount),
+        itemStyle: { color: colors.success.line },
+        areaStyle: {
+          color: {
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [{ offset: 0, color: colors.success.area }, { offset: 1, color: 'transparent' }]
+          }
+        }
+      },
+      {
+        name: '失败',
+        type: 'line',
+        smooth: 0.4,
+        showSymbol: false,
+        data: data.map(i => i.failedCount),
+        itemStyle: { color: colors.failed.line },
+        areaStyle: {
+          color: {
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [{ offset: 0, color: colors.failed.area }, { offset: 1, color: 'transparent' }]
+          }
+        }
+      },
+      {
+        name: '总数',
+        type: 'line',
+        smooth: 0.4,
+        showSymbol: false,
+        data: data.map(i => i.totalCount),
+        itemStyle: { color: colors.total.line },
+        lineStyle: { width: 2, type: 'dashed', opacity: 0.5 }
+      }
+    ]
+  };
+};
 
-const selectedTimeRange = ref('last30Days');
-const customDateRange = ref<[Date | null, Date | null]>([null, null]);
+const getExecutionTimeOption = (data: JobExecutionTime[]): EChartsOption => {
+  const xAxisData = data.length > 0 ? data.map(i => i.timeRange) : ['无数据'];
+  // 检测是否为暗色模式，用于调整文字颜色
+  const isDark = document.documentElement.classList.contains('dark');
 
-// Vben ECharts组件引用
-const executionStatsChartRef = ref<EchartsUIType | null>(null);
-const statusDistributionChartRef = ref<EchartsUIType | null>(null);
-const typeDistributionChartRef = ref<EchartsUIType | null>(null);
-const executionTrendChartRef = ref<EchartsUIType | null>(null);
-const executionTimeChartRef = ref<EchartsUIType | null>(null);
+  return {
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      extraCssText: 'backdrop-filter: blur(4px);'
+    },
+    grid: { left: '1%', right: '2%', bottom: '5%', top: '15%', containLabel: true },
+    xAxis: {
+      type: 'category',
+      data: xAxisData,
+      axisLabel: {
+        color: isDark ? 'rgba(255,255,255,0.45)' : '#8c8c8c',
+        rotate: xAxisData.length > 6 ? 30 : 0
+      },
+      axisLine: { lineStyle: { color: isDark ? '#303030' : '#f0f0f0' } }
+    },
+    yAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { type: 'dashed', color: isDark ? '#303030' : '#f5f5f5' } },
+      axisLabel: { color: isDark ? 'rgba(255,255,255,0.45)' : '#8c8c8c' }
+    },
+    series: [{
+      name: '作业数量',
+      type: 'bar',
+      barWidth: 22,
+      data: data.map(i => i.count),
+      itemStyle: {
+        borderRadius: [4, 4, 0, 0],
+        color: (params: any) => {
+          // 根据数据索引或耗时档位计算“紧张程度”
+          // 假设 xAxisData 是按耗时从小到大排列的
+          const ratio = params.dataIndex / (xAxisData.length - 1 || 1);
 
-// 使用Vben ECharts组合式函数
-const { renderEcharts: renderExecutionStats } = useEcharts(executionStatsChartRef);
-const { renderEcharts: renderStatusDistribution } = useEcharts(statusDistributionChartRef);
-const { renderEcharts: renderTypeDistribution } = useEcharts(typeDistributionChartRef);
-const { renderEcharts: renderExecutionTrend } = useEcharts(executionTrendChartRef);
-const { renderEcharts: renderExecutionTime } = useEcharts(executionTimeChartRef);
+          let color;
+          if (ratio < 0.25) {
+            color = '#1890ff'; // 蓝色 - 极速
+          } else if (ratio < 0.5) {
+            color = '#52c41a'; // 绿色 - 正常
+          } else if (ratio < 0.75) {
+            color = '#faad14'; // 黄色 - 偏慢
+          } else {
+            color = '#ff4d4f'; // 红色 - 极慢（紧张感）
+          }
 
+          return {
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: color },           // 顶部亮色
+              { offset: 1, color: color + '99' }     // 底部带透明度，增加通透感
+            ]
+          };
+        }
+      }
+    }]
+  };
+};
 
-// 获取统计数据
-const fetchStatsData = async () => {
+/**
+ * 业务逻辑：获取并渲染数据
+ */
+const fetchData = async () => {
   loading.value = true;
+  const query: StatsQueryDto = { timeRangeType: 'last30Days' };
+
   try {
-    // 构建查询参数
-    const query: StatsQueryDto = {
-      timeRangeType: selectedTimeRange.value,
-    };
+    // 并行请求，提高加载速度
+    const [statsRes, trendRes, timeRes, schedulerRes, statusDistributionRes, typeDistributionRes] = await Promise.all([
+      getJobStats(query),
+      getJobExecutionTrend(query),
+      getJobExecutionTime(query),
+      getSchedulerStatus(),
+      getJobStatusDistribution(query),
+      getJobTypeDistribution(query)
+    ]);
 
-    // 如果是自定义时间范围，添加开始时间和结束时间
-    if (selectedTimeRange.value === 'custom' && customDateRange.value[0] && customDateRange.value[1]) {
-      query.startTime = customDateRange.value[0].toISOString();
-      query.endTime = customDateRange.value[1].toISOString();
+    // 更新基础统计 (优先使用 statsRes, schedulerRes 作为补充)
+    if (statsRes.success) {
+      statsOverview.value = statsRes.data;
+    }
+    if (schedulerRes.success) {
+      // 若总数为空则使用调度器数据
+      if (!statsOverview.value.totalJobs) statsOverview.value.totalJobs = schedulerRes.data.jobCount || 0;
     }
 
-    // 获取作业统计数据
-    const statsResponse = await getJobStats(query);
-    if (statsResponse.success && statsResponse.data) {
-      jobStats.value = statsResponse.data as JobStats;
-      statsOverview.value = statsResponse.data as JobStats;
-    }
+    // 更新趋势图数据
+    jobExecutionTrend.value = trendRes?.success ? trendRes.data : [];
+    renderExecutionTrend(getExecutionTrendOption(jobExecutionTrend.value));
 
-    // 获取作业状态分布数据
-    const statusDistributionResponse = await getJobStatusDistribution(query);
-    if (statusDistributionResponse && statusDistributionResponse.success && statusDistributionResponse.data) {
-      jobStatusDistribution.value = statusDistributionResponse.data as JobStatusDistribution[];
-    } else {
-      jobStatusDistribution.value = [];
-    }
+    // 更新耗时图数据
+    jobExecutionTimeData.value = timeRes?.success ? timeRes.data : [];
+    renderExecutionTime(getExecutionTimeOption(jobExecutionTimeData.value));
 
-    // 获取作业执行趋势数据
-    const executionTrendResponse = await getJobExecutionTrend(query);
-    if (executionTrendResponse && executionTrendResponse.success && executionTrendResponse.data) {
-      jobExecutionTrend.value = executionTrendResponse.data as JobExecutionTrend[];
-    } else {
-      jobExecutionTrend.value = [];
-    }
+    // 更新作业状态分布数据
+    jobStatusDistribution.value = statusDistributionRes?.success ? statusDistributionRes.data : [];
 
-    // 获取作业类型分布数据
-    const typeDistributionResponse = await getJobTypeDistribution(query);
-    if (typeDistributionResponse && typeDistributionResponse.success && typeDistributionResponse.data) {
-      jobTypeDistribution.value = typeDistributionResponse.data as JobTypeDistribution[];
-    } else {
-      jobTypeDistribution.value = [];
-    }
+    // 更新作业类型分布数据
+    jobTypeDistribution.value = typeDistributionRes?.success ? typeDistributionRes.data : [];
 
-    // 获取作业执行耗时数据
-    const executionTimeResponse = await getJobExecutionTime(query);
-    if (executionTimeResponse && executionTimeResponse.success && executionTimeResponse.data) {
-      jobExecutionTimeData.value = executionTimeResponse.data as JobExecutionTime[];
-    } else {
-      jobExecutionTimeData.value = [];
-    }
-    // 渲染图表
-    renderAllCharts();
   } catch (error) {
-    console.error('获取统计数据失败:', error);
+    console.error('Data Fetch Error:', error);
   } finally {
     loading.value = false;
   }
 };
 
-// 作业执行统计图表配置
-const getExecutionStatsChartOption = (): EChartsOption => {
-  // 确保jobStats存在
-  const statsData = jobStats.value || {
-    successCount: 0,
-    failedCount: 0,
-    pausedCount: 0,
-    blockedCount: 0
-  };
-
-  // 构建图表数据
-  const seriesData = [
-    statsData.successCount,
-    statsData.failedCount,
-    statsData.pausedCount,
-    statsData.blockedCount
-  ];
-
-  return {
-    title: {
-      left: 'center',
-      textStyle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#262626',
-      },
-      padding: [10, 0, 20, 0],
-    },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'shadow',
-        shadowStyle: {
-          color: 'rgba(0, 0, 0, 0.05)',
-          blur: 10,
-        },
-      },
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: '#e8e8e8',
-      borderWidth: 1,
-      borderRadius: 8,
-      textStyle: {
-        color: '#262626',
-        fontSize: 14,
-      },
-      formatter: function(params) {
-        const param = params[0];
-        const statusLabels = ['成功', '失败', '暂停', '阻塞'];
-        const statusColors = ['#52c41a', '#ff4d4f', '#faad14', '#1890ff'];
-        
-        let tooltipHtml = `<div style="padding: 8px;">
-          <div style="font-weight: bold; margin-bottom: 4px;">${statusLabels[param.dataIndex]}</div>
-          <div style="display: flex; align-items: center;">
-            <div style="width: 10px; height: 10px; background-color: ${statusColors[param.dataIndex]}; border-radius: 50%; margin-right: 8px;"></div>
-            <span>执行次数: ${param.value}</span>
-          </div>
-        </div>`;
-        
-        return tooltipHtml;
-      },
-      padding: 0,
-      extraCssText: 'box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);',
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '15%',
-      top: '15%',
-      containLabel: true,
-    },
-    xAxis: {
-      type: 'category',
-      data: ['成功', '失败', '暂停', '阻塞'],
-      axisLine: {
-        lineStyle: {
-          color: '#e8e8e8',
-        },
-      },
-      axisTick: {
-        show: false,
-      },
-      axisLabel: {
-        color: '#595959',
-        fontSize: 14,
-        fontWeight: '500',
-        margin: 15,
-      },
-    },
-    yAxis: {
-      type: 'value',
-      name: '执行次数',
-      nameTextStyle: {
-        color: '#595959',
-        fontSize: 14,
-        padding: [0, 0, 0, 20],
-      },
-      axisLine: {
-        show: false,
-      },
-      axisTick: {
-        show: false,
-      },
-      axisLabel: {
-        color: '#595959',
-        fontSize: 14,
-      },
-      splitLine: {
-        lineStyle: {
-          color: '#f0f0f0',
-          type: 'dashed',
-        },
-      },
-    },
-    series: [
-      {
-        name: '作业数量',
-        type: 'bar',
-        data: seriesData,
-        barWidth: '50%',
-        itemStyle: {
-          color: function (params) {
-            // 使用更协调的配色方案
-            const colorList = ['#52c41a', '#ff4d4f', '#faad14', '#1890ff'];
-            return colorList[params.dataIndex];
-          },
-          borderRadius: [8, 8, 0, 0],
-        },
-        emphasis: {
-          itemStyle: {
-            shadowBlur: 15,
-            shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.2)',
-          },
-        },
-        animation: true,
-        animationDuration: 1000,
-        animationEasing: 'cubicOut',
-        animationDelay: function (idx) {
-          return idx * 100;
-        },
-      },
-    ],
-  };
-};
-
-// 作业状态分布图表配置
-const getStatusDistributionChartOption = (): EChartsOption => {
-  // 确保数据存在且为数组
-  const chartData = jobStatusDistribution.value || [];
-  // 状态映射：将API返回的字符串状态转换为数字
-  const statusStringToNumberMap: Record<string, number> = {
-    'Normal': 0,
-    'Paused': 1,
-    'Completed': 2,
-    'Error': 3,
-    'Blocked': 4
-  };
-
-  // 构建图表数据，使用状态映射转换为中文名称
-  const pieData = chartData.map(item => {
-    const statusNumber = statusStringToNumberMap[item.status] || 0;
-    const statusInfo = jobStatusMap[statusNumber] || { text: item.status };
-    return {
-      value: item.count,
-      name: statusInfo.text,
-    };
-  });
-  return {
-    title: {
-      left: 'center',
-      textStyle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#262626',
-      },
-      padding: [10, 0, 20, 0],
-    },
-    tooltip: {
-      trigger: 'item',
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: '#e8e8e8',
-      borderWidth: 1,
-      borderRadius: 8,
-      textStyle: {
-        color: '#262626',
-        fontSize: 14,
-      },
-      formatter: function(params) {
-        const statusColors = {
-          '正常': '#52c41a',
-          '已暂停': '#faad14', 
-          '已完成': '#1890ff',
-          '错误': '#ff4d4f',
-          '阻塞': '#722ed1'
-        };
-        
-        const color = statusColors[params.name] || '#faad14';
-        
-        let tooltipHtml = `<div style="padding: 8px;">
-          <div style="display: flex; align-items: center; margin-bottom: 4px;">
-            <div style="width: 10px; height: 10px; background-color: ${color}; border-radius: 50%; margin-right: 8px;"></div>
-            <div style="font-weight: bold;">${params.name}</div>
-          </div>
-          <div>数量: ${params.value}</div>
-          <div>占比: ${params.percent}%</div>
-        </div>`;
-        
-        return tooltipHtml;
-      },
-      padding: 0,
-      extraCssText: 'box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);',
-    },
-    legend: {
-      orient: 'vertical',
-      left: 'left',
-      bottom: 0,
-      top: 'center',
-      data: chartData.map(item => {
-        const statusNumber = statusStringToNumberMap[item.status] || 0;
-        const statusInfo = jobStatusMap[statusNumber] || { text: item.status };
-        return statusInfo.text;
-      }),
-      textStyle: {
-        color: '#595959',
-        fontSize: 14,
-      },
-      itemWidth: 12,
-      itemHeight: 12,
-      itemGap: 20,
-    },
-    series: [
-      {
-        name: '作业状态',
-        type: 'pie',
-        radius: ['45%', '70%'],
-        center: ['65%', '50%'],
-        avoidLabelOverlap: false,
-        itemStyle: {
-          borderRadius: 12,
-          borderColor: '#fff',
-          borderWidth: 3,
-          color: function (params) {
-            // 根据状态名称分配颜色，而不是根据数据索引
-            const colorMap: Record<string, string> = {
-              '正常': '#52c41a',  // 正常使用绿色
-              '已暂停': '#faad14',  // 已暂停使用橙色
-              '已完成': '#1890ff',  // 已完成使用蓝色
-              '错误': '#ff4d4f',  // 错误使用红色
-              '阻塞': '#722ed1',  // 阻塞使用紫色
-            };
-            return colorMap[params.name] || '#faad14'; // 默认使用橙色
-          },
-        },
-        label: {
-          show: false,
-          position: 'center',
-        },
-        emphasis: {
-          label: {
-            show: true,
-            fontSize: 22,
-            fontWeight: '600',
-            color: '#262626',
-          },
-          itemStyle: {
-            shadowBlur: 15,
-            shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.2)',
-          },
-        },
-        labelLine: {
-          show: false,
-        },
-        data: pieData,
-        animation: true,
-        animationDuration: 1200,
-        animationEasing: 'cubicOut',
-        animationDelay: function (idx) {
-          return idx * 150;
-        },
-      },
-    ],
-  };
-};
-
-// 作业类型分布图表配置
-const getTypeDistributionChartOption = (): EChartsOption => {
-  // 确保数据存在且为数组
-  const chartData = jobTypeDistribution.value || [];
-
-  // 处理空数据情况
-  if (chartData.length === 0) {
-    return {
-      title: {
-        left: 'center',
-        textStyle: {
-          fontSize: 18,
-          fontWeight: '600',
-          color: '#262626',
-        },
-        padding: [10, 0, 20, 0],
-      },
-      tooltip: {
-        trigger: 'item',
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderColor: '#e8e8e8',
-        borderWidth: 1,
-        borderRadius: 8,
-        textStyle: {
-          color: '#262626',
-          fontSize: 14,
-        },
-        formatter: function(params) {
-          const colorList = ['#1890ff', '#52c41a', '#ff4d4f', '#faad14', '#722ed1', '#eb2f96', '#fa8c16', '#a0d911'];
-          const color = colorList[params.dataIndex % colorList.length];
-          
-          let tooltipHtml = `<div style="padding: 8px;">
-            <div style="display: flex; align-items: center; margin-bottom: 4px;">
-              <div style="width: 10px; height: 10px; background-color: ${color}; border-radius: 50%; margin-right: 8px;"></div>
-              <div style="font-weight: bold;">${params.name}</div>
-            </div>
-            <div>数量: ${params.value}</div>
-            <div>占比: ${params.percent}%</div>
-          </div>`;
-          
-          return tooltipHtml;
-        },
-        padding: 0,
-        extraCssText: 'box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);',
-      },
-      legend: {
-        orient: 'vertical',
-        left: 'left',
-        bottom: 0,
-        top: 'center',
-        textStyle: {
-          color: '#595959',
-          fontSize: 14,
-        },
-        itemWidth: 12,
-        itemHeight: 12,
-        itemGap: 20,
-      },
-      series: [
-        {
-          name: '作业类型',
-          type: 'pie',
-          radius: ['45%', '70%'],
-          center: ['65%', '50%'],
-          data: [{ value: 1, name: '暂无数据' }],
-          itemStyle: {
-            color: '#f0f0f0',
-            borderRadius: 12,
-            borderColor: '#fff',
-            borderWidth: 3,
-          },
-          label: {
-            show: true,
-            position: 'center',
-            formatter: '暂无数据',
-            fontSize: 18,
-            color: '#bfbfbf',
-          },
-        },
-      ],
-    };
-  }
-
-  // 构建图表数据
-  const pieData = chartData.map(item => ({
-    value: item.count,
-    name: item.type,
-  }));
-
-  return {
-    title: {
-      left: 'center',
-      textStyle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#262626',
-      },
-      padding: [10, 0, 20, 0],
-    },
-    tooltip: {
-      trigger: 'item',
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: '#e8e8e8',
-      borderWidth: 1,
-      borderRadius: 8,
-      textStyle: {
-        color: '#262626',
-        fontSize: 14,
-      },
-      formatter: function(params) {
-        const colorList = ['#1890ff', '#52c41a', '#ff4d4f', '#faad14', '#722ed1', '#eb2f96', '#fa8c16', '#a0d911'];
-        const color = colorList[params.dataIndex % colorList.length];
-        
-        let tooltipHtml = `<div style="padding: 8px;">
-          <div style="display: flex; align-items: center; margin-bottom: 4px;">
-            <div style="width: 10px; height: 10px; background-color: ${color}; border-radius: 50%; margin-right: 8px;"></div>
-            <div style="font-weight: bold;">${params.name}</div>
-          </div>
-          <div>数量: ${params.value}</div>
-          <div>占比: ${params.percent}%</div>
-        </div>`;
-        
-        return tooltipHtml;
-      },
-      padding: 0,
-      extraCssText: 'box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);',
-    },
-    legend: {
-      orient: 'vertical',
-      left: 'left',
-      bottom: 0,
-      top: 'center',
-      data: chartData.map(item => item.type),
-      textStyle: {
-        color: '#595959',
-        fontSize: 14,
-      },
-      itemWidth: 12,
-      itemHeight: 12,
-      itemGap: 20,
-    },
-    series: [
-      {
-        name: '作业类型',
-        type: 'pie',
-        radius: ['45%', '70%'],
-        center: ['65%', '50%'],
-        avoidLabelOverlap: false,
-        itemStyle: {
-          borderRadius: 12,
-          borderColor: '#fff',
-          borderWidth: 3,
-          color: function (params) {
-            const colorList = ['#1890ff', '#52c41a', '#ff4d4f', '#faad14', '#722ed1', '#eb2f96', '#fa8c16', '#a0d911'];
-            return colorList[params.dataIndex % colorList.length];
-          },
-        },
-        label: {
-          show: false,
-          position: 'center',
-        },
-        emphasis: {
-          label: {
-            show: true,
-            fontSize: 22,
-            fontWeight: '600',
-            color: '#262626',
-          },
-          itemStyle: {
-            shadowBlur: 15,
-            shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.2)',
-          },
-        },
-        labelLine: {
-          show: false,
-        },
-        data: pieData,
-        animation: true,
-        animationDuration: 1200,
-        animationEasing: 'cubicOut',
-        animationDelay: function (idx) {
-          return idx * 150;
-        },
-      },
-    ],
-  };
-};
-
-// 作业执行趋势图表配置
-const getExecutionTrendChartOption = (): EChartsOption => {
-  // 处理空数据情况
-  const hasData = jobExecutionTrend.value.length > 0;
-  const xAxisData = hasData ? jobExecutionTrend.value.map(item => item.time) : ['暂无数据'];
-
-  return {
-    title: {
-      left: 'center',
-      textStyle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#262626',
-      },
-      padding: [10, 0, 20, 0],
-    },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'cross',
-        label: {
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          borderColor: '#e8e8e8',
-          borderWidth: 1,
-          borderRadius: 6,
-          color: '#262626',
-          fontSize: 12,
-        },
-      },
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: '#e8e8e8',
-      borderWidth: 1,
-      borderRadius: 8,
-      textStyle: {
-        color: '#262626',
-        fontSize: 14,
-      },
-      formatter: function (params) {
-        let result = `<div style="padding: 8px;">
-          <div style="font-weight: bold; margin-bottom: 8px;">${params[0].axisValueLabel}</div>`;
-        
-        params.forEach((item) => {
-          const colors = {
-            '成功': '#52c41a',
-            '失败': '#ff4d4f',
-            '总数': '#1890ff'
-          };
-          
-          const color = colors[item.seriesName] || '#1890ff';
-          
-          result += `<div style="display: flex; align-items: center; margin-bottom: 4px;">
-            <div style="width: 10px; height: 10px; background-color: ${color}; border-radius: 50%; margin-right: 8px;"></div>
-            <span>${item.seriesName}: ${item.value} 次</span>
-          </div>`;
-        });
-        
-        result += '</div>';
-        return result;
-      },
-      padding: 0,
-      extraCssText: 'box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);',
-    },
-    legend: {
-      data: ['成功', '失败', '总数'],
-      bottom: 0,
-      textStyle: {
-        color: '#595959',
-        fontSize: 14,
-      },
-      itemWidth: 12,
-      itemHeight: 12,
-      itemGap: 20,
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '15%',
-      top: '15%',
-      containLabel: true,
-    },
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: xAxisData,
-      axisLine: {
-        lineStyle: {
-          color: '#e8e8e8',
-        },
-      },
-      axisTick: {
-        show: false,
-      },
-      axisLabel: {
-        color: '#595959',
-        fontSize: 13,
-        margin: 15,
-      },
-      splitLine: {
-        show: false,
-      },
-    },
-    yAxis: {
-      type: 'value',
-      name: '执行次数',
-      nameTextStyle: {
-        color: '#595959',
-        fontSize: 14,
-        padding: [0, 0, 0, 20],
-      },
-      axisLine: {
-        show: false,
-      },
-      axisTick: {
-        show: false,
-      },
-      axisLabel: {
-        color: '#595959',
-        fontSize: 13,
-      },
-      splitLine: {
-        lineStyle: {
-          color: '#f0f0f0',
-          type: 'dashed',
-        },
-      },
-    },
-    series: [
-      {
-        name: '成功',
-        type: 'line',
-        stack: 'Total',
-        data: hasData ? jobExecutionTrend.value.map(item => item.successCount) : [0],
-        itemStyle: {
-          color: '#52c41a',
-        },
-        lineStyle: {
-          width: 3,
-        },
-        symbol: 'circle',
-        symbolSize: 6,
-        emphasis: {
-          symbolSize: 10,
-          itemStyle: {
-            shadowBlur: 15,
-            shadowColor: 'rgba(82, 196, 26, 0.5)',
-          },
-        },
-        // 添加平滑曲线和填充效果
-        smooth: true,
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [{
-              offset: 0, color: 'rgba(82, 196, 26, 0.35)'
-            }, {
-              offset: 1, color: 'rgba(82, 196, 26, 0.08)'
-            }]
-          }
-        },
-        animation: true,
-        animationDuration: 1500,
-        animationEasing: 'cubicOut',
-      },
-      {
-        name: '失败',
-        type: 'line',
-        stack: 'Total',
-        data: hasData ? jobExecutionTrend.value.map(item => item.failedCount) : [0],
-        itemStyle: {
-          color: '#ff4d4f',
-        },
-        lineStyle: {
-          width: 3,
-        },
-        symbol: 'circle',
-        symbolSize: 6,
-        emphasis: {
-          symbolSize: 10,
-          itemStyle: {
-            shadowBlur: 15,
-            shadowColor: 'rgba(255, 77, 79, 0.5)',
-          },
-        },
-        // 添加平滑曲线和填充效果
-        smooth: true,
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [{
-              offset: 0, color: 'rgba(255, 77, 79, 0.35)'
-            }, {
-              offset: 1, color: 'rgba(255, 77, 79, 0.08)'
-            }]
-          }
-        },
-        animation: true,
-        animationDuration: 1500,
-        animationEasing: 'cubicOut',
-        animationDelay: 200,
-      },
-      {
-        name: '总数',
-        type: 'line',
-        data: hasData ? jobExecutionTrend.value.map(item => item.totalCount) : [0],
-        itemStyle: {
-          color: '#1890ff',
-        },
-        lineStyle: {
-          width: 3,
-          type: 'dashed',
-        },
-        symbol: 'circle',
-        symbolSize: 6,
-        emphasis: {
-          symbolSize: 10,
-          itemStyle: {
-            shadowBlur: 15,
-            shadowColor: 'rgba(24, 144, 255, 0.5)',
-          },
-        },
-        // 添加平滑曲线和填充效果
-        smooth: true,
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [{
-              offset: 0, color: 'rgba(24, 144, 255, 0.35)'
-            }, {
-              offset: 1, color: 'rgba(24, 144, 255, 0.08)'
-            }]
-          }
-        },
-        animation: true,
-        animationDuration: 1500,
-        animationEasing: 'cubicOut',
-        animationDelay: 400,
-      },
-    ],
-  };
-};
-// 作业执行耗时统计图表配置
-const getExecutionTimeChartOption = (): EChartsOption => {
-  // 确保数据存在且为数组
-  const chartData = jobExecutionTimeData.value || [];
-
-  // 处理空数据情况
-  if (chartData.length === 0) {
-    return {
-      title: {
-      
-        left: 'center',
-        textStyle: {
-          fontSize: 18,
-          fontWeight: '600',
-          color: '#262626',
-        },
-        padding: [10, 0, 20, 0],
-      },
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: {
-          type: 'shadow',
-          shadowStyle: {
-            color: 'rgba(0, 0, 0, 0.05)',
-            blur: 10,
-          },
-        },
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderColor: '#e8e8e8',
-        borderWidth: 1,
-        borderRadius: 8,
-        textStyle: {
-          color: '#262626',
-          fontSize: 14,
-        },
-        formatter: function(params) {
-          const param = params[0];
-          const colorList = ['#1890ff', '#52c41a', '#ff4d4f', '#faad14', '#722ed1', '#eb2f96', '#fa8c16', '#a0d911'];
-          const color = colorList[param.dataIndex % colorList.length];
-          
-          let tooltipHtml = `<div style="padding: 8px;">
-            <div style="display: flex; align-items: center; margin-bottom: 4px;">
-              <div style="width: 10px; height: 10px; background-color: ${color}; border-radius: 50%; margin-right: 8px;"></div>
-              <div style="font-weight: bold;">${param.axisValueLabel}</div>
-            </div>
-            <div>作业数量: ${param.value}</div>
-          </div>`;
-          
-          return tooltipHtml;
-        },
-        padding: 0,
-        extraCssText: 'box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);',
-      },
-      legend: {
-        data: ['作业数量'],
-        bottom: 0,
-        textStyle: {
-          color: '#595959',
-          fontSize: 14,
-        },
-        itemWidth: 12,
-        itemHeight: 12,
-        itemGap: 20,
-      },
-      grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '15%',
-        top: '15%',
-        containLabel: true,
-      },
-      xAxis: {
-        type: 'category',
-        data: ['暂无数据'],
-        axisLine: {
-          lineStyle: {
-            color: '#e8e8e8',
-          },
-        },
-        axisTick: {
-          show: false,
-        },
-        axisLabel: {
-          color: '#595959',
-          fontSize: 14,
-          fontWeight: '500',
-          margin: 15,
-        },
-      },
-      yAxis: {
-        type: 'value',
-        name: '作业数量',
-        nameTextStyle: {
-          color: '#595959',
-          fontSize: 14,
-          padding: [0, 0, 0, 20],
-        },
-        axisLine: {
-          show: false,
-        },
-        axisTick: {
-          show: false,
-        },
-        axisLabel: {
-          color: '#595959',
-          fontSize: 14,
-        },
-        splitLine: {
-          lineStyle: {
-            color: '#f0f0f0',
-            type: 'dashed',
-          },
-        },
-      },
-      series: [
-        {
-          name: '作业数量',
-          type: 'bar',
-          data: [0],
-          barWidth: '50%',
-          itemStyle: {
-            color: '#1890ff',
-            borderRadius: [8, 8, 0, 0],
-          },
-        },
-      ],
-    };
-  }
-
-  // 构建图表数据
-  const xAxisData = chartData.map(item => item.timeRange);
-  const seriesData = chartData.map(item => item.count);
-
-  return {
-    title: {
-      left: 'center',
-      textStyle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#262626',
-      },
-      padding: [10, 0, 20, 0],
-    },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'shadow',
-        shadowStyle: {
-          color: 'rgba(0, 0, 0, 0.05)',
-          blur: 10,
-        },
-      },
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: '#e8e8e8',
-      borderWidth: 1,
-      borderRadius: 8,
-      textStyle: {
-        color: '#262626',
-        fontSize: 14,
-      },
-      formatter: function(params) {
-        const param = params[0];
-        const colorList = ['#1890ff', '#52c41a', '#ff4d4f', '#faad14', '#722ed1', '#eb2f96', '#fa8c16', '#a0d911'];
-        const color = colorList[param.dataIndex % colorList.length];
-        
-        let tooltipHtml = `<div style="padding: 8px;">
-          <div style="display: flex; align-items: center; margin-bottom: 4px;">
-            <div style="width: 10px; height: 10px; background-color: ${color}; border-radius: 50%; margin-right: 8px;"></div>
-            <div style="font-weight: bold;">${param.axisValueLabel}</div>
-          </div>
-          <div>作业数量: ${param.value}</div>
-        </div>`;
-        
-        return tooltipHtml;
-      },
-      padding: 0,
-      extraCssText: 'box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);',
-    },
-    legend: {
-      data: ['作业数量'],
-      bottom: 0,
-      textStyle: {
-        color: '#595959',
-        fontSize: 14,
-      },
-      itemWidth: 12,
-      itemHeight: 12,
-      itemGap: 20,
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '15%',
-      top: '15%',
-      containLabel: true,
-    },
-    xAxis: {
-      type: 'category',
-      data: xAxisData,
-      axisLine: {
-        lineStyle: {
-          color: '#e8e8e8',
-        },
-      },
-      axisTick: {
-        show: false,
-      },
-      axisLabel: {
-        color: '#595959',
-        fontSize: 13,
-        fontWeight: '500',
-        margin: 15,
-        rotate: xAxisData.length > 5 ? 30 : 0,
-      },
-    },
-    yAxis: {
-      type: 'value',
-      name: '作业数量',
-      nameTextStyle: {
-        color: '#595959',
-        fontSize: 14,
-        padding: [0, 0, 0, 20],
-      },
-      axisLine: {
-        show: false,
-      },
-      axisTick: {
-        show: false,
-      },
-      axisLabel: {
-        color: '#595959',
-        fontSize: 14,
-      },
-      splitLine: {
-        lineStyle: {
-          color: '#f0f0f0',
-          type: 'dashed',
-        },
-      },
-    },
-    series: [
-      {
-        name: '作业数量',
-        type: 'bar',
-        data: seriesData,
-        barWidth: '50%',
-        itemStyle: {
-          color: function (params) {
-            const colorList = ['#1890ff', '#52c41a', '#ff4d4f', '#faad14', '#722ed1', '#eb2f96', '#fa8c16', '#a0d911'];
-            return colorList[params.dataIndex % colorList.length];
-          },
-          borderRadius: [8, 8, 0, 0],
-        },
-        emphasis: {
-          itemStyle: {
-            shadowBlur: 15,
-            shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.2)',
-          },
-        },
-        animation: true,
-        animationDuration: 1000,
-        animationEasing: 'cubicOut',
-        animationDelay: function (idx) {
-          return idx * 100;
-        },
-      },
-    ],
-  };
-};
-
-// 渲染所有图表
-const renderAllCharts = () => {
-  try {
-    renderExecutionStats(getExecutionStatsChartOption());
-    renderStatusDistribution(getStatusDistributionChartOption());
-    renderTypeDistribution(getTypeDistributionChartOption());
-    renderExecutionTrend(getExecutionTrendChartOption());
-    renderExecutionTime(getExecutionTimeChartOption());
-  } catch (error) {
-    console.error('渲染图表时发生错误:', error);
-  }
-};
-
-// 获取调度器状态
-const getSchedulerStatusInfo = async () => {
-  try {
-    const response = await getSchedulerStatus();
-    if (response.success && response.data) {
-      const schedulerData = response.data as { jobCount?: number; executingJobCount?: number };
-      // 更新统计概览数据
-      statsOverview.value = {
-        totalJobs: schedulerData.jobCount || 0,
-        enabledJobs: Math.floor((schedulerData.jobCount || 0) * 0.8), // 临时数据，后续会被fetchStatsData覆盖
-        disabledJobs: Math.floor((schedulerData.jobCount || 0) * 0.2), // 临时数据，后续会被fetchStatsData覆盖
-        executingJobs: schedulerData.executingJobCount || 0,
-        successCount: 0,
-        failedCount: 0,
-        pausedCount: 0,
-        blockedCount: 0,
-      };
-    }
-  } catch (error) {
-    console.error('获取调度器状态失败:', error);
-  }
-};
-
-// 时间范围变化处理
-const handleTimeRangeChange = () => {
-  // 根据时间范围获取数据
-  fetchStatsData();
-};
-
-// 自定义日期范围变化处理
-const handleDateRangeChange = () => {
-  if (customDateRange.value[0] && customDateRange.value[1]) {
-    selectedTimeRange.value = 'custom';
-    // 根据自定义时间范围获取数据
-    fetchStatsData();
-  }
-};
-
-// 刷新数据
-const handleRefresh = async () => {
-  await fetchStatsData();
-};
-
-// 生命周期
-onMounted(async () => {
-  // 获取调度器状态
-  await getSchedulerStatusInfo();
-
-  // 获取统计数据
-  await fetchStatsData();
-});
+onMounted(fetchData);
 </script>
 
 <template>
   <Page auto-content-height>
-    <!-- 数据筛选区 -->
-    <!-- <Card class="mb-4 mt-4 filter-card">
-      <Row :gutter="[16, 16]" align="middle">
-        <Col :xs="24" :sm="12" :md="8" :lg="8">
-        <Space wrap>
-          <Select v-model:value="selectedTimeRange" :options="timeRangeOptions" style="min-width: 120px;"
-            @change="handleTimeRangeChange" />
-          <DatePicker.RangePicker v-if="selectedTimeRange === 'custom'" v-model:value="customDateRange"
-            style="min-width: 300px;" @change="handleDateRangeChange" placeholder="选择日期范围" />
-        </Space>
-        </Col>
-        <Col :xs="24" :sm="12" :md="16" :lg="16" class="text-right">
-        <Button type="primary" @click="handleRefresh" :loading="loading">
-          <template #icon>
-            <SyncOutlined :spin="loading" />
-          </template>
-          刷新数据
-        </Button>
-        </Col>
-      </Row>
-    </Card> -->
-    <!-- 图表展示区 -->
-    <Row :gutter="[24, 24]">
-      <!-- 统计概览卡片 -->
-      <Col :xs="24" :sm="12" :md="12" :lg="6" :xl="6">
-      <Card hoverable class="statistic-card" :loading="loading">
-        <div class="statistic-content" v-if="!loading">
-          <div class="statistic-prefix">📊</div>
-          <div class="statistic-info">
-            <div class="statistic-title">总作业数</div>
-            <div class="statistic-value">{{ statsOverview.totalJobs }}</div>
+    <Row :gutter="[20, 20]">
+      <Col :xs="24" :sm="12" :lg="6">
+        <Card class="stat-card" :loading="loading" :bordered="false">
+          <div class="stat-content">
+            <div class="stat-main">
+              <span class="stat-title">总作业数量</span>
+              <span class="stat-number">{{ statsOverview.totalJobs }}<small>个</small></span>
+            </div>
+            <div class="stat-icon blue">🗂️</div>
           </div>
-        </div>
-        <template v-else>
-          <Skeleton active :paragraph="{ rows: 1 }" />
-        </template>
-      </Card>
-      </Col>
-      <Col :xs="24" :sm="12" :md="12" :lg="6" :xl="6">
-      <Card hoverable class="statistic-card" :loading="loading">
-        <div class="statistic-content" v-if="!loading">
-          <div class="statistic-prefix">✅</div>
-          <div class="statistic-info">
-            <div class="statistic-title">启用作业数</div>
-            <div class="statistic-value">{{ statsOverview.enabledJobs }}</div>
+          <div class="stat-sub">
+            <span class="sub-label">启用/禁用</span>
+            <span class="sub-value">{{ statsOverview.enabledJobs }}/{{ statsOverview.disabledJobs }}</span>
+            <div class="mini-bar-bg">
+              <div class="mini-bar-fill blue"
+                :style="{ width: (statsOverview.enabledJobs / (statsOverview.totalJobs || 1)) * 100 + '%' }"></div>
+            </div>
           </div>
-        </div>
-        <template v-else>
-          <Skeleton active :paragraph="{ rows: 1 }" />
-        </template>
-      </Card>
-      </Col>
-      <Col :xs="24" :sm="12" :md="12" :lg="6" :xl="6">
-      <Card hoverable class="statistic-card" :loading="loading">
-        <div class="statistic-content" v-if="!loading">
-          <div class="statistic-prefix">❌</div>
-          <div class="statistic-info">
-            <div class="statistic-title">禁用作业数</div>
-            <div class="statistic-value">{{ statsOverview.disabledJobs }}</div>
-          </div>
-        </div>
-        <template v-else>
-          <Skeleton active :paragraph="{ rows: 1 }" />
-        </template>
-      </Card>
-      </Col>
-      <Col :xs="24" :sm="12" :md="12" :lg="6" :xl="6">
-      <Card hoverable class="statistic-card" :loading="loading">
-        <div class="statistic-content" v-if="!loading">
-          <div class="statistic-prefix">⏳</div>
-          <div class="statistic-info">
-            <div class="statistic-title">正在执行</div>
-            <div class="statistic-value">{{ statsOverview.executingJobs }}</div>
-          </div>
-        </div>
-        <template v-else>
-          <Skeleton active :paragraph="{ rows: 1 }" />
-        </template>
-      </Card>
+        </Card>
       </Col>
 
-      <!-- 作业执行统计 -->
-      <Col :xs="24" :sm="24" :md="24" :lg="24" :xl="24">
-      <Card title="近30天作业执行统计" :loading="loading" class="chart-card">
-        <EchartsUI ref="executionStatsChartRef" :style="{ height: '400px' }" />
-      </Card>
+      <Col :xs="24" :sm="12" :lg="6">
+        <Card class="stat-card" :loading="loading" :bordered="false">
+          <div class="stat-content">
+            <div class="stat-main">
+              <span class="stat-title">累计执行量</span>
+              <span class="stat-number">{{ statsOverview.totalExecutions }}<small>次</small></span>
+            </div>
+            <div class="stat-icon green">🚀</div>
+          </div>
+          <div class="stat-sub">
+            <span class="sub-label">成功率</span>
+            <span class="sub-value success">{{ ((statsOverview.successCount / (statsOverview.totalExecutions || 1)) *
+              100).toFixed(1) }}%</span>
+            <div class="mini-bar-bg">
+              <div class="mini-bar-fill green"
+                :style="{ width: (statsOverview.successCount / (statsOverview.totalExecutions || 1)) * 100 + '%' }">
+              </div>
+            </div>
+          </div>
+        </Card>
       </Col>
 
-      <!-- 作业状态分布 + 作业类型分布 -->
-      <Col :xs="24" :sm="24" :md="24" :lg="12" :xl="12">
-      <Card title="作业状态分布" :loading="loading" class="chart-card">
-        <EchartsUI ref="statusDistributionChartRef" :style="{ height: '400px' }" />
-      </Card>
-      </Col>
-      <Col :xs="24" :sm="24" :md="24" :lg="12" :xl="12">
-      <Card title="作业类型分布" :loading="loading" class="chart-card">
-        <EchartsUI ref="typeDistributionChartRef" :style="{ height: '400px' }" />
-      </Card>
+      <Col :xs="24" :sm="12" :lg="6">
+        <Card class="stat-card" :loading="loading" :bordered="false">
+          <div class="stat-content">
+            <div class="stat-main">
+              <span class="stat-title">正常运行数</span>
+              <span class="stat-number">{{jobStatusDistribution.find(d => d.status === 'Normal')?.count || 0
+                }}<small>个</small></span>
+            </div>
+            <div class="stat-icon orange">💗</div>
+          </div>
+          <div class="stat-sub">
+            <span class="sub-label">正常/暂停</span>
+            <span class="sub-value">
+              {{jobStatusDistribution.find(d => d.status === 'Normal')?.count || 0}}/{{jobStatusDistribution.find(d =>
+                d.status === 'Paused')?.count || 0}}
+            </span>
+            <div class="mini-bar-bg">
+              <div class="mini-bar-fill orange"
+                :style="{ width: (jobStatusDistribution.find(d => d.status === 'Normal')?.percentage || 0) + '%' }">
+              </div>
+            </div>
+          </div>
+        </Card>
       </Col>
 
-      <!-- 作业执行趋势 -->
-      <Col :xs="24" :sm="24" :md="24" :lg="24" :xl="24">
-      <Card title="近30天作业执行趋势" :loading="loading" class="chart-card">
-        <EchartsUI ref="executionTrendChartRef" :style="{ height: '400px' }" />
-      </Card>
+      <Col :xs="24" :sm="12" :lg="6">
+        <Card class="stat-card" :loading="loading" :bordered="false">
+          <div class="stat-content">
+            <div class="stat-main">
+              <span class="stat-title">作业类型分布</span>
+              <div class="dual-numbers">
+                <span class="dll-val">DLL <b>{{jobTypeDistribution.find(d => d.type === 'DLL')?.count || 0
+                    }}</b></span>
+                <span class="api-val">API <b>{{jobTypeDistribution.find(d => d.type === 'API')?.count || 0
+                    }}</b></span>
+              </div>
+            </div>
+            <div class="stat-icon purple">🗃</div>
+          </div>
+          <div class="stat-sub">
+            <span class="sub-label">{{(jobTypeDistribution.find(d => d.type === 'DLL')?.percentage || 0).toFixed(0)
+              }}%</span>
+            <div class="mini-bar-bg dual-bg">
+              <div class="mini-bar-fill purple"
+                :style="{ width: (jobTypeDistribution.find(d => d.type === 'DLL')?.percentage || 0) + '%' }"></div>
+              <div class="mini-bar-fill cyan"
+                :style="{ width: (jobTypeDistribution.find(d => d.type === 'API')?.percentage || 0) + '%' }"></div>
+            </div>
+            <span class="sub-label">{{(jobTypeDistribution.find(d => d.type === 'API')?.percentage || 0).toFixed(0)
+              }}%</span>
+          </div>
+        </Card>
       </Col>
 
-      <!-- 作业执行耗时统计 -->
-      <Col :xs="24" :sm="24" :md="24" :lg="24" :xl="24">
-      <Card title="近30天作业执行耗时统计" :loading="loading" class="chart-card">
-        <EchartsUI ref="executionTimeChartRef" :style="{ height: '400px' }" />
-      </Card>
+      <Col :span="24">
+        <Card title="近30天作业执行趋势" class="chart-card">
+          <Skeleton :loading="loading" active :paragraph="{ rows: 8 }">
+            <EchartsUI ref="executionTrendChartRef" style="height: 400px" />
+          </Skeleton>
+        </Card>
+      </Col>
+
+      <Col :span="24">
+        <Card title="近30天作业执行耗时" class="chart-card">
+          <Skeleton :loading="loading" active :paragraph="{ rows: 8 }">
+            <EchartsUI ref="executionTimeChartRef" style="height: 400px" />
+          </Skeleton>
+        </Card>
       </Col>
     </Row>
   </Page>
 </template>
 
 <style scoped>
-/* VbenAdmin 风格样式优化 */
-.mb-4 {
-  margin-bottom: 16px;
-}
-
-.mt-4 {
-  margin-top: 16px;
-}
-
-.text-right {
-  text-align: right;
-}
-
-/* 统计卡片样式 */
-.statistic-card {
+/* --- 1. 基础卡片样式 (适配暗色/浅色) --- */
+.stat-card {
   border-radius: 12px;
-  overflow: hidden;
+  background-color: #ffffff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+  overflow: hidden;
+  min-height: 145px;
+  display: flex;
+  flex-direction: column;
   border: 1px solid #f0f0f0;
 }
 
-.statistic-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-  border-color: #e8e8e8;
+/* 暗色模式卡片底色 */
+:where(.dark) .stat-card {
+  background-color: #1f1f1f !important;
+  border-color: #303030 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-.statistic-content {
+.stat-content {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  padding: 4px;
 }
 
-.statistic-prefix {
-  font-size: 28px;
-  line-height: 1;
-}
-
-.statistic-info {
+.stat-main {
+  display: flex;
+  flex-direction: column;
   flex: 1;
 }
 
-.statistic-title {
-  font-size: 14px;
+/* 文字颜色适配 */
+.stat-title {
   color: #8c8c8c;
-  margin-bottom: 8px;
-  font-weight: 500;
+  font-size: 13px;
+  margin-bottom: 6px;
 }
 
-.statistic-value {
+:where(.dark) .stat-title {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.stat-number {
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 700;
   color: #262626;
-  line-height: 1.2;
 }
 
-/* 图表卡片样式 */
-.chart-card {
-  border-radius: 12px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f0f0f0;
+:where(.dark) .stat-number {
+  color: rgba(255, 255, 255, 0.85);
 }
 
-.chart-card:hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+.stat-number small {
+  font-size: 12px;
+  color: #bfbfbf;
+  margin-left: 4px;
+  font-weight: normal;
 }
 
-/* 卡片标题样式 */
-:deep(.ant-card-head) {
-  border-bottom: 1px solid #f0f0f0;
-  padding: 0 24px;
+/* DLL/API 核心数值 */
+.dual-numbers {
+  display: flex;
+  gap: 12px;
 }
 
-:deep(.ant-card-head-title) {
-  font-size: 16px;
+.dll-val b {
+  font-size: 24px;
+  color: #722ed1;
+  margin-left: 4px;
+}
+
+:where(.dark) .dll-val b {
+  color: #9254de;
+}
+
+.api-val b {
+  font-size: 24px;
+  color: #13c2c2;
+  margin-left: 4px;
+}
+
+:where(.dark) .api-val b {
+  color: #14e1e1;
+}
+
+/* --- 2. 图标背景适配 --- */
+.stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.stat-icon.blue {
+  background: #e6f7ff;
+}
+
+.stat-icon.green {
+  background: #f6ffed;
+}
+
+.stat-icon.orange {
+  background: #fff7e6;
+}
+
+.stat-icon.purple {
+  background: #f9f0ff;
+}
+
+:where(.dark) .stat-icon.blue {
+  background: rgba(24, 144, 255, 0.15);
+}
+
+:where(.dark) .stat-icon.green {
+  background: rgba(82, 196, 26, 0.15);
+}
+
+:where(.dark) .stat-icon.orange {
+  background: rgba(250, 173, 20, 0.15);
+}
+
+:where(.dark) .stat-icon.purple {
+  background: rgba(114, 46, 209, 0.15);
+}
+
+/* --- 3. 进度条核心修复 (重点) --- */
+.stat-sub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.sub-label {
+  color: #bfbfbf;
+  white-space: nowrap;
+}
+
+.sub-value {
   font-weight: 600;
-  color: #262626;
-  padding: 16px 0;
+  min-width: 45px;
+  text-align: right;
+  color: #595959;
 }
 
-:deep(.ant-card-body) {
-  padding: 24px;
+:where(.dark) .sub-value {
+  color: rgba(255, 255, 255, 0.65);
 }
 
-/* 页面整体间距 */
-:deep(.vben-page) {
-  padding: 24px;
-}
-
-/* 过滤器卡片样式 */
-.filter-card {
-  border-radius: 12px;
+.mini-bar-bg {
+  flex: 1;
+  height: 6px;
+  background: #f5f5f5;
+  /* 浅色模式背景 */
+  border-radius: 3px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f0f0f0;
-  background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+  display: flex;
 }
 
-/* 在较小屏幕上调整间距 */
-@media (max-width: 768px) {
-  :deep(.vben-page) {
-    padding: 16px;
-  }
-  
-  :deep(.ant-card-body) {
-    padding: 16px;
-  }
-  
-  .statistic-content {
-    gap: 12px;
-  }
-  
-  .statistic-title {
-    font-size: 12px;
-  }
-  
-  .statistic-value {
-    font-size: 20px;
-  }
-  
-  .filter-card :deep(.ant-space) {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .filter-card :deep(.ant-space-item) {
-    width: 100%;
-  }
-  
-  .filter-card :deep(.ant-select) {
-    width: 100%;
-  }
-  
-  .filter-card :deep(.ant-picker) {
-    width: 100%;
-  }
+/* 暗色模式下进度条槽的颜色 */
+:where(.dark) .mini-bar-bg {
+  background: #333333 !important;
+}
+
+.mini-bar-fill {
+  height: 100%;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 强制指定填充颜色，防止被暗色选择器覆盖 */
+.mini-bar-fill.blue {
+  background-color: #1890ff !important;
+}
+
+.mini-bar-fill.green {
+  background-color: #52c41a !important;
+}
+
+.mini-bar-fill.orange {
+  background-color: #faad14 !important;
+}
+
+.mini-bar-fill.purple {
+  background-color: #722ed1 !important;
+  border-right: 1px solid #fff;
+}
+
+.mini-bar-fill.cyan {
+  background-color: #13c2c2 !important;
+}
+
+/* 暗色模式下，DLL的白色分割线也要变深 */
+:where(.dark) .mini-bar-fill.purple {
+  border-right-color: #1f1f1f;
 }
 </style>
