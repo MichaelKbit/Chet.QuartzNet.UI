@@ -337,15 +337,24 @@ onMounted(fetchData);
 </template>
 
 <style scoped>
-/* 保持原有基础风格 */
+/* --- 1. 基础卡片样式 (适配暗色/浅色) --- */
 .stat-card {
   border-radius: 12px;
+  background-color: #ffffff;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s ease;
   overflow: hidden;
-  background: #fff;
   min-height: 145px;
   display: flex;
   flex-direction: column;
+  border: 1px solid #f0f0f0;
+}
+
+/* 暗色模式卡片底色 */
+:where(.dark) .stat-card {
+  background-color: #1f1f1f !important;
+  border-color: #303030 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .stat-content {
@@ -353,117 +362,69 @@ onMounted(fetchData);
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 8px;
+  padding: 4px;
 }
 
-.stat-main {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-}
+.stat-main { display: flex; flex-direction: column; flex: 1; }
 
-.stat-title {
-  color: #8c8c8c;
-  font-size: 13px;
-  margin-bottom: 6px;
-}
+/* 文字颜色适配 */
+.stat-title { color: #8c8c8c; font-size: 13px; margin-bottom: 6px; }
+:where(.dark) .stat-title { color: rgba(255, 255, 255, 0.45); }
 
-.stat-number {
-  font-size: 24px;
-  font-weight: 700;
-  color: #262626;
-}
+.stat-number { font-size: 24px; font-weight: 700; color: #262626; }
+:where(.dark) .stat-number { color: rgba(255, 255, 255, 0.85); }
 
-.stat-number small {
-  font-size: 12px;
-  color: #bfbfbf;
-  margin-left: 4px;
-  font-weight: normal;
-}
+.stat-number small { font-size: 12px; color: #bfbfbf; margin-left: 4px; font-weight: normal; }
 
-/* 针对第四个卡片的数值放大设计 */
-.dual-numbers {
-  display: flex;
-  gap: 12px;
-}
+/* DLL/API 核心数值 */
+.dual-numbers { display: flex; gap: 12px; }
+.dll-val b { font-size: 24px; color: #722ed1; margin-left: 4px; }
+:where(.dark) .dll-val b { color: #9254de; } 
 
-.dll-val,
-.api-val {
-  font-size: 12px;
-  color: #8c8c8c;
-}
+.api-val b { font-size: 24px; color: #13c2c2; margin-left: 4px; }
+:where(.dark) .api-val b { color: #14e1e1; }
 
-.dll-val b {
-  font-size: 24px;
-  color: #722ed1;
-  margin-left: 4px;
-}
-
-.api-val b {
-  font-size: 24px;
-  color: #13c2c2;
-  margin-left: 4px;
-}
-
+/* --- 2. 图标背景适配 --- */
 .stat-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
+  width: 42px; height: 42px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
 }
+.stat-icon.blue { background: #e6f7ff; }
+.stat-icon.green { background: #f6ffed; }
+.stat-icon.orange { background: #fff7e6; }
+.stat-icon.purple { background: #f9f0ff; }
 
-.stat-icon.blue {
-  background: #e6f7ff;
-}
+:where(.dark) .stat-icon.blue { background: rgba(24, 144, 255, 0.15); }
+:where(.dark) .stat-icon.green { background: rgba(82, 196, 26, 0.15); }
+:where(.dark) .stat-icon.orange { background: rgba(250, 173, 20, 0.15); }
+:where(.dark) .stat-icon.purple { background: rgba(114, 46, 209, 0.15); }
 
-.stat-icon.green {
-  background: #f6ffed;
-}
-
-.stat-icon.orange {
-  background: #fff7e6;
-}
-
-.stat-icon.purple {
-  background: #f9f0ff;
-}
-
-/* 核心进度条区域：确保宽度统一 */
+/* --- 3. 进度条核心修复 (重点) --- */
 .stat-sub {
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 12px;
-  color: #595959;
   margin-top: auto;
-  /* 推到底部 */
   padding-top: 8px;
 }
 
-.sub-label {
-  color: #bfbfbf;
-  white-space: nowrap;
-}
-
-.sub-value {
-  font-weight: 600;
-  min-width: 45px;
-  text-align: right;
-}
-
-.sub-value.success {
-  color: #52c41a;
-}
+.sub-label { color: #bfbfbf; white-space: nowrap; }
+.sub-value { font-weight: 600; min-width: 45px; text-align: right; color: #595959; }
+:where(.dark) .sub-value { color: rgba(255, 255, 255, 0.65); }
 
 .mini-bar-bg {
   flex: 1;
   height: 6px;
-  background: #f5f5f5;
+  background: #f5f5f5; /* 浅色模式背景 */
   border-radius: 3px;
   overflow: hidden;
   display: flex;
+}
+
+/* 暗色模式下进度条槽的颜色 */
+:where(.dark) .mini-bar-bg { 
+  background: #333333 !important; 
 }
 
 .mini-bar-fill {
@@ -471,36 +432,14 @@ onMounted(fetchData);
   transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.mini-bar-fill.blue {
-  background: #1890ff;
-}
+/* 强制指定填充颜色，防止被暗色选择器覆盖 */
+.mini-bar-fill.blue { background-color: #1890ff !important; }
+.mini-bar-fill.green { background-color: #52c41a !important; }
+.mini-bar-fill.orange { background-color: #faad14 !important; }
+.mini-bar-fill.purple { background-color: #722ed1 !important; border-right: 1px solid #fff; }
+.mini-bar-fill.cyan { background-color: #13c2c2 !important; }
 
-.mini-bar-fill.green {
-  background: #52c41a;
-}
-
-.mini-bar-fill.orange {
-  background: #faad14;
-}
-
-/* 双向条特殊颜色 */
-.mini-bar-fill.purple {
-  background: #722ed1;
-  border-right: 1px solid #fff;
-}
-
-.mini-bar-fill.cyan {
-  background: #13c2c2;
-}
-
-/* 统一图表头样式 */
-:deep(.ant-card-head) {
-  border-bottom: none;
-  padding: 0 20px;
-}
-
-:deep(.ant-card-head-title) {
-  font-size: 15px;
-  font-weight: 600;
-}
+/* 暗色模式下，DLL的白色分割线也要变深 */
+:where(.dark) .mini-bar-fill.purple { border-right-color: #1f1f1f; }
 </style>
+
