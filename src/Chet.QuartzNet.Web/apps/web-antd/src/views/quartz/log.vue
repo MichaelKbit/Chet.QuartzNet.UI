@@ -391,14 +391,8 @@ initData();
       </Card>
 
       <!-- 详情对话框 -->
-      <Modal 
-        v-model:open="detailModalVisible" 
-        :title="detailModalTitle" 
-        width="80%"
-        :max-width="1200"
-        :footer="null"
-        :destroyOnClose="true"
-      >
+      <Modal v-model:open="detailModalVisible" :title="detailModalTitle" width="80%" :max-width="1200" :footer="null"
+        :destroyOnClose="true">
         <div v-if="logDetail" class="log-detail">
           <!-- 头部信息 -->
           <div class="detail-header mb-4 rounded-lg p-5">
@@ -424,8 +418,8 @@ initData();
               <div class="info-item flex items-center gap-2 p-2 rounded">
                 <span class="font-semibold text-sm opacity-80">结束时间:</span>
                 <span class="text-sm">{{
-                  logDetail.endTime ? formatDateTime(logDetail.endTime) : '-' 
-                  }}</span>
+                  logDetail.endTime ? formatDateTime(logDetail.endTime) : '-'
+                }}</span>
               </div>
             </div>
           </div>
@@ -436,7 +430,8 @@ initData();
             <div class="content-section">
               <Typography.Title :level="5" class="mb-3">执行信息</Typography.Title>
               <div class="content-card exec-info-card rounded-lg p-4">
-                <pre class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ logDetail.message || '暂无执行信息' }}</pre>
+                <pre class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ logDetail.message || '暂无执行信息'
+                }}</pre>
               </div>
             </div>
 
@@ -444,7 +439,8 @@ initData();
             <div v-if="logDetail.errorMessage" class="content-section">
               <Typography.Title :level="5" class="mb-3">错误信息</Typography.Title>
               <div class="content-card error-card rounded-lg p-4">
-                <pre class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ logDetail.errorMessage }}</pre>
+                <pre class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ logDetail.errorMessage }}
+          </pre>
               </div>
             </div>
 
@@ -452,7 +448,8 @@ initData();
             <div v-if="logDetail.exception" class="content-section">
               <Typography.Title :level="5" class="mb-3">异常</Typography.Title>
               <div class="content-card error-card rounded-lg p-4">
-                <pre class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ logDetail.exception }}</pre>
+                <pre
+                  class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ logDetail.exception }}</pre>
               </div>
             </div>
 
@@ -460,7 +457,8 @@ initData();
             <div v-if="logDetail.result" class="content-section">
               <Typography.Title :level="5" class="mb-3">执行结果</Typography.Title>
               <div class="content-card success-card rounded-lg p-4">
-                <pre class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ typeof logDetail.result === 'string' ?
+                <pre class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ typeof logDetail.result ===
+                  'string' ?
                   logDetail.result : JSON.stringify(logDetail.result, null, 2) }}</pre>
               </div>
             </div>
@@ -469,7 +467,8 @@ initData();
             <div v-if="logDetail.jobData" class="content-section">
               <Typography.Title :level="5" class="mb-3">作业数据</Typography.Title>
               <div class="content-card info-card rounded-lg p-4">
-                <pre class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ typeof logDetail.jobData === 'string' ?
+                <pre class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{ typeof logDetail.jobData ===
+                  'string' ?
                   logDetail.jobData : JSON.stringify(logDetail.jobData, null, 2) }}</pre>
               </div>
             </div>
@@ -574,11 +573,11 @@ initData();
   .detail-header {
     padding: 1rem;
   }
-  
+
   .content-card {
     padding: 1rem;
   }
-  
+
   .code-block {
     font-size: 0.85rem;
   }

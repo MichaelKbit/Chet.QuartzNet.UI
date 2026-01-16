@@ -825,10 +825,7 @@ onMounted(async () => {
               <Form.Item label="作业状态" name="status">
                 <Select v-model:value="searchForm.status" placeholder="请选择状态" allowClear>
                   <Select.Option :value="JobStatusEnum.Normal">正常</Select.Option>
-                  <Select.Option :value="JobStatusEnum.Paused">已暂停</Select.Option>
-                  <Select.Option :value="JobStatusEnum.Completed">已完成</Select.Option>
-                  <Select.Option :value="JobStatusEnum.Error">错误</Select.Option>
-                  <Select.Option :value="JobStatusEnum.Blocked">阻塞</Select.Option>
+                  <Select.Option :value="JobStatusEnum.Paused">暂停</Select.Option>
                 </Select>
               </Form.Item>
             </Col>
