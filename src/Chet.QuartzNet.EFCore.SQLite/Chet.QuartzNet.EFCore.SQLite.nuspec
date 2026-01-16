@@ -13,9 +13,9 @@
     <releaseNotes>https://github.com/qiect/Chet.QuartzNet.UI/releases/tag/2.0.0</releaseNotes>
     <dependencies>
       <group targetFramework=".NETCoreApp8.0">
-        <dependency id="Microsoft.EntityFrameworkCore.Sqlite" version="8.0.0" exclude="Build,Analyzers" />
-        <dependency id="Microsoft.EntityFrameworkCore.Tools" version="8.0.0" exclude="Build,Analyzers" />
-        <dependency id="Microsoft.EntityFrameworkCore.Design" version="8.0.0" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.EntityFrameworkCore.Sqlite" version="8.0.23" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.EntityFrameworkCore.Tools" version="8.0.23" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.EntityFrameworkCore.Design" version="8.0.23" exclude="Build,Analyzers" />
       </group>
       <group targetFramework=".NETCoreApp10.0">
         <dependency id="Microsoft.EntityFrameworkCore.Sqlite" version="10.0.0" exclude="Build,Analyzers" />
