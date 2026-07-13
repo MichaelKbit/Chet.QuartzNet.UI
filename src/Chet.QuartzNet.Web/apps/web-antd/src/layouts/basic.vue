@@ -11,7 +11,6 @@ import { BookOpenText, CircleHelp, SvgGithubIcon } from '@vben/icons';
 import {
   BasicLayout,
   LockScreen,
-  Notification,
   UserDropdown,
 } from '@vben/layouts';
 import { preferences } from '@vben/preferences';

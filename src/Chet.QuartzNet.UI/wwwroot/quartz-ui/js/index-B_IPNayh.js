@@ -1,0 +1,1 @@
+import{T as a,a as e,b as n,P as t,L as o,B as s}from"./Title-ClWzVh8o.js";a.Text=e,a.Title=n,a.Paragraph=t,a.Link=o,a.Base=s,a.install=function(s){return s.component(a.name,a),s.component(a.Text.displayName,e),s.component(a.Title.displayName,n),s.component(a.Paragraph.displayName,t),s.component(a.Link.displayName,o),s};

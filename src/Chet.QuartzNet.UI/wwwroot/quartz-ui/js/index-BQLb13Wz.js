@@ -1,0 +1,1 @@
+import{F as e}from"./index-D7LVS9HG.js";import{u as n,F as t}from"./index-DiVoGlNv.js";e.useInjectFormItemContext=n,e.ItemRest=t,e.install=function(n){return n.component(e.name,e),n.component(e.Item.name,e.Item),n.component(t.name,t),n};

@@ -12,14 +12,13 @@ import type {
 } from 'echarts/components';
 import type { ComposeOption } from 'echarts/core';
 
-import { BarChart, LineChart, PieChart, RadarChart } from 'echarts/charts';
+import { BarChart, LineChart } from 'echarts/charts';
 import {
   // 数据集组件
   DatasetComponent,
   GridComponent,
   LegendComponent,
   TitleComponent,
-  ToolboxComponent,
   TooltipComponent,
   // 内置数据转换器组件 (filter, sort)
   TransformComponent,
@@ -41,8 +40,6 @@ export type ECOption = ComposeOption<
 // 注册必须的组件
 echarts.use([
   TitleComponent,
-  PieChart,
-  RadarChart,
   TooltipComponent,
   GridComponent,
   DatasetComponent,
@@ -53,7 +50,6 @@ echarts.use([
   UniversalTransition,
   CanvasRenderer,
   LegendComponent,
-  ToolboxComponent,
 ]);
 
 export default echarts;
