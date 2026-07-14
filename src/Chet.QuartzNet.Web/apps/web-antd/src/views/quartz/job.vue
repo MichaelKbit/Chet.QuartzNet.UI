@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive } from 'vue';
+import { ref, computed, onMounted, reactive, nextTick } from 'vue';
 // 导入日期格式化工具
 import { formatDateTime } from '@vben/utils';
 import { Page } from '@vben/common-ui';
@@ -26,6 +26,8 @@ import {
 import type { FormInstance } from 'ant-design-vue';
 // 导入Cron帮助组件
 import CronHelperModal from './components/cron-helper.vue';
+// 导入可拖动 Modal 组合式函数
+import { useDraggableModal } from './composables/use-draggable-modal';
 
 // 导入i18n
 import { $t } from '#/locales';
@@ -254,6 +256,17 @@ const columns = [
   },
 ];
 
+// 排序持久化：读取上次排序列
+const SORT_KEY = 'quartz-job-sort';
+const savedSort = (() => {
+  try {
+    const raw = localStorage.getItem(SORT_KEY);
+    return raw ? JSON.parse(raw) : undefined;
+  } catch {
+    return undefined;
+  }
+})();
+
 // 构造 Vxe Grid 配置
 const gridOptions: VxeTableGridOptions<QuartzJobResponseDto> = {
   columns: columns as any,
@@ -263,7 +276,7 @@ const gridOptions: VxeTableGridOptions<QuartzJobResponseDto> = {
   sortConfig: {
     trigger: 'cell',
     remote: true,
-    defaultSort: undefined as any,
+    defaultSort: savedSort,
   },
   checkboxConfig: { highlight: true, range: false },
   columnConfig: { resizable: true },
@@ -273,16 +286,28 @@ const gridOptions: VxeTableGridOptions<QuartzJobResponseDto> = {
     autoLoad: true,
     ajax: {
       query: async ({ page, sort }: any, formValues: any) => {
+        // autoLoad 首次 query 时 defaultSort 可能未注入，从 localStorage 兜底
+        let sortField = sort?.field;
+        let sortOrderRaw = sort?.order;
+        if (!sortField) {
+          try {
+            const saved = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
+            if (saved) {
+              sortField = saved.field;
+              sortOrderRaw = saved.order;
+            }
+          } catch {}
+        }
         // 保持原有行为：sortOrder 使用 ascend/descend 形式
         const sortOrder =
-          sort?.order === 'asc' ? 'ascend' : sort?.order === 'desc' ? 'descend' : '';
+          sortOrderRaw === 'asc' ? 'ascend' : sortOrderRaw === 'desc' ? 'descend' : '';
         const params: QuartzJobQueryDto = {
           pageIndex: page.currentPage,
           pageSize: page.pageSize,
           jobName: formValues?.jobName,
           jobGroup: formValues?.jobGroup,
           status: formValues?.status,
-          sortBy: sort?.field ?? '',
+          sortBy: sortField ?? '',
           sortOrder,
         };
         try {
@@ -354,8 +379,22 @@ const [Grid, gridApi] = useVbenVxeGrid({
     checkboxAll: () => {
       selectedRows.value = gridApi.grid?.getCheckboxRecords?.() ?? [];
     },
+    sortChange: ({ property, field, order }: any) => {
+      const sortField = property || field;
+      if (sortField && order) {
+        localStorage.setItem(
+          SORT_KEY,
+          JSON.stringify({ field: sortField, order }),
+        );
+      } else {
+        localStorage.removeItem(SORT_KEY);
+      }
+    },
   },
 });
+
+// 编辑对话框支持拖动
+useDraggableModal(editModalVisible, 'quartz-job-edit-modal');
 
 // 搜索/重置由 VbenForm 内置提交按钮触发，无需手动处理
 
@@ -722,6 +761,14 @@ const formatJson = (property: keyof QuartzJobDto) => {
 // 生命周期
 onMounted(async () => {
   await getSchedulerStatusInfo();
+  // 等待 useVbenVxeGrid 的 init() 完成 commitProxy('query') 后再恢复排序视觉状态
+  await nextTick();
+  try {
+    const saved = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
+    if (saved) {
+      gridApi.grid?.setSort({ field: saved.field, order: saved.order });
+    }
+  } catch {}
 });
 </script>
 
@@ -817,35 +864,27 @@ onMounted(async () => {
       </Grid>
 
       <!-- 新增编辑对话框 -->
-      <Modal v-model:open="editModalVisible" :title="editModalDisplayTitle" width="800px" :body-style="{ padding: '24px' }"
+      <Modal v-model:open="editModalVisible" :title="editModalDisplayTitle" width="760px" :body-style="{ padding: '24px' }"
+        wrapClassName="quartz-job-edit-modal"
         destroyOnClose @cancel="editModalVisible = false">
-        <Form ref="formRef" :model="editForm" layout="horizontal" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }"
-          :label-align="'right'">
+        <Form ref="formRef" :model="editForm" layout="horizontal"
+          :label-col="{ style: { width: '110px' } }" :wrapper-col="{ flex: 1 }">
+          <!-- 基本信息 -->
+          <div class="form-section-title">{{ $t('page.quartz.jobPage.sectionBasic') }}</div>
           <Row :gutter="16">
-            <Col :xs="24" :sm="24" :md="24">
+            <Col :xs="24" :md="12">
               <Form.Item :label="$t('page.quartz.jobPage.jobName')" name="jobName"
                 :rules="[{ required: true, message: $t('page.quartz.jobPage.jobNameRequired') }, { max: 100, message: $t('page.quartz.jobPage.jobNameMaxLen') }]">
                 <Input v-model:value="editForm.jobName" :placeholder="$t('page.quartz.jobPage.placeholderJobName')" :disabled="isEditMode" />
               </Form.Item>
             </Col>
-            <Col :xs="24" :sm="24" :md="24">
+            <Col :xs="24" :md="12">
               <Form.Item :label="$t('page.quartz.jobPage.jobGroup')" name="jobGroup"
                 :rules="[{ required: true, message: $t('page.quartz.jobPage.jobGroupRequired') }, { max: 100, message: $t('page.quartz.jobPage.jobGroupMaxLen') }]">
                 <Input v-model:value="editForm.jobGroup" :placeholder="$t('page.quartz.jobPage.placeholderJobGroup')" :disabled="isEditMode" />
               </Form.Item>
             </Col>
-            <Col :xs="24" :sm="24" :md="24">
-              <Form.Item :label="$t('page.quartz.jobPage.cronExpression')" name="cronExpression"
-                :rules="[{ required: true, message: $t('page.quartz.jobPage.cronRequired') }, { max: 200, message: $t('page.quartz.jobPage.cronMaxLen') }]">
-                <Space.Compact style="width: 100%">
-                  <Input v-model:value="editForm.cronExpression" :placeholder="$t('page.quartz.jobPage.cronPlaceholder')" style="flex: 1" />
-                  <Tooltip :title="$t('page.quartz.jobPage.cronHelper')">
-                    <Button type="default" @click="openCronHelper"> 🤔 </Button>
-                  </Tooltip>
-                </Space.Compact>
-              </Form.Item>
-            </Col>
-            <Col :xs="24" :sm="24" :md="24">
+            <Col :xs="24" :md="12">
               <Form.Item :label="$t('page.quartz.jobPage.jobType')" name="jobType" :rules="[{ required: true, message: $t('page.quartz.jobPage.jobTypeRequired') }]">
                 <Select v-model:value="editForm.jobType" @change="handleJobTypeChange">
                   <Select.Option :value="JobTypeEnum.DLL">DLL</Select.Option>
@@ -853,7 +892,28 @@ onMounted(async () => {
                 </Select>
               </Form.Item>
             </Col>
-            <Col :xs="24" :sm="24" :md="24">
+          </Row>
+
+          <!-- 调度设置 -->
+          <div class="form-section-title">{{ $t('page.quartz.jobPage.sectionSchedule') }}</div>
+          <Row :gutter="16">
+            <Col :xs="24">
+              <Form.Item :label="$t('page.quartz.jobPage.cronExpression')" name="cronExpression"
+                :rules="[{ required: true, message: $t('page.quartz.jobPage.cronRequired') }, { max: 200, message: $t('page.quartz.jobPage.cronMaxLen') }]">
+                <Space.Compact style="width: 100%">
+                  <Input v-model:value="editForm.cronExpression" :placeholder="$t('page.quartz.jobPage.cronPlaceholder')" style="flex: 1" />
+                  <Tooltip :title="$t('page.quartz.jobPage.cronHelper')">
+                    <Button @click="openCronHelper">{{ $t('page.quartz.jobPage.cronHelper') }}</Button>
+                  </Tooltip>
+                </Space.Compact>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <!-- 作业配置 -->
+          <div class="form-section-title">{{ $t('page.quartz.jobPage.sectionConfig') }}</div>
+          <Row :gutter="16">
+            <Col :xs="24">
               <Form.Item :label="$t('page.quartz.jobPage.jobClassOrApi')" name="jobClassOrApi"
                 :rules="[{ required: true, message: $t('page.quartz.jobPage.jobClassOrApiRequired') }, { max: 500, message: $t('page.quartz.jobPage.jobClassOrApiMaxLen') }]">
                 <Select v-model:value="editForm.jobClassOrApi" :placeholder="$t('page.quartz.jobPage.selectJobClassOrApi')" showSearch allowClear
@@ -869,7 +929,8 @@ onMounted(async () => {
                 </Select>
               </Form.Item>
             </Col>
-            <Col :xs="24" :sm="24" :md="24" v-if="editForm.jobType === JobTypeEnum.DLL">
+            <!-- DLL: 作业数据 -->
+            <Col :xs="24" v-if="editForm.jobType === JobTypeEnum.DLL">
               <Form.Item :label="$t('page.quartz.jobPage.jobData')" name="jobData" :rules="[
                 {
                   validator: (rule, value, callback) => {
@@ -883,105 +944,109 @@ onMounted(async () => {
                   },
                 },
               ]">
-                <div class="relative">
+                <div class="json-field">
                   <Tooltip :title="$t('page.quartz.jobPage.jobDataTooltip')">
                     <Input.TextArea v-model:value="editForm.jobData" :placeholder="$t('page.quartz.jobPage.placeholderJobData')" :rows="4" />
                   </Tooltip>
                   <Tooltip :title="$t('page.quartz.jobPage.jsonFormat')">
-                    <Button type="link" size="small" style="position: absolute; right: 8px; bottom: 8px;"
-                      @click="formatJson('jobData')">
-                      😄
+                    <Button type="link" size="small" class="json-format-btn" @click="formatJson('jobData')">
+                      {{ $t('page.quartz.jobPage.jsonFormat') }}
                     </Button>
                   </Tooltip>
                 </div>
               </Form.Item>
             </Col>
-            <!-- API相关配置 -->
-            <Col :xs="24" :sm="24" :md="24" v-if="editForm.jobType === JobTypeEnum.API">
-              <Form.Item :label="$t('page.quartz.jobPage.apiMethod')" name="apiMethod"
-                :rules="[{ required: true, message: $t('page.quartz.jobPage.placeholderApiMethod') }, { max: 10, message: $t('page.quartz.jobPage.apiMethodMaxLen') }]">
-                <Select v-model:value="editForm.apiMethod">
-                  <Select.Option value="GET">GET</Select.Option>
-                  <Select.Option value="POST">POST</Select.Option>
-                  <Select.Option value="PUT">PUT</Select.Option>
-                  <Select.Option value="DELETE">DELETE</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col :xs="24" :sm="24" :md="24" v-if="editForm.jobType === JobTypeEnum.API">
-              <Form.Item :label="$t('page.quartz.jobPage.skipSsl')" name="skipSslValidation" valuePropName="checked">
-                <Switch v-model:checked="editForm.skipSslValidation" />
-              </Form.Item>
-            </Col>
-            <Col :xs="24" :sm="24" :md="24" v-if="editForm.jobType === JobTypeEnum.API">
-              <Form.Item :label="$t('page.quartz.jobPage.apiTimeout')" name="apiTimeout" :rules="[
-                {
-                  required: true,
-                  message: $t('page.quartz.jobPage.apiTimeoutRequired'),
-                  type: 'number',
-                },
-                { type: 'number', min: 1, max: 99999, message: $t('page.quartz.jobPage.apiTimeoutRange') },
-              ]">
-                <Input type="number" v-model:value.number="editForm.apiTimeout" :placeholder="$t('page.quartz.jobPage.placeholderApiTimeout')" />
-              </Form.Item>
-            </Col>
-            <Col :xs="24" :sm="24" :md="24" v-if="editForm.jobType === JobTypeEnum.API">
-              <Form.Item :label="$t('page.quartz.jobPage.apiHeaders')" name="apiHeaders" :rules="[
-                {
-                  validator: (rule, value, callback) => {
-                    if (!value) return callback();
-                    try {
-                      JSON.parse(value);
-                      callback();
-                    } catch (e) {
-                      callback(new Error($t('page.quartz.jobPage.invalidJsonFormat')));
-                    }
+            <!-- API 相关配置 -->
+            <template v-if="editForm.jobType === JobTypeEnum.API">
+              <Col :xs="24" :md="12">
+                <Form.Item :label="$t('page.quartz.jobPage.apiMethod')" name="apiMethod"
+                  :rules="[{ required: true, message: $t('page.quartz.jobPage.placeholderApiMethod') }, { max: 10, message: $t('page.quartz.jobPage.apiMethodMaxLen') }]">
+                  <Select v-model:value="editForm.apiMethod">
+                    <Select.Option value="GET">GET</Select.Option>
+                    <Select.Option value="POST">POST</Select.Option>
+                    <Select.Option value="PUT">PUT</Select.Option>
+                    <Select.Option value="DELETE">DELETE</Select.Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col :xs="24" :md="12">
+                <Form.Item :label="$t('page.quartz.jobPage.apiTimeout')" name="apiTimeout" :rules="[
+                  {
+                    required: true,
+                    message: $t('page.quartz.jobPage.apiTimeoutRequired'),
+                    type: 'number',
                   },
-                },
-              ]">
-                <div class="relative">
-                  <Input.TextArea v-model:value="editForm.apiHeaders"
-                    :placeholder="$t('page.quartz.jobPage.placeholderApiHeaders')" :rows="3" />
-                  <Tooltip :title="$t('page.quartz.jobPage.jsonFormat')">
-                    <Button type="link" size="small" style="position: absolute; right: 8px; bottom: 8px;"
-                      @click="formatJson('apiHeaders')">
-                      😄
-                    </Button>
-                  </Tooltip>
-                </div>
-              </Form.Item>
-            </Col>
-            <Col :xs="24" :sm="24" :md="24" v-if="editForm.jobType === JobTypeEnum.API">
-              <Form.Item :label="$t('page.quartz.jobPage.apiBody')" name="apiBody" :rules="[
-                {
-                  validator: (rule, value, callback) => {
-                    if (!value) return callback();
-                    try {
-                      JSON.parse(value);
-                      callback();
-                    } catch (e) {
-                      callback(new Error($t('page.quartz.jobPage.invalidJsonFormat')));
-                    }
+                  { type: 'number', min: 1, max: 99999, message: $t('page.quartz.jobPage.apiTimeoutRange') },
+                ]">
+                  <Input type="number" v-model:value.number="editForm.apiTimeout" :placeholder="$t('page.quartz.jobPage.placeholderApiTimeout')" />
+                </Form.Item>
+              </Col>
+              <Col :xs="24">
+                <Form.Item :label="$t('page.quartz.jobPage.skipSsl')" name="skipSslValidation" valuePropName="checked">
+                  <Switch v-model:checked="editForm.skipSslValidation" />
+                </Form.Item>
+              </Col>
+              <Col :xs="24">
+                <Form.Item :label="$t('page.quartz.jobPage.apiHeaders')" name="apiHeaders" :rules="[
+                  {
+                    validator: (rule, value, callback) => {
+                      if (!value) return callback();
+                      try {
+                        JSON.parse(value);
+                        callback();
+                      } catch (e) {
+                        callback(new Error($t('page.quartz.jobPage.invalidJsonFormat')));
+                      }
+                    },
                   },
-                },
-              ]">
-                <div class="relative">
-                  <Input.TextArea v-model:value="editForm.apiBody" :placeholder="$t('page.quartz.jobPage.placeholderApiBody')" :rows="4" />
-                  <Tooltip :title="$t('page.quartz.jobPage.jsonFormat')">
-                    <Button type="link" size="small" style="position: absolute; right: 8px; bottom: 8px;"
-                      @click="formatJson('apiBody')">
-                      😄
-                    </Button>
-                  </Tooltip>
-                </div>
-              </Form.Item>
-            </Col>
-            <Col :xs="24" :sm="24" :md="24">
+                ]">
+                  <div class="json-field">
+                    <Input.TextArea v-model:value="editForm.apiHeaders"
+                      :placeholder="$t('page.quartz.jobPage.placeholderApiHeaders')" :rows="3" />
+                    <Tooltip :title="$t('page.quartz.jobPage.jsonFormat')">
+                      <Button type="link" size="small" class="json-format-btn" @click="formatJson('apiHeaders')">
+                        {{ $t('page.quartz.jobPage.jsonFormat') }}
+                      </Button>
+                    </Tooltip>
+                  </div>
+                </Form.Item>
+              </Col>
+              <Col :xs="24">
+                <Form.Item :label="$t('page.quartz.jobPage.apiBody')" name="apiBody" :rules="[
+                  {
+                    validator: (rule, value, callback) => {
+                      if (!value) return callback();
+                      try {
+                        JSON.parse(value);
+                        callback();
+                      } catch (e) {
+                        callback(new Error($t('page.quartz.jobPage.invalidJsonFormat')));
+                      }
+                    },
+                  },
+                ]">
+                  <div class="json-field">
+                    <Input.TextArea v-model:value="editForm.apiBody" :placeholder="$t('page.quartz.jobPage.placeholderApiBody')" :rows="4" />
+                    <Tooltip :title="$t('page.quartz.jobPage.jsonFormat')">
+                      <Button type="link" size="small" class="json-format-btn" @click="formatJson('apiBody')">
+                        {{ $t('page.quartz.jobPage.jsonFormat') }}
+                      </Button>
+                    </Tooltip>
+                  </div>
+                </Form.Item>
+              </Col>
+            </template>
+          </Row>
+
+          <!-- 其他设置 -->
+          <div class="form-section-title">{{ $t('page.quartz.jobPage.sectionOther') }}</div>
+          <Row :gutter="16">
+            <Col :xs="24">
               <Form.Item :label="$t('page.quartz.jobPage.description')" name="description" :rules="[{ max: 500, message: $t('page.quartz.jobPage.descriptionMaxLen') }]">
                 <Input.TextArea v-model:value="editForm.description" :placeholder="$t('page.quartz.jobPage.placeholderDescription')" :rows="3" />
               </Form.Item>
             </Col>
-            <Col :xs="24" :sm="24" :md="24">
+            <Col :xs="24">
               <Form.Item :label="$t('page.quartz.jobPage.isEnabled')" name="isEnabled" valuePropName="checked">
                 <Switch v-model:checked="editForm.isEnabled" />
               </Form.Item>
@@ -1027,6 +1092,36 @@ onMounted(async () => {
 
 .justify-between {
   justify-content: space-between;
+}
+
+/* ====== 表单分区标题 ====== */
+.form-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin: 4px 0 14px;
+  padding-left: 8px;
+  border-left: 3px solid hsl(var(--primary));
+  line-height: 1;
+}
+
+.form-section-title:not(:first-child) {
+  margin-top: 8px;
+}
+
+/* ====== JSON 字段格式化按钮 ====== */
+.json-field {
+  position: relative;
+}
+
+.json-field .json-format-btn {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+  padding: 0 4px;
+  height: 22px;
+  font-size: 12px;
+  z-index: 1;
 }
 
 /* ====== 调度器状态条 ====== */

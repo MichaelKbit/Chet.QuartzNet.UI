@@ -7,6 +7,7 @@
     :z-index="10000"
     centered
     destroyOnClose
+    wrapClassName="quartz-cron-helper-modal"
     @cancel="handleCancel"
   >
     <div class="cron-doc">
@@ -84,11 +85,16 @@
 </template>
 
 <script setup lang="ts">
+import { toRef } from 'vue';
 import { Modal, Button, Table } from 'ant-design-vue';
 import type { ColumnsType } from 'ant-design-vue/es/table';
+import { useDraggableModal } from '../composables/use-draggable-modal';
 
-defineProps<{ visible: boolean }>();
+const props = defineProps<{ visible: boolean }>();
 const emit = defineEmits(['cancel', 'select', 'update:visible']);
+
+// 对话框支持拖动
+useDraggableModal(toRef(props, 'visible'), 'quartz-cron-helper-modal');
 
 const cronExamples = [
   { id: '1', name: '每秒执行', expression: '*/1 * * * * ?', description: '系统最高频率触发' },

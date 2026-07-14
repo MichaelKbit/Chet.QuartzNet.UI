@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue';
+import { ref, computed, reactive, onMounted, nextTick } from 'vue';
 import { formatDateTime } from '@vben/utils';
 import { Page } from '@vben/common-ui';
 // 导入 vbenadmin 的 Vxe Table 适配器
@@ -42,6 +42,8 @@ import type {
   QuartzNotificationDto,
   NotificationQueryDto,
 } from '../../api/quartz/notification';
+// 导入可拖动 Modal 组合式函数
+import { useDraggableModal } from './composables/use-draggable-modal';
 
 // 通知状态映射
 const notificationStatusMap = {
@@ -57,6 +59,12 @@ const saveLoading = ref(false);
 // 详情对话框
 const detailModalVisible = ref(false);
 const currentNotification = ref<QuartzNotificationDto | null>(null);
+
+// 发送耗时格式化：毫秒转秒，去除多余小数位
+const formatDuration = (ms?: number | null) => {
+  if (ms == null) return '—';
+  return `${parseFloat((ms / 1000).toFixed(2))} s`;
+};
 
 // 搜索条件由 VbenForm 自动注入到 query 的 formValues
 
@@ -164,12 +172,23 @@ const columns = [
   },
   {
     title: $t('page.quartz.notificationPage.action'),
-    width: 80,
+    width: 90,
     align: 'center' as const,
     fixed: 'right',
     slots: { default: 'action' },
   },
 ];
+
+// 排序持久化：读取上次排序列
+const SORT_KEY = 'quartz-notification-sort';
+const savedSort = (() => {
+  try {
+    const raw = localStorage.getItem(SORT_KEY);
+    return raw ? JSON.parse(raw) : undefined;
+  } catch {
+    return undefined;
+  }
+})();
 
 // 构造 Vxe Grid 配置
 const gridOptions: VxeTableGridOptions<QuartzNotificationDto> = {
@@ -180,7 +199,7 @@ const gridOptions: VxeTableGridOptions<QuartzNotificationDto> = {
   sortConfig: {
     trigger: 'cell',
     remote: true,
-    defaultSort: undefined as any,
+    defaultSort: savedSort,
   },
   columnConfig: { resizable: true },
   pagerConfig: { enabled: true },
@@ -189,15 +208,27 @@ const gridOptions: VxeTableGridOptions<QuartzNotificationDto> = {
     autoLoad: true,
     ajax: {
       query: async ({ page, sort }: any, formValues: any) => {
+        // autoLoad 首次 query 时 defaultSort 可能未注入，从 localStorage 兜底
+        let sortField = sort?.field;
+        let sortOrderRaw = sort?.order;
+        if (!sortField) {
+          try {
+            const saved = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
+            if (saved) {
+              sortField = saved.field;
+              sortOrderRaw = saved.order;
+            }
+          } catch {}
+        }
         // 保持原有行为：sortOrder 使用 ascend/descend 形式
         const sortOrder =
-          sort?.order === 'asc' ? 'ascend' : sort?.order === 'desc' ? 'descend' : undefined;
+          sortOrderRaw === 'asc' ? 'ascend' : sortOrderRaw === 'desc' ? 'descend' : undefined;
         const params: NotificationQueryDto = {
           status: formValues?.status,
           triggeredBy: formValues?.triggeredBy,
           pageIndex: page.currentPage || 1,
           pageSize: page.pageSize || 20,
-          sortBy: sort?.field ?? '',
+          sortBy: sortField ?? '',
           sortOrder,
         };
 
@@ -269,7 +300,24 @@ const [Grid, gridApi] = useVbenVxeGrid({
     submitOnChange: false,
     submitOnEnter: true,
   },
+  gridEvents: {
+    sortChange: ({ property, field, order }: any) => {
+      const sortField = property || field;
+      if (sortField && order) {
+        localStorage.setItem(
+          SORT_KEY,
+          JSON.stringify({ field: sortField, order }),
+        );
+      } else {
+        localStorage.removeItem(SORT_KEY);
+      }
+    },
+  },
 });
+
+// 对话框支持拖动
+useDraggableModal(configModalVisible, 'quartz-notification-config-modal');
+useDraggableModal(detailModalVisible, 'quartz-notification-detail-modal');
 
 // 搜索/重置由 VbenForm 内置提交按钮触发，无需手动处理
 
@@ -392,6 +440,17 @@ const handleClearNotifications = () => {
     },
   });
 };
+
+// 恢复表格排序视觉状态（列头箭头）
+onMounted(async () => {
+  await nextTick();
+  try {
+    const saved = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
+    if (saved) {
+      gridApi.grid?.setSort({ field: saved.field, order: saved.order });
+    }
+  } catch {}
+});
 </script>
 
 <template>
@@ -424,12 +483,12 @@ const handleClearNotifications = () => {
 
         <!-- 发送时长 -->
         <template #duration="{ row }">
-          {{ row.duration != null ? `${row.duration} ms` : '-' }}
+          {{ row.duration != null ? formatDuration(row.duration) : '-' }}
         </template>
 
         <!-- 操作列 -->
         <template #action="{ row }">
-          <div class="flex items-center justify-center gap-2">
+          <div class="flex items-center justify-center gap-3">
             <Tooltip :title="$t('page.quartz.notificationPage.detail')">
               <i class="vxe-icon-eye-fill text-primary cursor-pointer hover:opacity-80" @click="handleDetail(row)"></i>
             </Tooltip>
@@ -442,7 +501,7 @@ const handleClearNotifications = () => {
 
       <!-- 配置对话框 -->
       <Modal v-model:open="configModalVisible" :title="$t('page.quartz.notificationPage.notificationConfig')" width="720px" destroyOnClose
-        @cancel="configModalVisible = false" centered>
+        @cancel="configModalVisible = false" centered wrapClassName="quartz-notification-config-modal">
         <div class="config-modal-content">
           <Alert :message="$t('page.quartz.notificationPage.configPushPlusDesc')" type="info" show-icon class="config-tip-alert" />
 
@@ -577,7 +636,7 @@ const handleClearNotifications = () => {
 
       <!-- 详情对话框 -->
       <Modal v-model:open="detailModalVisible" :title="$t('page.quartz.notificationPage.notificationDetail')" width="720px"
-        :footer="null" :destroyOnClose="true" centered>
+        :footer="null" :destroyOnClose="true" centered wrapClassName="quartz-notification-detail-modal">
         <div v-if="currentNotification" class="notification-detail">
           <!-- 顶部：标题 + 状态标签 -->
           <div class="detail-header">
@@ -593,7 +652,7 @@ const handleClearNotifications = () => {
               {{ currentNotification.triggeredBy || '—' }}
             </DescriptionsItem>
             <DescriptionsItem :label="$t('page.quartz.notificationPage.duration')">
-              {{ currentNotification.duration ? `${currentNotification.duration} ms` : '—' }}
+              {{ formatDuration(currentNotification.duration) }}
             </DescriptionsItem>
             <DescriptionsItem :label="$t('page.quartz.notificationPage.sendTime')">
               {{ currentNotification.sendTime ? formatDateTime(currentNotification.sendTime) : '—' }}

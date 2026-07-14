@@ -152,7 +152,7 @@ const getExecutionTrendOption = (data: JobExecutionTrend[]): EChartsOption => {
       padding: [10, 14],
       backgroundColor: c.accent,
       textStyle: { fontSize: 12, color: c.foreground },
-      extraCssText: 'backdrop-filter: blur(8px); box-shadow: 0 6px 16px rgba(0,0,0,0.08);',
+      extraCssText: 'box-shadow: 0 6px 16px rgba(0,0,0,0.08);',
       formatter: (params: any) => buildTooltipFormatter(params, c),
     },
     legend: {

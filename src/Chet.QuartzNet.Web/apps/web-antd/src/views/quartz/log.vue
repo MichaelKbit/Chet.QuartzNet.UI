@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 // 导入日期格式化工具
 import { formatDateTime } from '@vben/utils';
 import { Page } from '@vben/common-ui';
@@ -25,6 +25,8 @@ import {
   clearLogs,
 } from '../../api/quartz/log';
 import type { LogQueryParams, LogResponseDto } from '../../api/quartz/log';
+// 导入可拖动 Modal 组合式函数
+import { useDraggableModal } from './composables/use-draggable-modal';
 
 // 日志状态映射
 const logStatusMap = {
@@ -39,10 +41,10 @@ const logStatusMap = {
 const detailModalVisible = ref(false);
 const logDetail = ref<LogResponseDto | null>(null);
 
-// 执行时长格式化：毫秒转秒，保留 3 位小数
+// 执行时长格式化：毫秒转秒，去除多余小数位
 const formatDuration = (ms?: number | null) => {
   if (ms == null) return '-';
-  return `${(ms / 1000).toFixed(3)} s`;
+  return `${parseFloat((ms / 1000).toFixed(2))} s`;
 };
 
 // 搜索条件由 VbenForm 自动注入到 query 的 formValues
@@ -110,6 +112,17 @@ const columns = [
   },
 ];
 
+// 排序持久化：读取上次排序列
+const SORT_KEY = 'quartz-log-sort';
+const savedSort = (() => {
+  try {
+    const raw = localStorage.getItem(SORT_KEY);
+    return raw ? JSON.parse(raw) : undefined;
+  } catch {
+    return undefined;
+  }
+})();
+
 // 构造 Vxe Grid 配置
 const gridOptions: VxeTableGridOptions<LogResponseDto> = {
   columns: columns as any,
@@ -119,7 +132,7 @@ const gridOptions: VxeTableGridOptions<LogResponseDto> = {
   sortConfig: {
     trigger: 'cell',
     remote: true,
-    defaultSort: undefined as any,
+    defaultSort: savedSort,
   },
   columnConfig: { resizable: true },
   pagerConfig: { enabled: true },
@@ -128,9 +141,21 @@ const gridOptions: VxeTableGridOptions<LogResponseDto> = {
     autoLoad: true,
     ajax: {
       query: async ({ page, sort }: any, formValues: any) => {
+        // autoLoad 首次 query 时 defaultSort 可能未注入，从 localStorage 兜底
+        let sortField = sort?.field;
+        let sortOrderRaw = sort?.order;
+        if (!sortField) {
+          try {
+            const saved = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
+            if (saved) {
+              sortField = saved.field;
+              sortOrderRaw = saved.order;
+            }
+          } catch {}
+        }
         // 保持原有行为：sortOrder 使用 asc/desc 形式
         const sortOrder =
-          sort?.order === 'asc' ? 'asc' : sort?.order === 'desc' ? 'desc' : '';
+          sortOrderRaw === 'asc' ? 'asc' : sortOrderRaw === 'desc' ? 'desc' : '';
         // RangePicker 返回 Day.js 数组 [begin, end]，拆分为后端范围参数
         // startTimeRange 查 StartTime 字段范围，endTimeRange 查 EndTime 字段范围
         const startTimeRange = formValues?.startTimeRange;
@@ -145,7 +170,7 @@ const gridOptions: VxeTableGridOptions<LogResponseDto> = {
           endEndTime: endTimeRange?.[1]?.format('YYYY-MM-DDTHH:mm:ss'),
           pageIndex: page.currentPage || 1,
           pageSize: page.pageSize || 10,
-          sortBy: sort?.field ?? '',
+          sortBy: sortField ?? '',
           sortOrder,
         } as LogQueryParams;
 
@@ -241,7 +266,23 @@ const [Grid, gridApi] = useVbenVxeGrid({
     submitOnChange: false,
     submitOnEnter: true,
   },
+  gridEvents: {
+    sortChange: ({ property, field, order }: any) => {
+      const sortField = property || field;
+      if (sortField && order) {
+        localStorage.setItem(
+          SORT_KEY,
+          JSON.stringify({ field: sortField, order }),
+        );
+      } else {
+        localStorage.removeItem(SORT_KEY);
+      }
+    },
+  },
 });
+
+// 详情对话框支持拖动
+useDraggableModal(detailModalVisible, 'quartz-log-detail-modal');
 
 // 搜索/重置由 VbenForm 内置提交按钮触发，无需手动处理
 
@@ -285,6 +326,17 @@ const handleDetail = (log: LogResponseDto) => {
     console.log($t('page.quartz.logPage.showDetailFailed'), error);
   }
 };
+
+// 恢复表格排序视觉状态（列头箭头）
+onMounted(async () => {
+  await nextTick();
+  try {
+    const saved = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
+    if (saved) {
+      gridApi.grid?.setSort({ field: saved.field, order: saved.order });
+    }
+  } catch {}
+});
 </script>
 
 <template>
@@ -328,7 +380,7 @@ const handleDetail = (log: LogResponseDto) => {
 
       <!-- 详情对话框 -->
       <Modal v-model:open="detailModalVisible" :title="$t('page.quartz.logPage.logDetail')" width="720px" :footer="null"
-        :destroyOnClose="true" centered>
+        :destroyOnClose="true" centered wrapClassName="quartz-log-detail-modal">
         <div v-if="logDetail" class="log-detail">
           <!-- 顶部：标题 + 状态标签 -->
           <div class="detail-header">

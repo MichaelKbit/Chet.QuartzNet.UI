@@ -134,7 +134,11 @@
       "invalidJson": "Please enter a valid JSON string",
       "invalidJsonFormat": "Please enter valid JSON format",
       "jsonFormat": "Format JSON",
-      "selectJobClassOrApi": "Select or enter job class/API"
+      "selectJobClassOrApi": "Select or enter job class/API",
+      "sectionBasic": "Basic Info",
+      "sectionSchedule": "Schedule",
+      "sectionConfig": "Job Configuration",
+      "sectionOther": "Other"
     },
     "logPage": {
       "jobName": "Job Name",
@@ -142,7 +146,7 @@
       "status": "Status",
       "startTime": "Start Time",
       "endTime": "End Time",
-      "duration": "Duration (s)",
+      "duration": "Duration",
       "action": "Action",
       "detail": "Detail",
       "search": "Search",
@@ -185,7 +189,7 @@
       "triggeredBy": "Triggered By",
       "status": "Status",
       "sendTime": "Send Time",
-      "duration": "Duration (ms)",
+      "duration": "Duration",
       "createTime": "Created At",
       "action": "Action",
       "detail": "Detail",
