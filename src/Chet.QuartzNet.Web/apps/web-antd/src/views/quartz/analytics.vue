@@ -93,56 +93,15 @@ const successRatio = computed(() =>
 
 /**
  * 图表配置生成器 (抽离配置逻辑，保持 fetch 函数纯粹)
- * 配色统一使用 vben CSS 变量，自动适配暗色主题
  */
-const getCssVarRaw = (name: string) =>
-  getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-
-const getChartColors = () => {
-  const raw = {
-    foreground: getCssVarRaw('--foreground'),
-    muted: getCssVarRaw('--muted-foreground'),
-    border: getCssVarRaw('--border'),
-    accent: getCssVarRaw('--accent'),
-    primary: getCssVarRaw('--primary'),
-    success: getCssVarRaw('--success'),
-    destructive: getCssVarRaw('--destructive'),
-  };
-  const hsl = (v: string) => `hsl(${v})`;
-  const hsla = (v: string, a: number) => `hsl(${v} / ${a})`;
-  return {
-    foreground: hsl(raw.foreground),
-    muted: hsl(raw.muted),
-    border: hsl(raw.border),
-    accent: hsl(raw.accent),
-    primary: hsl(raw.primary),
-    success: hsl(raw.success),
-    destructive: hsl(raw.destructive),
-    successAlpha: hsla(raw.success, 0.18),
-    destructiveAlpha: hsla(raw.destructive, 0.18),
-    primaryAlpha: hsla(raw.primary, 0.4),
-  };
-};
-
-// 统一 tooltip 模板
-const buildTooltipFormatter = (params: any, colors: ReturnType<typeof getChartColors>) => {
-  let html = `<div style="margin-bottom: 8px; font-weight: 600; color: ${colors.foreground}; font-size: 13px;">${params[0].axisValue}</div>`;
-  params.forEach((item: any) => {
-    html += `
-      <div style="display: flex; align-items: center; justify-content: space-between; min-width: 140px; line-height: 22px;">
-        <span style="font-size: 12px; color: ${colors.muted}">
-          <span style="display:inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${item.color}; margin-right: 8px; vertical-align: middle;"></span>
-          ${item.seriesName}
-        </span>
-        <span style="font-weight: 600; color: ${colors.foreground}; font-variant-numeric: tabular-nums;">${item.value}</span>
-      </div>`;
-  });
-  return html;
-};
-
 const getExecutionTrendOption = (data: JobExecutionTrend[]): EChartsOption => {
   const hasData = data.length > 0;
-  const c = getChartColors();
+  // 语义色：success 绿 / failed 红 / total 蓝
+  const colors = {
+    success: '#52c41a',
+    failed: '#ff4d4f',
+    total: '#1890ff',
+  };
 
   return {
     backgroundColor: 'transparent',
@@ -150,10 +109,22 @@ const getExecutionTrendOption = (data: JobExecutionTrend[]): EChartsOption => {
       trigger: 'axis',
       borderWidth: 0,
       padding: [10, 14],
-      backgroundColor: c.accent,
-      textStyle: { fontSize: 12, color: c.foreground },
-      extraCssText: 'box-shadow: 0 6px 16px rgba(0,0,0,0.08);',
-      formatter: (params: any) => buildTooltipFormatter(params, c),
+      textStyle: { fontSize: 12, color: '#595959' },
+      extraCssText: 'backdrop-filter: blur(8px); box-shadow: 0 6px 16px rgba(0,0,0,0.08);',
+      formatter: (params: any) => {
+        let html = `<div style="margin-bottom: 8px; font-weight: 600; color: #262626; font-size: 13px;">${params[0].axisValue}</div>`;
+        params.forEach((item: any) => {
+          html += `
+            <div style="display: flex; align-items: center; justify-content: space-between; min-width: 140px; line-height: 22px;">
+              <span style="font-size: 12px; color: #8c8c8c">
+                <span style="display:inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${item.color}; margin-right: 8px; vertical-align: middle;"></span>
+                ${item.seriesName}
+              </span>
+              <span style="font-weight: 600; color: #262626; font-variant-numeric: tabular-nums;">${item.value}</span>
+            </div>`;
+        });
+        return html;
+      },
     },
     legend: {
       icon: 'circle',
@@ -161,21 +132,21 @@ const getExecutionTrendOption = (data: JobExecutionTrend[]): EChartsOption => {
       itemHeight: 8,
       right: 0,
       top: 0,
-      textStyle: { color: c.muted, fontSize: 12 },
+      textStyle: { color: '#8c8c8c', fontSize: 12 },
     },
     grid: { left: '1%', right: '2%', bottom: '3%', top: '15%', containLabel: true },
     xAxis: {
       type: 'category',
       boundaryGap: false,
       data: hasData ? data.map((i) => i.time) : [$t('page.quartz.analyticsPage.noData')],
-      axisLine: { lineStyle: { color: c.border } },
+      axisLine: { lineStyle: { color: '#f0f0f0' } },
       axisTick: { show: false },
-      axisLabel: { color: c.muted, fontSize: 12 },
+      axisLabel: { color: '#8c8c8c', fontSize: 12 },
     },
     yAxis: {
       type: 'value',
-      splitLine: { lineStyle: { color: c.border, type: 'dashed' } },
-      axisLabel: { color: c.muted, fontSize: 12 },
+      splitLine: { lineStyle: { color: '#f5f5f5', type: 'dashed' } },
+      axisLabel: { color: '#8c8c8c', fontSize: 12 },
     },
     series: [
       {
@@ -184,7 +155,7 @@ const getExecutionTrendOption = (data: JobExecutionTrend[]): EChartsOption => {
         smooth: 0.4,
         showSymbol: false,
         data: data.map((i) => i.successCount),
-        itemStyle: { color: c.success },
+        itemStyle: { color: colors.success },
         lineStyle: { width: 2.5 },
         areaStyle: {
           color: {
@@ -194,7 +165,7 @@ const getExecutionTrendOption = (data: JobExecutionTrend[]): EChartsOption => {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: c.successAlpha },
+              { offset: 0, color: 'rgba(82, 196, 26, 0.18)' },
               { offset: 1, color: 'transparent' },
             ],
           },
@@ -206,7 +177,7 @@ const getExecutionTrendOption = (data: JobExecutionTrend[]): EChartsOption => {
         smooth: 0.4,
         showSymbol: false,
         data: data.map((i) => i.failedCount),
-        itemStyle: { color: c.destructive },
+        itemStyle: { color: colors.failed },
         lineStyle: { width: 2.5 },
         areaStyle: {
           color: {
@@ -216,7 +187,7 @@ const getExecutionTrendOption = (data: JobExecutionTrend[]): EChartsOption => {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: c.destructiveAlpha },
+              { offset: 0, color: 'rgba(255, 77, 79, 0.18)' },
               { offset: 1, color: 'transparent' },
             ],
           },
@@ -228,7 +199,7 @@ const getExecutionTrendOption = (data: JobExecutionTrend[]): EChartsOption => {
         smooth: 0.4,
         showSymbol: false,
         data: data.map((i) => i.totalCount),
-        itemStyle: { color: c.primary },
+        itemStyle: { color: colors.total },
         lineStyle: { width: 2, type: 'dashed', opacity: 0.55 },
       },
     ],
@@ -240,7 +211,10 @@ const getExecutionTimeOption = (data: JobExecutionTime[]): EChartsOption => {
     data.length > 0
       ? data.map((i) => i.timeRange)
       : [$t('page.quartz.analyticsPage.noData')];
-  const c = getChartColors();
+  const isDark = document.documentElement.classList.contains('dark');
+  const labelColor = isDark ? 'rgba(255,255,255,0.45)' : '#8c8c8c';
+  const lineColor = isDark ? '#303030' : '#f0f0f0';
+  const splitColor = isDark ? '#303030' : '#f5f5f5';
 
   return {
     backgroundColor: 'transparent',
@@ -249,27 +223,25 @@ const getExecutionTimeOption = (data: JobExecutionTime[]): EChartsOption => {
       axisPointer: { type: 'shadow' },
       borderWidth: 0,
       padding: [10, 14],
-      backgroundColor: c.accent,
-      textStyle: { fontSize: 12, color: c.foreground },
+      textStyle: { fontSize: 12 },
       extraCssText: 'backdrop-filter: blur(8px); box-shadow: 0 6px 16px rgba(0,0,0,0.08);',
-      formatter: (params: any) => buildTooltipFormatter(params, c),
     },
     grid: { left: '1%', right: '2%', bottom: '3%', top: '15%', containLabel: true },
     xAxis: {
       type: 'category',
       data: xAxisData,
       axisLabel: {
-        color: c.muted,
+        color: labelColor,
         fontSize: 12,
         rotate: xAxisData.length > 6 ? 30 : 0,
       },
-      axisLine: { lineStyle: { color: c.border } },
+      axisLine: { lineStyle: { color: lineColor } },
       axisTick: { show: false },
     },
     yAxis: {
       type: 'value',
-      splitLine: { lineStyle: { type: 'dashed', color: c.border } },
-      axisLabel: { color: c.muted, fontSize: 12 },
+      splitLine: { lineStyle: { type: 'dashed', color: splitColor } },
+      axisLabel: { color: labelColor, fontSize: 12 },
     },
     series: [
       {
@@ -279,16 +251,30 @@ const getExecutionTimeOption = (data: JobExecutionTime[]): EChartsOption => {
         data: data.map((i) => i.count),
         itemStyle: {
           borderRadius: [6, 6, 0, 0],
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: c.primary },
-              { offset: 1, color: c.primaryAlpha },
-            ],
+          color: (params: any) => {
+            // 按耗时档位映射语义色：极速蓝 → 正常绿 → 偏慢黄 → 极慢红
+            const ratio = params.dataIndex / (xAxisData.length - 1 || 1);
+            let color;
+            if (ratio < 0.25) {
+              color = '#1890ff';
+            } else if (ratio < 0.5) {
+              color = '#52c41a';
+            } else if (ratio < 0.75) {
+              color = '#faad14';
+            } else {
+              color = '#ff4d4f';
+            }
+            return {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color },
+                { offset: 1, color: color + 'AA' },
+              ],
+            };
           },
         },
       },
@@ -477,25 +463,31 @@ onMounted(fetchData);
       </Col>
 
       <Col :span="24">
-        <section class="chart-section">
-          <div class="chart-header">
-            <span class="chart-title">{{ $t('page.quartz.analyticsPage.executionTrend') }}</span>
-          </div>
+        <Card class="chart-card" :bordered="false">
+          <template #title>
+            <div class="chart-title">
+              <span class="chart-title__bar"></span>
+              <span class="chart-title__text">{{ $t('page.quartz.analyticsPage.executionTrend') }}</span>
+            </div>
+          </template>
           <Skeleton :loading="loading" active :paragraph="{ rows: 8 }">
             <EchartsUI ref="executionTrendChartRef" style="height: 380px" />
           </Skeleton>
-        </section>
+        </Card>
       </Col>
 
       <Col :span="24">
-        <section class="chart-section">
-          <div class="chart-header">
-            <span class="chart-title">{{ $t('page.quartz.analyticsPage.executionTime') }}</span>
-          </div>
+        <Card class="chart-card" :bordered="false">
+          <template #title>
+            <div class="chart-title">
+              <span class="chart-title__bar"></span>
+              <span class="chart-title__text">{{ $t('page.quartz.analyticsPage.executionTime') }}</span>
+            </div>
+          </template>
           <Skeleton :loading="loading" active :paragraph="{ rows: 8 }">
             <EchartsUI ref="executionTimeChartRef" style="height: 380px" />
           </Skeleton>
-        </section>
+        </Card>
       </Col>
     </Row>
   </Page>
@@ -728,19 +720,42 @@ onMounted(fetchData);
   min-width: 0;
 }
 
-/* ====== 图表区域：去 Card 化，用 section 分隔 ====== */
-.chart-section {
+/* ====== 图表卡片 ====== */
+.chart-card {
+  border-radius: 10px;
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
-  border-radius: 10px;
-  padding: 18px 20px 20px;
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
 }
 
-.chart-header {
-  margin-bottom: 14px;
+:deep(.chart-card .ant-card-head) {
+  border-bottom: 1px solid hsl(var(--border));
+  min-height: auto;
+  padding: 0 20px;
+}
+
+:deep(.chart-card .ant-card-head-title) {
+  padding: 14px 0;
+}
+
+:deep(.chart-card .ant-card-body) {
+  padding: 16px 20px 20px;
 }
 
 .chart-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chart-title__bar {
+  width: 3px;
+  height: 16px;
+  background: hsl(var(--primary));
+  border-radius: 2px;
+}
+
+.chart-title__text {
   font-size: 15px;
   font-weight: 600;
   color: hsl(var(--foreground));
@@ -754,10 +769,6 @@ onMounted(fetchData);
 
   .dual-item b {
     font-size: 22px;
-  }
-
-  .chart-section {
-    padding: 14px 14px 16px;
   }
 }
 </style>
