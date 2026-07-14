@@ -341,6 +341,30 @@ public interface IQuartzJobService
     );
 
     #endregion
+
+    #region 系统配置
+
+    /// <summary>
+    /// 获取系统配置
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>系统配置</returns>
+    Task<ApiResponseDto<SystemConfigDto>> GetSystemConfigAsync(
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
+    /// 保存系统配置
+    /// </summary>
+    /// <param name="config">系统配置</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>保存结果</returns>
+    Task<ApiResponseDto<bool>> SaveSystemConfigAsync(
+        SystemConfigDto config,
+        CancellationToken cancellationToken = default
+    );
+
+    #endregion
 }
 
 /// <summary>

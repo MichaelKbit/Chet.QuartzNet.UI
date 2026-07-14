@@ -4,17 +4,15 @@ import { registerAccessDirective } from '@vben/access';
 import { registerLoadingDirective } from '@vben/common-ui/es/loading';
 import { useVbenForm } from './adapter/form';
 import { setupVbenVxeTable } from '@vben/plugins/vxe-table';
-import { preferences } from '@vben/preferences';
 import { initStores } from '@vben/stores';
 import '@vben/styles';
 import '@vben/styles/antd';
 
-import { useTitle } from '@vueuse/core';
-
-import { $t, setupI18n } from '#/locales';
+import { setupI18n } from '#/locales';
 
 import { initComponentAdapter } from './adapter/component';
 import { initSetupVbenForm } from './adapter/form';
+import { useSystemConfig } from './composables/use-system-config';
 import App from './app.vue';
 import { router } from './router';
 
@@ -72,14 +70,11 @@ async function bootstrap(namespace: string) {
   // const { MotionPlugin } = await import('@vben/plugins/motion');
   // app.use(MotionPlugin);
 
-  // 动态更新标题
+  // 动态更新标题：统一基于系统配置的服务名称，不显示菜单名
+  const { systemConfig } = useSystemConfig();
   watchEffect(() => {
-    if (preferences.app.dynamicTitle) {
-      const routeTitle = router.currentRoute.value.meta?.title;
-      const pageTitle =
-        (routeTitle ? `${$t(routeTitle)} - ` : '') + preferences.app.name;
-      useTitle(pageTitle);
-    }
+    const name = systemConfig.value.serviceName;
+    document.title = name ? `${name} - Chet.QuartzNet.UI` : 'Chet.QuartzNet.UI';
   });
 
   app.mount('#app');

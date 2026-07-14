@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, shallowRef, onMounted, computed } from 'vue';
 import { Page } from '@vben/common-ui';
-import { Card, Row, Col, Skeleton } from 'ant-design-vue';
+import { Card, Row, Col, Skeleton, Tag } from 'ant-design-vue';
 import { Package, Zap, Clock, Layers } from '@vben/icons';
 import type { EChartsOption } from 'echarts';
 
@@ -29,6 +29,7 @@ import type {
   JobStatusDistribution,
   JobTypeDistribution,
 } from '../../api/quartz/job';
+import { useSystemConfig } from '../../composables/use-system-config';
 
 /**
  * 状态与数据初始化
@@ -341,11 +342,47 @@ const fetchData = async () => {
   }
 };
 
-onMounted(fetchData);
+/**
+ * 系统配置：服务标识横幅
+ * 使用全局共享状态，标题同步由 bootstrap.ts 统一处理
+ */
+const { systemConfig, loadSystemConfig } = useSystemConfig();
+
+// 环境标签语义色映射
+const environmentTagMap: Record<string, { color: string; text: () => string }> = {
+  DEV: { color: 'default', text: () => $t('page.quartz.systemConfigPage.envDEV') },
+  TEST: { color: 'blue', text: () => $t('page.quartz.systemConfigPage.envTEST') },
+  UAT: { color: 'orange', text: () => $t('page.quartz.systemConfigPage.envUAT') },
+  PROD: { color: 'red', text: () => $t('page.quartz.systemConfigPage.envPROD') },
+};
+
+const environmentTag = computed<{ color: string; text: () => string }>(
+  () => environmentTagMap[systemConfig.value.environment] ?? environmentTagMap.DEV!,
+);
+
+const hasServiceName = computed(() => !!systemConfig.value.serviceName);
+
+onMounted(() => {
+  loadSystemConfig();
+  fetchData();
+});
 </script>
 
 <template>
   <Page auto-content-height>
+    <!-- 服务标识横幅：左侧主题色条 + 服务名 + 描述 + 右侧环境标签 -->
+    <div v-if="hasServiceName" class="service-banner">
+      <div class="service-bar" />
+      <div class="service-main">
+        <div class="service-title">{{ systemConfig.serviceName }}</div>
+        <div v-if="systemConfig.serviceDescription" class="service-desc">
+          {{ systemConfig.serviceDescription }}
+        </div>
+      </div>
+      <div class="service-tag">
+        <Tag :color="environmentTag.color">{{ environmentTag.text() }}</Tag>
+      </div>
+    </div>
     <!-- KPI 概览：保留 Card 质感 + 图标视觉，用 vben token 统一配色 -->
     <Row :gutter="[16, 16]">
       <Col :xs="24" :sm="12" :lg="6">
@@ -494,6 +531,57 @@ onMounted(fetchData);
 </template>
 
 <style scoped>
+/* ====== 服务标识横幅 ====== */
+.service-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
+  overflow: hidden;
+}
+
+.service-bar {
+  flex-shrink: 0;
+  width: 4px;
+  align-self: stretch;
+  background: hsl(var(--primary));
+  border-radius: 2px;
+}
+
+.service-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.service-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.service-desc {
+  margin-top: 2px;
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.service-tag {
+  flex-shrink: 0;
+}
+
 /* ====== KPI 卡片：保留质感，token 统一配色 ====== */
 .stat-card {
   border-radius: 10px;
