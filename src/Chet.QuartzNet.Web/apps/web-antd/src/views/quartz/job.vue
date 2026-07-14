@@ -733,7 +733,12 @@ onMounted(async () => {
         <!-- 工具栏：左侧调度器控制 + 右侧作业操作 -->
         <template #toolbar-actions>
           <div class="flex w-full items-center justify-between">
-            <Space>
+            <div class="scheduler-bar">
+              <span class="scheduler-status" :class="schedulerStatus.isStarted ? 'is-running' : 'is-stopped'">
+                <i class="status-dot"></i>
+                {{ schedulerStatus.status }}
+              </span>
+              <span class="scheduler-sep"></span>
               <Button type="primary" :disabled="schedulerStatus.isStarted" @click="handleStartScheduler">
                 {{ $t('page.quartz.jobPage.startScheduler') }}
               </Button>
@@ -741,10 +746,7 @@ onMounted(async () => {
                 @click="handleStopScheduler">
                 {{ $t('page.quartz.jobPage.stopScheduler') }}
               </Button>
-              <Tag :color="schedulerStatus.isStarted ? 'success' : 'error'">
-                {{ schedulerStatus.status }}
-              </Tag>
-            </Space>
+            </div>
             <Space>
               <Button type="primary" @click="handleAdd"> {{ $t('page.quartz.jobPage.addJob') }} </Button>
               <Button danger :disabled="selectedRows.length === 0" @click="handleBatchDelete">
@@ -1025,5 +1027,66 @@ onMounted(async () => {
 
 .justify-between {
   justify-content: space-between;
+}
+
+/* ====== 调度器状态条 ====== */
+.scheduler-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.scheduler-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 11px 4px 9px;
+  border-radius: 999px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.scheduler-status .status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.scheduler-status.is-running {
+  color: hsl(var(--success));
+  background: hsl(var(--success) / 0.08);
+  border: 1px solid hsl(var(--success) / 0.2);
+}
+
+.scheduler-status.is-running .status-dot {
+  background: hsl(var(--success));
+  box-shadow: 0 0 0 3px hsl(var(--success) / 0.15);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.scheduler-status.is-stopped {
+  color: hsl(var(--destructive));
+  background: hsl(var(--destructive) / 0.08);
+  border: 1px solid hsl(var(--destructive) / 0.2);
+}
+
+.scheduler-status.is-stopped .status-dot {
+  background: hsl(var(--destructive));
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.scheduler-sep {
+  width: 1px;
+  height: 16px;
+  background: hsl(var(--border));
+  display: inline-block;
 }
 </style>
