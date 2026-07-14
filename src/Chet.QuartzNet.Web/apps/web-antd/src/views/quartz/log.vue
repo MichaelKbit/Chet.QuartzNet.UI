@@ -8,6 +8,8 @@ import { useVbenVxeGrid } from '@vben/plugins/vxe-table';
 import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import {
   Button,
+  Descriptions,
+  DescriptionsItem,
   Modal,
   Tag,
   message,
@@ -37,6 +39,12 @@ const logStatusMap = {
 const detailModalVisible = ref(false);
 const logDetail = ref<LogResponseDto | null>(null);
 
+// 执行时长格式化：毫秒转秒，保留 3 位小数
+const formatDuration = (ms?: number | null) => {
+  if (ms == null) return '-';
+  return `${(ms / 1000).toFixed(3)} s`;
+};
+
 // 搜索条件由 VbenForm 自动注入到 query 的 formValues
 
 // 详情顶部状态条颜色：成功绿 / 错误红 / 运行中蓝
@@ -46,9 +54,6 @@ const logStatusColor = computed(() => {
   if (status === LogStatusEnum.ERROR) return '#ff4d4f';
   return '#1890ff';
 });
-
-// 详情页元数据 label 在上、value 在下，去掉 i18n 文案末尾冒号
-const stripColon = (s: string) => (s || '').replace(/[:：]\s*$/, '');
 
 // 列配置
 const columns = [
@@ -308,7 +313,7 @@ const handleDetail = (log: LogResponseDto) => {
 
         <!-- 执行时长 -->
         <template #duration="{ row }">
-          {{ row.duration != null ? `${row.duration} ms` : '-' }}
+          {{ formatDuration(row.duration) }}
         </template>
 
         <!-- 操作列 -->
@@ -325,37 +330,26 @@ const handleDetail = (log: LogResponseDto) => {
       <Modal v-model:open="detailModalVisible" :title="$t('page.quartz.logPage.logDetail')" width="720px" :footer="null"
         :destroyOnClose="true" centered>
         <div v-if="logDetail" class="log-detail">
-          <!-- 顶部：状态色条 + 主标识 + 状态标签 -->
-          <div class="detail-head">
-            <div class="status-bar" :style="{ backgroundColor: logStatusColor }"></div>
-            <div class="head-inner">
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0">
-                  <div class="meta-label">{{ $t('page.quartz.logPage.jobName') }} / {{ $t('page.quartz.logPage.jobGroup') }}</div>
-                  <div class="head-title">{{ logDetail.jobName }} · {{ logDetail.jobGroup }}</div>
-                </div>
-                <Tag :color="logStatusMap[logDetail.status].status" class="detail-tag">
-                  {{ logStatusMap[logDetail.status].text() }}
-                </Tag>
-              </div>
-            </div>
+          <!-- 顶部：标题 + 状态标签 -->
+          <div class="detail-header">
+            <span class="header-title">{{ logDetail.jobName }} · {{ logDetail.jobGroup }}</span>
+            <Tag :color="logStatusMap[logDetail.status].status">
+              {{ logStatusMap[logDetail.status].text() }}
+            </Tag>
           </div>
 
-          <!-- 元数据：定义列表式 -->
-          <div class="meta-grid">
-            <div class="meta-item">
-              <div class="meta-label">{{ stripColon($t('page.quartz.logPage.executionDuration')) }}</div>
-              <div class="meta-value">{{ logDetail.duration || 0 }} <span class="meta-unit">ms</span></div>
-            </div>
-            <div class="meta-item">
-              <div class="meta-label">{{ stripColon($t('page.quartz.logPage.startDateTime')) }}</div>
-              <div class="meta-value">{{ formatDateTime(logDetail.startTime) }}</div>
-            </div>
-            <div class="meta-item">
-              <div class="meta-label">{{ stripColon($t('page.quartz.logPage.endDateTime')) }}</div>
-              <div class="meta-value">{{ logDetail.endTime ? formatDateTime(logDetail.endTime) : '—' }}</div>
-            </div>
-          </div>
+          <!-- 元数据：Descriptions 组件统一展示 -->
+          <Descriptions :column="3" size="small" bordered class="detail-desc">
+            <DescriptionsItem :label="$t('page.quartz.logPage.executionDuration')">
+              {{ formatDuration(logDetail.duration) }}
+            </DescriptionsItem>
+            <DescriptionsItem :label="$t('page.quartz.logPage.startTime')">
+              {{ formatDateTime(logDetail.startTime) }}
+            </DescriptionsItem>
+            <DescriptionsItem :label="$t('page.quartz.logPage.endTime')">
+              {{ logDetail.endTime ? formatDateTime(logDetail.endTime) : '—' }}
+            </DescriptionsItem>
+          </Descriptions>
 
           <!-- 内容区 -->
           <div class="detail-body">
@@ -367,23 +361,23 @@ const handleDetail = (log: LogResponseDto) => {
             <section v-if="logDetail.errorMessage" class="detail-section">
               <div class="section-title">
                 {{ $t('page.quartz.logPage.errorInfo') }}
-                <span class="section-tag section-tag-error">Error</span>
+                <span class="section-tag section-tag--error">Error</span>
               </div>
-              <pre class="code-panel code-panel-error">{{ logDetail.errorMessage }}</pre>
+              <pre class="code-panel code-panel--error">{{ logDetail.errorMessage }}</pre>
             </section>
 
             <section v-if="logDetail.exception" class="detail-section">
               <div class="section-title">
                 {{ $t('page.quartz.logPage.exceptionInfo') }}
-                <span class="section-tag section-tag-error">Exception</span>
+                <span class="section-tag section-tag--error">Exception</span>
               </div>
-              <pre class="code-panel code-panel-error">{{ logDetail.exception }}</pre>
+              <pre class="code-panel code-panel--error">{{ logDetail.exception }}</pre>
             </section>
 
             <section v-if="logDetail.result" class="detail-section">
               <div class="section-title">
                 {{ $t('page.quartz.logPage.executionResult') }}
-                <span class="section-tag section-tag-success">Result</span>
+                <span class="section-tag section-tag--success">Result</span>
               </div>
               <pre class="code-panel">{{ typeof logDetail.result === 'string' ? logDetail.result : JSON.stringify(logDetail.result, null, 2) }}</pre>
             </section>
@@ -409,132 +403,83 @@ const handleDetail = (log: LogResponseDto) => {
 <style scoped>
 /* ============ 详情对话框 ============ */
 .log-detail {
-  --detail-gap: 1.25rem;
+  --space-lg: 20px;
 }
 
-/* 顶部：状态色条 + 主标识 */
-.detail-head {
+/* 顶部：标题 + 状态标签 */
+.detail-header {
   display: flex;
-  align-items: stretch;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  background: var(--color-fill-quaternary, rgba(0, 0, 0, 0.02));
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: var(--space-lg);
 }
 
-.status-bar {
-  width: 4px;
-  flex-shrink: 0;
-}
-
-.head-inner {
-  flex: 1;
-  min-width: 0;
-  padding: 0.875rem 1.125rem;
-}
-
-.head-title {
-  font-size: 1.125rem;
+.header-title {
+  font-size: 16px;
   font-weight: 600;
-  color: var(--color-text);
+  color: hsl(var(--foreground));
   line-height: 1.4;
   word-break: break-all;
 }
 
-.detail-tag {
-  margin: 0;
-  flex-shrink: 0;
-}
-
-/* 元数据：定义列表式 */
-.meta-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.875rem 1.5rem;
-  margin-top: var(--detail-gap);
-  padding: 0.875rem 1.125rem;
-  border-radius: 10px;
-  border: 1px solid var(--color-border);
-  background: var(--color-fill-quaternary, rgba(0, 0, 0, 0.02));
-}
-
-.meta-item {
-  min-width: 0;
-}
-
-.meta-label {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-  margin-bottom: 0.25rem;
-  line-height: 1.4;
-}
-
-.meta-value {
-  font-size: 0.875rem;
-  color: var(--color-text);
-  font-weight: 500;
-  word-break: break-all;
-  line-height: 1.4;
-}
-
-.meta-unit {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-  font-weight: 400;
+/* Descriptions 元数据 */
+.detail-desc {
+  margin-bottom: var(--space-lg);
 }
 
 /* 内容区 */
 .detail-body {
-  margin-top: var(--detail-gap);
   display: flex;
   flex-direction: column;
-  gap: 1.125rem;
+  gap: var(--space-lg);
 }
 
 .detail-section {
   min-width: 0;
 }
 
+/* section 标题 */
 .section-title {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8125rem;
+  gap: 8px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: 0.5rem;
+  color: hsl(var(--foreground));
+  margin-bottom: 8px;
 }
 
 .section-tag {
-  font-size: 0.625rem;
+  font-size: 10px;
   font-weight: 700;
-  padding: 0.0625rem 0.4375rem;
-  border-radius: 4px;
+  padding: 1px 7px;
+  border-radius: 3px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   line-height: 1.5;
 }
 
-.section-tag-error {
+.section-tag--error {
   background: rgba(255, 77, 79, 0.1);
   color: #ff4d4f;
 }
 
-.section-tag-success {
+.section-tag--success {
   background: rgba(82, 196, 26, 0.1);
   color: #52c41a;
 }
 
-/* 统一中性代码面板 */
+/* 代码面板 */
 .code-panel {
   margin: 0;
-  padding: 0.875rem 1rem;
-  background: var(--color-fill-quaternary, rgba(0, 0, 0, 0.02));
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  color: var(--color-text);
-  font-family: 'JetBrains Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 0.8125rem;
+  padding: 12px 14px;
+  background: hsl(var(--accent) / 0.5);
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  color: hsl(var(--foreground));
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12.5px;
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
@@ -543,56 +488,19 @@ const handleDetail = (log: LogResponseDto) => {
   overflow-y: auto;
 }
 
-/* 错误类：左侧色条 + 淡红底，不整块染色 */
-.code-panel-error {
+.code-panel--error {
   border-left: 3px solid #ff4d4f;
   background: rgba(255, 77, 79, 0.04);
 }
 
 /* 底部按钮 */
 .detail-footer {
-  margin-top: var(--detail-gap);
+  margin-top: var(--space-lg);
   display: flex;
   justify-content: flex-end;
-}
-
-/* 响应式 */
-@media (max-width: 640px) {
-  .meta-grid {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-
-  .head-inner {
-    padding: 0.75rem 0.875rem;
-  }
-
-  .code-panel {
-    font-size: 0.75rem;
-  }
 }
 
 .mb-4 {
   margin-bottom: 16px;
-}
-
-.text-right {
-  text-align: right;
-}
-
-.flex {
-  display: flex;
-}
-
-.w-full {
-  width: 100%;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.justify-end {
-  justify-content: flex-end;
 }
 </style>

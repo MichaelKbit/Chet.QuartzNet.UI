@@ -20,6 +20,8 @@ import {
   Tooltip,
   InputNumber,
   Alert,
+  Descriptions,
+  DescriptionsItem,
 } from 'ant-design-vue';
 import type { FormInstance } from 'ant-design-vue';
 
@@ -65,9 +67,6 @@ const notificationStatusColor = computed(() => {
   if (status === NotificationStatusEnum.Failed) return '#ff4d4f';
   return '#faad14';
 });
-
-// 详情页元数据 label 在上、value 在下，去掉 i18n 文案末尾冒号
-const stripColon = (s: string) => (s || '').replace(/[:：]\s*$/, '');
 
 // 编辑对话框
 const configModalVisible = ref(false);
@@ -580,41 +579,29 @@ const handleClearNotifications = () => {
       <Modal v-model:open="detailModalVisible" :title="$t('page.quartz.notificationPage.notificationDetail')" width="720px"
         :footer="null" :destroyOnClose="true" centered>
         <div v-if="currentNotification" class="notification-detail">
-          <!-- 顶部：状态色条 + 主标识 + 状态标签 -->
-          <div class="detail-head">
-            <div class="status-bar" :style="{ backgroundColor: notificationStatusColor }"></div>
-            <div class="head-inner">
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0">
-                  <div class="meta-label">{{ $t('page.quartz.notificationPage.notificationDetail') }}</div>
-                  <div class="head-title">{{ currentNotification.title }}</div>
-                </div>
-                <Tag :color="notificationStatusMap[currentNotification.status].status" class="detail-tag">
-                  {{ notificationStatusMap[currentNotification.status].text() }}
-                </Tag>
-              </div>
-            </div>
+          <!-- 顶部：标题 + 状态标签 -->
+          <div class="detail-header">
+            <span class="header-title">{{ currentNotification.title }}</span>
+            <Tag :color="notificationStatusMap[currentNotification.status].status">
+              {{ notificationStatusMap[currentNotification.status].text() }}
+            </Tag>
           </div>
 
-          <!-- 元数据：定义列表式 -->
-          <div class="meta-grid meta-grid-4">
-            <div class="meta-item">
-              <div class="meta-label">{{ stripColon($t('page.quartz.notificationPage.triggerSource')) }}</div>
-              <div class="meta-value">{{ currentNotification.triggeredBy || '—' }}</div>
-            </div>
-            <div class="meta-item">
-              <div class="meta-label">{{ stripColon($t('page.quartz.notificationPage.sendDateTime')) }}</div>
-              <div class="meta-value">{{ currentNotification.sendTime ? formatDateTime(currentNotification.sendTime) : '—' }}</div>
-            </div>
-            <div class="meta-item">
-              <div class="meta-label">{{ stripColon($t('page.quartz.notificationPage.sendDuration')) }}</div>
-              <div class="meta-value">{{ currentNotification.duration ? `${currentNotification.duration} ms` : '—' }}</div>
-            </div>
-            <div class="meta-item">
-              <div class="meta-label">{{ stripColon($t('page.quartz.notificationPage.createDateTime')) }}</div>
-              <div class="meta-value">{{ formatDateTime(currentNotification.createTime) }}</div>
-            </div>
-          </div>
+          <!-- 元数据：Descriptions 组件统一展示 -->
+          <Descriptions :column="2" size="small" bordered class="detail-desc">
+            <DescriptionsItem :label="$t('page.quartz.notificationPage.triggeredBy')">
+              {{ currentNotification.triggeredBy || '—' }}
+            </DescriptionsItem>
+            <DescriptionsItem :label="$t('page.quartz.notificationPage.duration')">
+              {{ currentNotification.duration ? `${currentNotification.duration} ms` : '—' }}
+            </DescriptionsItem>
+            <DescriptionsItem :label="$t('page.quartz.notificationPage.sendTime')">
+              {{ currentNotification.sendTime ? formatDateTime(currentNotification.sendTime) : '—' }}
+            </DescriptionsItem>
+            <DescriptionsItem :label="$t('page.quartz.notificationPage.createTime')">
+              {{ formatDateTime(currentNotification.createTime) }}
+            </DescriptionsItem>
+          </Descriptions>
 
           <!-- 内容区 -->
           <div class="detail-body">
@@ -626,9 +613,9 @@ const handleClearNotifications = () => {
             <section v-if="currentNotification.errorMessage" class="detail-section">
               <div class="section-title">
                 {{ $t('page.quartz.notificationPage.errorInfo') }}
-                <span class="section-tag section-tag-error">Error</span>
+                <span class="section-tag section-tag--error">Error</span>
               </div>
-              <pre class="code-panel code-panel-error">{{ currentNotification.errorMessage }}</pre>
+              <pre class="code-panel code-panel--error">{{ currentNotification.errorMessage }}</pre>
             </section>
           </div>
 
@@ -647,123 +634,76 @@ const handleClearNotifications = () => {
 <style scoped>
 /* ============ 详情对话框 ============ */
 .notification-detail {
-  --detail-gap: 1.25rem;
+  --space-lg: 20px;
 }
 
-/* 顶部：状态色条 + 主标识 */
-.detail-head {
+/* 顶部：标题 + 状态标签 */
+.detail-header {
   display: flex;
-  align-items: stretch;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  background: var(--color-fill-quaternary, rgba(0, 0, 0, 0.02));
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: var(--space-lg);
 }
 
-.status-bar {
-  width: 4px;
-  flex-shrink: 0;
-}
-
-.head-inner {
-  flex: 1;
-  min-width: 0;
-  padding: 0.875rem 1.125rem;
-}
-
-.head-title {
-  font-size: 1.125rem;
+.header-title {
+  font-size: 16px;
   font-weight: 600;
-  color: var(--color-text);
+  color: hsl(var(--foreground));
   line-height: 1.4;
   word-break: break-word;
 }
 
-.detail-tag {
-  margin: 0;
-  flex-shrink: 0;
-}
-
-/* 元数据：定义列表式 */
-.meta-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.875rem 1.5rem;
-  margin-top: var(--detail-gap);
-  padding: 0.875rem 1.125rem;
-  border-radius: 10px;
-  border: 1px solid var(--color-border);
-  background: var(--color-fill-quaternary, rgba(0, 0, 0, 0.02));
-}
-
-.meta-grid-4 {
-  grid-template-columns: repeat(4, 1fr);
-}
-
-.meta-item {
-  min-width: 0;
-}
-
-.meta-label {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-  margin-bottom: 0.25rem;
-  line-height: 1.4;
-}
-
-.meta-value {
-  font-size: 0.875rem;
-  color: var(--color-text);
-  font-weight: 500;
-  word-break: break-all;
-  line-height: 1.4;
+/* Descriptions 元数据 */
+.detail-desc {
+  margin-bottom: var(--space-lg);
 }
 
 /* 内容区 */
 .detail-body {
-  margin-top: var(--detail-gap);
   display: flex;
   flex-direction: column;
-  gap: 1.125rem;
+  gap: var(--space-lg);
 }
 
 .detail-section {
   min-width: 0;
 }
 
+/* section 标题 */
 .section-title {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8125rem;
+  gap: 8px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: 0.5rem;
+  color: hsl(var(--foreground));
+  margin-bottom: 8px;
 }
 
 .section-tag {
-  font-size: 0.625rem;
+  font-size: 10px;
   font-weight: 700;
-  padding: 0.0625rem 0.4375rem;
-  border-radius: 4px;
+  padding: 1px 7px;
+  border-radius: 3px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   line-height: 1.5;
 }
 
-.section-tag-error {
+.section-tag--error {
   background: rgba(255, 77, 79, 0.1);
   color: #ff4d4f;
 }
 
 /* 通知内容：富文本面板 */
 .content-panel {
-  padding: 0.875rem 1rem;
-  background: var(--color-fill-quaternary, rgba(0, 0, 0, 0.02));
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  color: var(--color-text);
-  font-size: 0.875rem;
+  padding: 14px 16px;
+  background: hsl(var(--accent) / 0.5);
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  color: hsl(var(--foreground));
+  font-size: 14px;
   line-height: 1.7;
   word-break: break-word;
   overflow-x: auto;
@@ -778,7 +718,7 @@ const handleClearNotifications = () => {
 }
 
 .content-panel :deep(a) {
-  color: var(--ant-color-primary, #1677ff);
+  color: hsl(var(--primary));
 }
 
 .content-panel :deep(table) {
@@ -786,16 +726,16 @@ const handleClearNotifications = () => {
   border-collapse: collapse;
 }
 
-/* 统一中性代码面板 */
+/* 代码面板 */
 .code-panel {
   margin: 0;
-  padding: 0.875rem 1rem;
-  background: var(--color-fill-quaternary, rgba(0, 0, 0, 0.02));
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  color: var(--color-text);
-  font-family: 'JetBrains Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 0.8125rem;
+  padding: 12px 14px;
+  background: hsl(var(--accent) / 0.5);
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  color: hsl(var(--foreground));
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12.5px;
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
@@ -804,35 +744,16 @@ const handleClearNotifications = () => {
   overflow-y: auto;
 }
 
-/* 错误类：左侧色条 + 淡红底 */
-.code-panel-error {
+.code-panel--error {
   border-left: 3px solid #ff4d4f;
   background: rgba(255, 77, 79, 0.04);
 }
 
 /* 底部按钮 */
 .detail-footer {
-  margin-top: var(--detail-gap);
+  margin-top: var(--space-lg);
   display: flex;
   justify-content: flex-end;
-}
-
-/* 响应式 */
-@media (max-width: 640px) {
-  .meta-grid,
-  .meta-grid-4 {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-
-  .head-inner {
-    padding: 0.75rem 0.875rem;
-  }
-
-  .code-panel,
-  .content-panel {
-    font-size: 0.75rem;
-  }
 }
 </style>
 
@@ -853,24 +774,18 @@ const handleClearNotifications = () => {
   }
 
   .form-section {
-    padding: 12px;
-    background: var(--ant-color-fill-quaternary);
-    border-radius: 8px;
-    margin-bottom: 12px;
-    border: 1px solid var(--ant-color-border-secondary);
+    margin-bottom: 20px;
 
     .section-header {
       display: flex;
       align-items: center;
-      margin-bottom: 10px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--ant-color-border-split);
+      margin-bottom: 12px;
 
       .title {
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 600;
         flex: 1;
-        color: var(--ant-color-text);
+        color: hsl(var(--foreground));
       }
 
       .header-action {
@@ -880,7 +795,7 @@ const handleClearNotifications = () => {
 
         .label {
           font-size: 12px;
-          color: var(--ant-color-text-description);
+          color: hsl(var(--muted-foreground));
         }
       }
     }
@@ -896,38 +811,29 @@ const handleClearNotifications = () => {
   }
 
   .config-tip-alert {
-    margin-bottom: 12px;
+    margin-bottom: 16px;
   }
 
   .advanced-section {
-    margin-top: 12px;
-    background: var(--ant-color-fill-quaternary);
-    border-radius: 8px;
-    border: 1px solid var(--ant-color-border-secondary);
-    overflow: hidden;
+    margin-top: 4px;
 
     .section-header {
       display: flex;
       align-items: center;
-      padding: 8px 12px;
+      padding: 6px 0;
       cursor: pointer;
       user-select: none;
-      transition: background 0.2s;
-
-      &:hover {
-        background: var(--ant-color-fill-tertiary);
-      }
 
       .title {
         font-size: 13px;
         font-weight: 600;
-        color: var(--ant-color-text-description);
+        color: hsl(var(--muted-foreground));
       }
 
       .toggle-icon {
         margin-left: 6px;
-        font-size: 16px;
-        color: var(--ant-color-text-description);
+        font-size: 14px;
+        color: hsl(var(--muted-foreground));
         transition: transform 0.2s ease;
         display: inline-block;
         line-height: 1;
@@ -939,8 +845,7 @@ const handleClearNotifications = () => {
     }
 
     .advanced-body {
-      padding: 0 12px 12px;
-      border-top: 1px solid var(--ant-color-border-secondary);
+      padding-top: 4px;
     }
   }
 
@@ -953,27 +858,21 @@ const handleClearNotifications = () => {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px 10px;
-      background: var(--ant-component-background);
-      border: 1px solid var(--ant-color-border-secondary);
+      padding: 10px 12px;
+      background: hsl(var(--accent) / 0.5);
       border-radius: 6px;
-      transition: all 0.2s ease;
-
-      &:hover {
-        border-color: var(--ant-color-primary-border);
-      }
 
       .strategy-info {
         .name {
           font-size: 13px;
           font-weight: 500;
-          color: var(--ant-color-text);
+          color: hsl(var(--foreground));
         }
 
         .desc {
           font-size: 11px;
-          color: var(--ant-color-text-description);
-          margin-top: 1px;
+          color: hsl(var(--muted-foreground));
+          margin-top: 2px;
         }
       }
     }
@@ -985,29 +884,6 @@ const handleClearNotifications = () => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-}
-
-::where(.dark) {
-  .config-modal-content {
-    .form-section {
-      background: rgba(255, 255, 255, 0.04);
-      border-color: #303030;
-    }
-
-    .advanced-section {
-      background: rgba(255, 255, 255, 0.04);
-      border-color: #303030;
-    }
-
-    .strategy-item {
-      background: #141414 !important;
-      border-color: #303030 !important;
-
-      &:hover {
-        border-color: var(--ant-color-primary) !important;
-      }
-    }
-  }
 }
 
 .mb-3 {

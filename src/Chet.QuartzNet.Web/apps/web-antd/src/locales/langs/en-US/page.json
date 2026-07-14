@@ -142,7 +142,7 @@
       "status": "Status",
       "startTime": "Start Time",
       "endTime": "End Time",
-      "duration": "Duration (ms)",
+      "duration": "Duration (s)",
       "action": "Action",
       "detail": "Detail",
       "search": "Search",
