@@ -37,6 +37,8 @@
       "resetSuccess": "Reset to loaded values"
     },
     "analyticsPage": {
+      "title": "Analytics",
+      "description": "View job execution statistics, trends, and distributions to monitor scheduling status in real time",
       "totalJobs": "Total Jobs",
       "unit": "",
       "enabledDisabled": "Enabled/Disabled",

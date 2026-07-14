@@ -37,6 +37,8 @@
       "resetSuccess": "已重置为加载时的值"
     },
     "analyticsPage": {
+      "title": "分析页",
+      "description": "查看作业执行统计、趋势和分布情况，实时掌握调度运行状况",
       "totalJobs": "总作业数量",
       "unit": "个",
       "enabledDisabled": "启用/禁用",

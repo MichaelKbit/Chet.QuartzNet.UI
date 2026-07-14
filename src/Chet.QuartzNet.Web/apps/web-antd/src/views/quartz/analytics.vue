@@ -369,20 +369,26 @@ onMounted(() => {
 </script>
 
 <template>
-  <Page auto-content-height>
-    <!-- 服务标识横幅：左侧主题色条 + 服务名 + 描述 + 右侧环境标签 -->
-    <div v-if="hasServiceName" class="service-banner">
-      <div class="service-bar" />
-      <div class="service-main">
-        <div class="service-title">{{ systemConfig.serviceName }}</div>
-        <div v-if="systemConfig.serviceDescription" class="service-desc">
-          {{ systemConfig.serviceDescription }}
-        </div>
+  <Page
+    auto-content-height
+    header-class="page-header-compact"
+  >
+    <!-- 标题行：主题色条 + 服务名 + 环境标签 -->
+    <template #title>
+      <div class="page-title-row">
+        <template v-if="hasServiceName">
+          <span class="service-bar"></span>
+          <span class="service-name">{{ systemConfig.serviceName }}</span>
+          <Tag :color="environmentTag.color">{{ environmentTag.text() }}</Tag>
+        </template>
       </div>
-      <div class="service-tag">
-        <Tag :color="environmentTag.color">{{ environmentTag.text() }}</Tag>
-      </div>
-    </div>
+    </template>
+    <!-- 描述：服务描述（若有） -->
+    <template #description>
+      <p v-if="hasServiceName && systemConfig.serviceDescription" class="text-muted-foreground">
+        {{ systemConfig.serviceDescription }}
+      </p>
+    </template>
     <!-- KPI 概览：保留 Card 质感 + 图标视觉，用 vben token 统一配色 -->
     <Row :gutter="[16, 16]">
       <Col :xs="24" :sm="12" :lg="6">
@@ -531,55 +537,37 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* ====== 服务标识横幅 ====== */
-.service-banner {
+/* ====== Page header 紧凑化 ====== */
+:deep(.page-header-compact) {
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+}
+
+/* ====== 标题行：服务名 + 环境标签 ====== */
+.page-title-row {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  margin-bottom: 16px;
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: 10px;
-  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
-  overflow: hidden;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .service-bar {
   flex-shrink: 0;
-  width: 4px;
-  align-self: stretch;
+  width: 3px;
+  height: 16px;
   background: hsl(var(--primary));
   border-radius: 2px;
 }
 
-.service-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.service-title {
-  font-size: 16px;
+.service-name {
+  font-size: 15px;
   font-weight: 600;
   color: hsl(var(--foreground));
   line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.service-desc {
-  margin-top: 2px;
-  font-size: 12px;
-  color: hsl(var(--muted-foreground));
-  line-height: 1.4;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.service-tag {
-  flex-shrink: 0;
+  max-width: 280px;
 }
 
 /* ====== KPI 卡片：保留质感，token 统一配色 ====== */

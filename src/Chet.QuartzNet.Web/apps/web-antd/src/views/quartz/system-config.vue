@@ -3,7 +3,7 @@ import { ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
-import { Button, Card, message } from 'ant-design-vue';
+import { Card, message } from 'ant-design-vue';
 
 import { useVbenForm, z } from '#/adapter/form';
 import { $t } from '#/locales';
@@ -11,9 +11,8 @@ import { $t } from '#/locales';
 import { getSystemConfig, saveSystemConfig } from '../../api/quartz/system-config';
 import { useSystemConfig } from '../../composables/use-system-config';
 
-// 加载与保存状态
+// 加载状态
 const loading = ref(false);
-const saveLoading = ref(false);
 
 // 环境选项
 const environmentOptions = [
@@ -31,6 +30,15 @@ const [BaseForm, formApi] = useVbenForm({
     },
   },
   layout: 'horizontal',
+  // 提交与重置由 VbenForm 内置按钮触发
+  handleSubmit,
+  handleReset,
+  submitButtonOptions: {
+    content: $t('page.quartz.systemConfigPage.save'),
+  },
+  resetButtonOptions: {
+    content: $t('page.quartz.systemConfigPage.reset'),
+  },
   schema: [
     {
       component: 'Input',
@@ -68,7 +76,7 @@ const [BaseForm, formApi] = useVbenForm({
 });
 
 // 加载系统配置并回填表单
-const loadConfig = async () => {
+async function loadConfig() {
   loading.value = true;
   try {
     const response = (await getSystemConfig()) as any;
@@ -84,16 +92,12 @@ const loadConfig = async () => {
   } finally {
     loading.value = false;
   }
-};
+}
 
-// 保存
-const handleSave = async () => {
-  const { valid } = await formApi.validate();
-  if (!valid) return;
-
-  saveLoading.value = true;
+// 保存（由 VbenForm handleSubmit 调用，values 已经过校验）
+async function handleSubmit(values: Record<string, any>) {
+  formApi.setState({ submitButtonOptions: { loading: true } });
   try {
-    const values = await formApi.getValues();
     const response = await saveSystemConfig({
       serviceName: values.serviceName || '',
       environment: values.environment || 'DEV',
@@ -112,40 +116,30 @@ const handleSave = async () => {
       message.error(response.message || $t('page.quartz.systemConfigPage.saveFailed'));
     }
   } catch (error: any) {
-    const errorMessage = error.message || $t('page.quartz.systemConfigPage.saveFailed');
-    message.error(errorMessage);
+    message.error(error.message || $t('page.quartz.systemConfigPage.saveFailed'));
     console.error($t('page.quartz.systemConfigPage.saveFailed'), error);
   } finally {
-    saveLoading.value = false;
+    formApi.setState({ submitButtonOptions: { loading: false } });
   }
-};
+}
 
-// 重置为加载时的值
-const handleReset = async () => {
+// 重置（重新从服务器加载）
+async function handleReset() {
   await loadConfig();
   message.info($t('page.quartz.systemConfigPage.resetSuccess'));
-};
+}
 
 loadConfig();
 </script>
 
 <template>
-  <Page
-    :description="$t('page.quartz.systemConfigPage.description')"
-    :title="$t('page.quartz.systemConfigPage.title')"
-    content-class="flex flex-col gap-4"
-  >
-    <Card class="mx-auto w-full max-w-[720px]" :bordered="false" :title="$t('page.quartz.systemConfigPage.basicSection')">
-      <template #extra>
-        <div class="flex gap-2">
-          <Button :disabled="saveLoading || loading" @click="handleReset">
-            {{ $t('page.quartz.systemConfigPage.reset') }}
-          </Button>
-          <Button type="primary" :loading="saveLoading" @click="handleSave">
-            {{ $t('page.quartz.systemConfigPage.save') }}
-          </Button>
-        </div>
-      </template>
+  <Page content-class="flex flex-col gap-4">
+    <Card :title="$t('page.quartz.systemConfigPage.basicSection')">
+      <div class="text-muted-foreground mb-4">
+        <p>
+          {{ $t('page.quartz.systemConfigPage.description') }}
+        </p>
+      </div>
       <BaseForm />
     </Card>
   </Page>
