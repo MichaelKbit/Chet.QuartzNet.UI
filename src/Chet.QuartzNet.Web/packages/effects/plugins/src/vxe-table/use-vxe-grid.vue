@@ -411,7 +411,7 @@ onUnmounted(() => {
       <!-- form表单 -->
       <template #form>
         <div
-          v-if="formOptions"
+          v-if="formOptions || !!slots.form"
           v-show="showSearchForm !== false"
           :class="
             cn(

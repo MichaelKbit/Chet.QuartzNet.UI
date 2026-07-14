@@ -94,6 +94,26 @@ public class QuartzJobLogQueryDto
     public DateTime? EndTime { get; set; }
 
     /// <summary>
+    /// 开始时间范围查询-下限（针对 StartTime 字段）
+    /// </summary>
+    public DateTime? StartStartTime { get; set; }
+
+    /// <summary>
+    /// 开始时间范围查询-上限（针对 StartTime 字段）
+    /// </summary>
+    public DateTime? EndStartTime { get; set; }
+
+    /// <summary>
+    /// 结束时间范围查询-下限（针对 EndTime 字段）
+    /// </summary>
+    public DateTime? StartEndTime { get; set; }
+
+    /// <summary>
+    /// 结束时间范围查询-上限（针对 EndTime 字段）
+    /// </summary>
+    public DateTime? EndEndTime { get; set; }
+
+    /// <summary>
     /// 页码
     /// </summary>
     public int PageIndex { get; set; } = 1;

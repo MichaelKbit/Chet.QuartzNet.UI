@@ -51,6 +51,18 @@ export interface LogQueryParams {
   startTime?: string;
   /** 结束时间 */
   endTime?: string;
+  /** 开始时间范围查询-下限（针对 StartTime 字段） */
+  startStartTime?: string;
+  /** 开始时间范围查询-上限（针对 StartTime 字段） */
+  endStartTime?: string;
+  /** 结束时间范围查询-下限（针对 EndTime 字段） */
+  startEndTime?: string;
+  /** 结束时间范围查询-上限（针对 EndTime 字段） */
+  endEndTime?: string;
+  /** 排序字段 */
+  sortBy?: string;
+  /** 排序方向 */
+  sortOrder?: string;
 }
 
 // 日志响应DTO

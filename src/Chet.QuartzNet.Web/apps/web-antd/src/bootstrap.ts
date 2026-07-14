@@ -2,6 +2,8 @@ import { createApp, watchEffect } from 'vue';
 
 import { registerAccessDirective } from '@vben/access';
 import { registerLoadingDirective } from '@vben/common-ui/es/loading';
+import { useVbenForm } from './adapter/form';
+import { setupVbenVxeTable } from '@vben/plugins/vxe-table';
 import { preferences } from '@vben/preferences';
 import { initStores } from '@vben/stores';
 import '@vben/styles';
@@ -12,12 +14,24 @@ import { useTitle } from '@vueuse/core';
 import { $t, setupI18n } from '#/locales';
 
 import { initComponentAdapter } from './adapter/component';
+import { initSetupVbenForm } from './adapter/form';
 import App from './app.vue';
 import { router } from './router';
 
 async function bootstrap(namespace: string) {
   // 初始化组件适配器
   await initComponentAdapter();
+
+  // 初始化表单组件
+  await initSetupVbenForm();
+
+  // 初始化 Vxe Table 适配器
+  setupVbenVxeTable({
+    configVxeTable: (_ui) => {
+      // 这里可以按需注册自定义渲染器、设置全局配置等
+    },
+    useVbenForm,
+  });
 
 
   // // 设置弹窗的默认配置
