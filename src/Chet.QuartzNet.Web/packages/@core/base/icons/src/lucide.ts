@@ -1,4 +1,5 @@
 export {
+  Activity,
   ArrowDown,
   ArrowLeft,
   ArrowLeftToLine,

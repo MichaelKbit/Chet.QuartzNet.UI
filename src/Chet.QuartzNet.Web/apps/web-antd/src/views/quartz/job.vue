@@ -829,7 +829,7 @@ onMounted(async () => {
 
         <!-- 操作列 -->
         <template #action="{ row }">
-          <Dropdown :trigger="['click']" placement="bottomRight">
+          <Dropdown :trigger="['hover']" placement="bottomRight">
             <i class="vxe-icon-menu text-base cursor-pointer hover:opacity-80" :class="{ 'opacity-50': loading }"></i>
             <template #overlay>
               <Menu>

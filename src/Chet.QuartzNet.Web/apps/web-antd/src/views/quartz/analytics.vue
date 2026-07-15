@@ -2,7 +2,7 @@
 import { ref, shallowRef, onMounted, computed } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Card, Row, Col, Skeleton } from 'ant-design-vue';
-import { CircleCheckBig, Package, RotateCw, Layers } from '@vben/icons';
+import { Activity, CircleCheckBig, Layers, Package } from '@vben/icons';
 import type { EChartsOption } from 'echarts';
 
 // 导入Vben插件与组件
@@ -430,7 +430,7 @@ onMounted(() => {
               </span>
             </div>
             <div class="stat-icon stat-icon--green">
-              <RotateCw class="stat-icon__svg" />
+              <Activity class="stat-icon__svg" />
             </div>
           </div>
           <div class="stat-sub">
