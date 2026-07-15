@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, shallowRef, onMounted, computed } from 'vue';
 import { Page } from '@vben/common-ui';
-import { Card, Row, Col, Skeleton, Tag } from 'ant-design-vue';
+import { Card, Row, Col, Skeleton } from 'ant-design-vue';
 import { CircleCheckBig, Package, RotateCw, Layers } from '@vben/icons';
 import type { EChartsOption } from 'echarts';
 
@@ -348,15 +348,15 @@ const fetchData = async () => {
  */
 const { systemConfig, loadSystemConfig } = useSystemConfig();
 
-// 环境标签语义色映射
-const environmentTagMap: Record<string, { color: string; text: () => string }> = {
-  DEV: { color: 'default', text: () => $t('page.quartz.systemConfigPage.envDEV') },
-  TEST: { color: 'blue', text: () => $t('page.quartz.systemConfigPage.envTEST') },
-  UAT: { color: 'orange', text: () => $t('page.quartz.systemConfigPage.envUAT') },
-  PROD: { color: 'red', text: () => $t('page.quartz.systemConfigPage.envPROD') },
+// 环境标签文本映射
+const environmentTagMap: Record<string, () => string> = {
+  DEV: () => $t('page.quartz.systemConfigPage.envDEV'),
+  TEST: () => $t('page.quartz.systemConfigPage.envTEST'),
+  UAT: () => $t('page.quartz.systemConfigPage.envUAT'),
+  PROD: () => $t('page.quartz.systemConfigPage.envPROD'),
 };
 
-const environmentTag = computed<{ color: string; text: () => string }>(
+const environmentTag = computed(
   () => environmentTagMap[systemConfig.value.environment] ?? environmentTagMap.DEV!,
 );
 
@@ -369,18 +369,17 @@ onMounted(() => {
 </script>
 
 <template>
-  <Page
-    auto-content-height
-    header-class="page-header-compact"
-  >
-    <!-- 标题行：主题色条 + 服务名 + 环境标签 -->
+  <Page auto-content-height header-class="page-header-compact">
+    <!-- 标题行：服务标识胶囊 = 主题色条 + 服务名 + 环境标签 -->
     <template #title>
       <div class="page-title-row">
-        <template v-if="hasServiceName">
+        <div v-if="hasServiceName" class="service-chip">
           <span class="service-bar"></span>
           <span class="service-name">{{ systemConfig.serviceName }}</span>
-          <Tag :color="environmentTag.color">{{ environmentTag.text() }}</Tag>
-        </template>
+          <span class="env-pill" :data-env="systemConfig.environment">
+            <i class="env-dot"></i>{{ environmentTag() }}
+          </span>
+        </div>
       </div>
     </template>
     <!-- 描述：服务描述（若有） -->
@@ -543,37 +542,112 @@ onMounted(() => {
   padding-bottom: 12px !important;
 }
 
-/* ====== 标题行：服务名 + 环境标签 ====== */
+/* ====== 标题行：服务标识区（大气版） ====== */
 .page-title-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
 }
 
+/* 服务标识容器：直接铺开，不套小胶囊，更有体量感 */
+.service-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* 主题色条：加粗加高 + 渐变 + 微光，作为视觉锚点 */
 .service-bar {
   flex-shrink: 0;
-  width: 3px;
-  height: 16px;
-  background: hsl(var(--primary));
-  border-radius: 2px;
+  width: 4px;
+  height: 26px;
+  background: linear-gradient(180deg,
+      hsl(var(--primary)),
+      hsl(var(--primary) / 0.55));
+  border-radius: 3px;
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.35);
 }
 
+/* 服务名：大字号作为视觉主体 */
 .service-name {
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 600;
   color: hsl(var(--foreground));
-  line-height: 1.4;
+  line-height: 1.0;
+  letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 280px;
+  max-width: 360px;
+}
+
+/* 环境标签：稍大胶囊 + 语义色圆点 */
+.env-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.6;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.env-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* 环境语义色映射 */
+.env-pill[data-env='DEV'] {
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted-foreground) / 0.08);
+  border-color: hsl(var(--muted-foreground) / 0.2);
+}
+
+.env-pill[data-env='DEV'] .env-dot {
+  background: hsl(var(--muted-foreground));
+}
+
+.env-pill[data-env='TEST'] {
+  color: hsl(212 100% 45%);
+  background: hsl(212 100% 45% / 0.08);
+  border-color: hsl(212 100% 45% / 0.2);
+}
+
+.env-pill[data-env='TEST'] .env-dot {
+  background: hsl(212 100% 45%);
+}
+
+.env-pill[data-env='UAT'] {
+  color: hsl(32 95% 44%);
+  background: hsl(32 95% 54% / 0.08);
+  border-color: hsl(32 95% 54% / 0.2);
+}
+
+.env-pill[data-env='UAT'] .env-dot {
+  background: hsl(32 95% 54%);
+}
+
+.env-pill[data-env='PROD'] {
+  color: hsl(0 84% 50%);
+  background: hsl(0 84% 50% / 0.08);
+  border-color: hsl(0 84% 50% / 0.2);
+}
+
+.env-pill[data-env='PROD'] .env-dot {
+  background: hsl(0 84% 50%);
 }
 
 .service-desc {
   font-size: 12px;
   color: hsl(var(--muted-foreground));
-  line-height: 1.4;
+  line-height: 1.0;
+  margin-top: 10px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
