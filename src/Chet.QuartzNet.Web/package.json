@@ -36,6 +36,8 @@
     "check:dep": "vsh check-dep",
     "check:type": "turbo run typecheck",
     "clean": "node ./scripts/clean.mjs",
+    "dev": "turbo run dev --parallel",
+    "dev:antd": "pnpm -F @chet/chet.quartznet.ui dev",
     "postinstall": "pnpm -r run stub --if-present",
     "preinstall": "npx only-allow pnpm"
   },
