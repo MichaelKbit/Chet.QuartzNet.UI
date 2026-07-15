@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive, h } from 'vue';
+import { ref, computed, reactive, onMounted, nextTick } from 'vue';
 import { formatDateTime } from '@vben/utils';
 import { Page } from '@vben/common-ui';
+// 导入 vbenadmin 的 Vxe Table 适配器
+import { useVbenVxeGrid } from '@vben/plugins/vxe-table';
+import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import {
   Button,
   Input,
@@ -12,19 +15,17 @@ import {
   Switch,
   message,
   Tag,
-  Table,
-  Card,
   Row,
   Col,
   Tooltip,
   InputNumber,
-  Typography,
   Alert,
+  Descriptions,
+  DescriptionsItem,
 } from 'ant-design-vue';
-import type { FormInstance, PaginationProps } from 'ant-design-vue';
+import type { FormInstance } from 'ant-design-vue';
 
-type SortOrder = 'ascend' | 'descend' | undefined;
-
+// 导入i18n
 import { $t } from '#/locales';
 
 import {
@@ -41,6 +42,8 @@ import type {
   QuartzNotificationDto,
   NotificationQueryDto,
 } from '../../api/quartz/notification';
+// 导入可拖动 Modal 组合式函数
+import { useDraggableModal } from './composables/use-draggable-modal';
 
 // 通知状态映射
 const notificationStatusMap = {
@@ -52,25 +55,26 @@ const notificationStatusMap = {
 // 响应式数据
 const loading = ref(false);
 const saveLoading = ref(false);
-const dataSource = ref<QuartzNotificationDto[]>([]);
-const total = ref(0);
-const currentPage = ref(1);
-const pageSize = ref(20);
 
 // 详情对话框
 const detailModalVisible = ref(false);
 const currentNotification = ref<QuartzNotificationDto | null>(null);
 
-// 搜索条件
-const searchFormRef = ref<FormInstance>();
-const searchForm = ref<Partial<NotificationQueryDto>>({
-  status: undefined,
-  triggeredBy: '',
-});
+// 发送耗时格式化：毫秒转秒，去除多余小数位
+const formatDuration = (ms?: number | null) => {
+  if (ms == null) return '—';
+  return `${parseFloat((ms / 1000).toFixed(2))} s`;
+};
 
-// 排序配置
-const sortBy = ref<string>('');
-const sortOrder = ref<SortOrder>(undefined);
+// 搜索条件由 VbenForm 自动注入到 query 的 formValues
+
+// 详情顶部状态条颜色：已发送绿 / 失败红 / 待发送琥珀
+const notificationStatusColor = computed(() => {
+  const status = currentNotification.value?.status;
+  if (status === NotificationStatusEnum.Sent) return '#52c41a';
+  if (status === NotificationStatusEnum.Failed) return '#ff4d4f';
+  return '#faad14';
+});
 
 // 编辑对话框
 const configModalVisible = ref(false);
@@ -121,169 +125,207 @@ const channelTipMessage = computed(() => {
 });
 
 // 列配置
-const columns = computed(() => [
+const columns = [
+  { type: 'seq', width: 60, title: '#', fixed: 'left' },
   {
+    field: 'title',
     title: $t('page.quartz.notificationPage.title'),
-    dataIndex: 'title',
-    ellipsis: true,
+    minWidth: 200,
+    showOverflow: true,
   },
   {
+    field: 'triggeredBy',
     title: $t('page.quartz.notificationPage.triggeredBy'),
-    dataIndex: 'triggeredBy',
-    ellipsis: true,
+    minWidth: 120,
+    showOverflow: true,
   },
   {
+    field: 'status',
     title: $t('page.quartz.notificationPage.status'),
-    dataIndex: 'status',
-    ellipsis: true,
     width: 100,
-    customRender: ({ record }: { record: QuartzNotificationDto }) => {
-      const status = notificationStatusMap[record.status];
-      return {
-        children: h(
-          Tag,
-          { color: status?.status || 'default' },
-          status?.text?.() || record.status || $t('page.quartz.notificationPage.unknown'),
-        ),
-      };
-    },
+    align: 'center' as const,
+    slots: { default: 'status' },
   },
   {
+    field: 'sendTime',
     title: $t('page.quartz.notificationPage.sendTime'),
-    dataIndex: 'sendTime',
-    ellipsis: true,
-    sorter: true,
-    sortOrder: sortBy.value === 'sendTime' ? sortOrder.value : undefined,
-    customRender: ({ record }: { record: QuartzNotificationDto }) => {
-      return {
-        children: record.sendTime ? formatDateTime(record.sendTime) : '-',
-      };
-    },
+    width: 170,
+    align: 'center' as const,
+    sortable: true,
+    slots: { default: 'datetime' },
   },
   {
+    field: 'duration',
     title: $t('page.quartz.notificationPage.duration'),
-    dataIndex: 'duration',
-    ellipsis: true,
-    width: 100,
-    sorter: true,
-    sortOrder: sortBy.value === 'duration' ? sortOrder.value : undefined,
+    width: 110,
+    align: 'right' as const,
+    sortable: true,
+    slots: { default: 'duration' },
   },
   {
+    field: 'createTime',
     title: $t('page.quartz.notificationPage.createTime'),
-    dataIndex: 'createTime',
-    ellipsis: true,
-    sorter: true,
-    sortOrder: sortBy.value === 'createTime' ? sortOrder.value : undefined,
-    customRender: ({ record }: { record: QuartzNotificationDto }) => {
-      return {
-        children: record.createTime ? formatDateTime(record.createTime) : '-',
-      };
-    },
+    width: 170,
+    align: 'center' as const,
+    sortable: true,
+    slots: { default: 'datetime' },
   },
   {
     title: $t('page.quartz.notificationPage.action'),
-    key: 'action',
-    width: 100,
+    width: 90,
+    align: 'center' as const,
     fixed: 'right',
-    customRender: ({ record }: { record: QuartzNotificationDto }) => {
-      return {
-        children: h(Space, { size: 4 }, [
-          h(
-            Tooltip,
-            { title: $t('page.quartz.notificationPage.detail') },
-            () => h(Button, { type: 'link', size: 'small', onClick: () => handleDetail(record) }, () => $t('page.quartz.notificationPage.detail')),
-          ),
-          h(
-            Tooltip,
-            { title: $t('page.quartz.notificationPage.delete') },
-            () => h(Button, { type: 'link', size: 'small', danger: true, onClick: () => handleDelete(record) }, () => $t('page.quartz.notificationPage.delete')),
-          ),
-        ]),
-      };
+    slots: { default: 'action' },
+  },
+];
+
+// 排序持久化：读取上次排序列
+const SORT_KEY = 'quartz-notification-sort';
+const savedSort = (() => {
+  try {
+    const raw = localStorage.getItem(SORT_KEY);
+    return raw ? JSON.parse(raw) : undefined;
+  } catch {
+    return undefined;
+  }
+})();
+
+// 构造 Vxe Grid 配置
+const gridOptions: VxeTableGridOptions<QuartzNotificationDto> = {
+  columns: columns as any,
+  height: 'auto',
+  showOverflow: true,
+  rowConfig: { keyField: 'notificationId', isHover: true },
+  sortConfig: {
+    trigger: 'cell',
+    remote: true,
+    defaultSort: savedSort,
+  },
+  columnConfig: { resizable: true },
+  pagerConfig: { enabled: true },
+  proxyConfig: {
+    enabled: true,
+    autoLoad: true,
+    ajax: {
+      query: async ({ page, sort }: any, formValues: any) => {
+        // autoLoad 首次 query 时 defaultSort 可能未注入，从 localStorage 兜底
+        let sortField = sort?.field;
+        let sortOrderRaw = sort?.order;
+        if (!sortField) {
+          try {
+            const saved = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
+            if (saved) {
+              sortField = saved.field;
+              sortOrderRaw = saved.order;
+            }
+          } catch {}
+        }
+        // 保持原有行为：sortOrder 使用 ascend/descend 形式
+        const sortOrder =
+          sortOrderRaw === 'asc' ? 'ascend' : sortOrderRaw === 'desc' ? 'descend' : undefined;
+        const params: NotificationQueryDto = {
+          status: formValues?.status,
+          triggeredBy: formValues?.triggeredBy,
+          pageIndex: page.currentPage || 1,
+          pageSize: page.pageSize || 20,
+          sortBy: sortField ?? '',
+          sortOrder,
+        };
+
+        try {
+          const response = await getNotifications(params);
+          if (response.success) {
+            if (
+              response.data &&
+              response.data.items &&
+              Array.isArray(response.data.items)
+            ) {
+              return {
+                result: response.data.items,
+                page: {
+                  total: response.data.totalCount || 0,
+                },
+              };
+            }
+            return { result: [], page: { total: 0 } };
+          }
+          message.error(response.message || $t('page.quartz.notificationPage.loadListFailed'));
+          return { result: [], page: { total: 0 } };
+        } catch (error) {
+          console.error($t('page.quartz.notificationPage.loadListFailed'), error);
+          message.error(
+            typeof error === 'object' && error !== null && 'message' in error
+              ? String((error as any).message)
+              : $t('page.quartz.notificationPage.loadListFailed'),
+          );
+          return { result: [], page: { total: 0 } };
+        }
+      },
+    },
+    sort: true,
+  },
+  toolbarConfig: {
+    custom: true,
+    refresh: true,
+    zoom: true,
+  },
+};
+
+const [Grid, gridApi] = useVbenVxeGrid({
+  gridOptions,
+  formOptions: {
+    schema: [
+      {
+        component: 'Select',
+        componentProps: {
+          allowClear: true,
+          placeholder: $t('page.quartz.notificationPage.placeholderStatus'),
+          options: [
+            { label: $t('page.quartz.notificationPage.statusPending'), value: NotificationStatusEnum.Pending },
+            { label: $t('page.quartz.notificationPage.statusSent'), value: NotificationStatusEnum.Sent },
+            { label: $t('page.quartz.notificationPage.statusFailed'), value: NotificationStatusEnum.Failed },
+          ],
+        },
+        fieldName: 'status',
+        label: $t('page.quartz.notificationPage.notificationStatus'),
+      },
+      {
+        component: 'Input',
+        componentProps: { placeholder: $t('page.quartz.notificationPage.placeholderTriggeredBy') },
+        fieldName: 'triggeredBy',
+        label: $t('page.quartz.notificationPage.triggeredBy'),
+      },
+    ],
+    showCollapseButton: false,
+    submitOnChange: false,
+    submitOnEnter: true,
+  },
+  gridEvents: {
+    sortChange: ({ property, field, order }: any) => {
+      const sortField = property || field;
+      if (sortField && order) {
+        localStorage.setItem(
+          SORT_KEY,
+          JSON.stringify({ field: sortField, order }),
+        );
+      } else {
+        localStorage.removeItem(SORT_KEY);
+      }
     },
   },
-]);
+});
 
-// 分页配置
-const pagination = computed<PaginationProps>(() => ({
-  current: currentPage.value,
-  pageSize: pageSize.value,
-  total: total.value,
-  showSizeChanger: true,
-  showQuickJumper: true,
-  showTotal: (total, range) => $t('page.quartz.notificationPage.paginationTotal', { start: range[0], end: range[1], total }),
-  pageSizeOptions: ['10', '20', '50', '100'],
-}));
+// 对话框支持拖动
+useDraggableModal(configModalVisible, 'quartz-notification-config-modal');
+useDraggableModal(detailModalVisible, 'quartz-notification-detail-modal');
 
-// 表格变化事件处理
-const handleTableChange = (pagination: any, _filters: any, sorter: any) => {
-  if (pagination.current !== undefined) {
-    currentPage.value = pagination.current;
-  }
-  if (pagination.pageSize !== undefined) {
-    pageSize.value = pagination.pageSize;
-  }
-
-  if (sorter.field !== undefined) {
-    sortBy.value = sorter.field;
-    sortOrder.value =
-      sorter.order === 'ascend'
-        ? 'ascend'
-        : sorter.order === 'descend'
-          ? 'descend'
-          : undefined;
-  }
-
-  loadNotificationList();
-};
-
-// 加载通知列表
-const loadNotificationList = async () => {
-  loading.value = true;
-  try {
-    const response = await getNotifications({
-      pageIndex: currentPage.value,
-      pageSize: pageSize.value,
-      status: searchForm.value.status,
-      triggeredBy: searchForm.value.triggeredBy,
-      sortBy: sortBy.value,
-      sortOrder: sortOrder.value,
-    });
-
-    dataSource.value = response.data?.items || [];
-    total.value = response.data?.totalCount || 0;
-  } catch (error) {
-    message.error($t('page.quartz.notificationPage.loadListFailed'));
-    console.error($t('page.quartz.notificationPage.loadListFailed'), error);
-  } finally {
-    loading.value = false;
-  }
-};
-
-// 处理搜索
-const handleSearch = async () => {
-  if (searchFormRef.value) {
-    await searchFormRef.value.validateFields();
-  }
-  currentPage.value = 1;
-  loadNotificationList();
-};
-
-// 处理重置
-const handleReset = () => {
-  searchForm.value = {
-    status: undefined,
-    triggeredBy: '',
-  };
-  currentPage.value = 1;
-  loadNotificationList();
-};
+// 搜索/重置由 VbenForm 内置提交按钮触发，无需手动处理
 
 // 打开配置对话框
 const handleOpenConfigModal = async () => {
   try {
-    const response = await getPushPlusConfig();
-    Object.assign(configForm, response.data);
+    const response = await getPushPlusConfig() as any;
+    Object.assign(configForm, response.data || response);
     configModalVisible.value = true;
   } catch (error) {
     message.error($t('page.quartz.notificationPage.getConfigFailed'));
@@ -325,7 +367,7 @@ const handleSendTest = async () => {
     const response = await sendTestNotification();
     if (response.success) {
       message.success($t('page.quartz.notificationPage.testSendSuccess'));
-      loadNotificationList();
+      gridApi.query();
     } else {
       message.error(response.message || $t('page.quartz.notificationPage.testSendFailed'));
     }
@@ -356,7 +398,7 @@ const handleDelete = (notification: QuartzNotificationDto) => {
         const response = await deleteNotification(notification.notificationId);
         if (response.success) {
           message.success($t('page.quartz.notificationPage.deleteSuccess'));
-          loadNotificationList();
+          gridApi.query();
         } else {
           message.error(response.message || $t('page.quartz.notificationPage.deleteFailed'));
         }
@@ -378,15 +420,16 @@ const handleClearNotifications = () => {
     cancelText: $t('page.quartz.notificationPage.cancel'),
     async onOk() {
       try {
+        const formValues = await gridApi.formApi.getValues();
         const response = await clearNotifications({
           pageIndex: 1,
           pageSize: 1,
-          status: searchForm.value.status,
-          triggeredBy: searchForm.value.triggeredBy,
+          status: formValues?.status,
+          triggeredBy: formValues?.triggeredBy,
         });
         if (response.success) {
           message.success($t('page.quartz.notificationPage.clearSuccess'));
-          loadNotificationList();
+          gridApi.query();
         } else {
           message.error(response.message || $t('page.quartz.notificationPage.clearFailed'));
         }
@@ -398,61 +441,67 @@ const handleClearNotifications = () => {
   });
 };
 
-// 生命周期
-onMounted(() => {
-  loadNotificationList();
+// 恢复表格排序视觉状态（列头箭头）
+onMounted(async () => {
+  await nextTick();
+  try {
+    const saved = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
+    if (saved) {
+      gridApi.grid?.setSort({ field: saved.field, order: saved.order });
+    }
+  } catch {}
 });
 </script>
 
 <template>
   <Page auto-content-height>
     <template #default>
-      <Card class="mb-4">
-        <Form ref="searchFormRef" :model="searchForm" layout="horizontal" :label-align="'right'">
-          <Row :gutter="16">
-            <Col :xs="24" :sm="12" :md="12" :lg="8" :xl="6" :xxl="4">
-              <Form.Item :label="$t('page.quartz.notificationPage.notificationStatus')" name="status">
-                <Select v-model:value="searchForm.status" :placeholder="$t('page.quartz.notificationPage.placeholderStatus')" allowClear>
-                  <Select.Option :value="NotificationStatusEnum.Pending">{{ $t('page.quartz.notificationPage.statusPending') }}</Select.Option>
-                  <Select.Option :value="NotificationStatusEnum.Sent">{{ $t('page.quartz.notificationPage.statusSent') }}</Select.Option>
-                  <Select.Option :value="NotificationStatusEnum.Failed">{{ $t('page.quartz.notificationPage.statusFailed') }}</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col :xs="24" :sm="12" :md="12" :lg="8" :xl="6" :xxl="6">
-              <Form.Item :label="$t('page.quartz.notificationPage.triggeredBy')" name="triggeredBy">
-                <Input v-model:value="searchForm.triggeredBy" :placeholder="$t('page.quartz.notificationPage.placeholderTriggeredBy')" />
-              </Form.Item>
-            </Col>
-            <Col :xs="24" :sm="24" :md="24" :lg="8" :xl="12" :xxl="14" class="text-right">
-              <Space>
-                <Button type="primary" @click="handleSearch">{{ $t('page.quartz.notificationPage.search') }}</Button>
-                <Button @click="handleReset">{{ $t('page.quartz.notificationPage.reset') }}</Button>
-              </Space>
-            </Col>
-          </Row>
-        </Form>
-      </Card>
-
-      <!-- 通知管理卡片 -->
-      <Card>
-        <div class="mb-4 flex items-center justify-between">
-          <Space>
-            <Button type="primary" @click="handleOpenConfigModal">{{ $t('page.quartz.notificationPage.notificationConfig') }}</Button>
-            <Button type="default" @click="handleSendTest">{{ $t('page.quartz.notificationPage.sendTestNotification') }}</Button>
-          </Space>
-          <Space>
+      <!-- 通知列表 -->
+      <Grid>
+        <!-- 工具栏：配置/测试/清空按钮 -->
+        <template #toolbar-actions>
+          <div class="flex w-full items-center justify-between">
+            <Space>
+              <Button type="primary" @click="handleOpenConfigModal">{{ $t('page.quartz.notificationPage.notificationConfig') }}</Button>
+              <Button type="default" :loading="loading" @click="handleSendTest">{{ $t('page.quartz.notificationPage.sendTestNotification') }}</Button>
+            </Space>
             <Button danger @click="handleClearNotifications">{{ $t('page.quartz.notificationPage.clearAll') }}</Button>
-          </Space>
-        </div>
-        <Table :columns="columns" :data-source="dataSource" :pagination="pagination" :loading="loading"
-          :rowKey="(record) => record.notificationId" @change="handleTableChange" size="middle"
-          :scroll="{ x: 'max-content' }" />
-      </Card>
+          </div>
+        </template>
+
+        <!-- 通知状态 -->
+        <template #status="{ row }">
+          <Tag :color="notificationStatusMap[row.status as NotificationStatusEnum]?.status || 'default'">
+            {{ notificationStatusMap[row.status as NotificationStatusEnum]?.text?.() || $t('page.quartz.notificationPage.unknown') }}
+          </Tag>
+        </template>
+
+        <!-- 通用日期时间渲染 -->
+        <template #datetime="{ row, column }">
+          {{ (row as any)[column.field] ? formatDateTime((row as any)[column.field]) : '-' }}
+        </template>
+
+        <!-- 发送时长 -->
+        <template #duration="{ row }">
+          {{ row.duration != null ? formatDuration(row.duration) : '-' }}
+        </template>
+
+        <!-- 操作列 -->
+        <template #action="{ row }">
+          <div class="flex items-center justify-center gap-3">
+            <Tooltip :title="$t('page.quartz.notificationPage.detail')">
+              <i class="vxe-icon-eye-fill text-primary cursor-pointer hover:opacity-80" @click="handleDetail(row)"></i>
+            </Tooltip>
+            <Tooltip :title="$t('page.quartz.notificationPage.delete')">
+              <i class="vxe-icon-delete cursor-pointer hover:opacity-80" style="color: var(--ant-color-error)" @click="handleDelete(row)"></i>
+            </Tooltip>
+          </div>
+        </template>
+      </Grid>
 
       <!-- 配置对话框 -->
       <Modal v-model:open="configModalVisible" :title="$t('page.quartz.notificationPage.notificationConfig')" width="720px" destroyOnClose
-        @cancel="configModalVisible = false" centered>
+        @cancel="configModalVisible = false" centered wrapClassName="quartz-notification-config-modal">
         <div class="config-modal-content">
           <Alert :message="$t('page.quartz.notificationPage.configPushPlusDesc')" type="info" show-icon class="config-tip-alert" />
 
@@ -586,72 +635,55 @@ onMounted(() => {
       </Modal>
 
       <!-- 详情对话框 -->
-      <Modal v-model:open="detailModalVisible" :title="$t('page.quartz.notificationPage.notificationDetail')" width="80%" :max-width="1200" :footer="null"
-        :destroyOnClose="true">
+      <Modal v-model:open="detailModalVisible" :title="$t('page.quartz.notificationPage.notificationDetail')" width="720px"
+        :footer="null" :destroyOnClose="true" centered wrapClassName="quartz-notification-detail-modal">
         <div v-if="currentNotification" class="notification-detail">
-          <!-- 头部信息 -->
-          <div class="detail-header mb-4 rounded-lg p-5">
-            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <Typography.Title :level="4" class="m-0 text-ellipsis max-w-[70%]">
-                {{ currentNotification.title }}
-              </Typography.Title>
-              <Tag :color="notificationStatusMap[currentNotification.status].status"
-                class="text-lg px-4 py-1 text-base">
-                {{ notificationStatusMap[currentNotification.status].text() }}
-              </Tag>
-            </div>
-
-            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
-              <div class="info-item flex items-center gap-2 p-2 rounded">
-                <span class="font-semibold text-sm opacity-80">{{ $t('page.quartz.notificationPage.triggerSource') }}</span>
-                <span class="text-sm">{{ currentNotification.triggeredBy || '-' }}</span>
-              </div>
-              <div class="info-item flex items-center gap-2 p-2 rounded">
-                <span class="font-semibold text-sm opacity-80">{{ $t('page.quartz.notificationPage.sendDateTime') }}</span>
-                <span class="text-sm">{{
-                  currentNotification.sendTime
-                    ? formatDateTime(currentNotification.sendTime)
-                    : '-' }}
-                </span>
-              </div>
-              <div class="info-item flex items-center gap-2 p-2 rounded">
-                <span class="font-semibold text-sm opacity-80">{{ $t('page.quartz.notificationPage.sendDuration') }}</span>
-                <span class="text-sm">{{
-                  currentNotification.duration
-                    ? `${currentNotification.duration} ms`
-                    : '0 ms' }}
-                </span>
-              </div>
-              <div class="info-item flex items-center gap-2 p-2 rounded">
-                <span class="font-semibold text-sm opacity-80">{{ $t('page.quartz.notificationPage.createDateTime') }}</span>
-                <span class="text-sm">{{ formatDateTime(currentNotification.createTime) }}</span>
-              </div>
-            </div>
+          <!-- 顶部：标题 + 状态标签 -->
+          <div class="detail-header">
+            <span class="header-title">{{ currentNotification.title }}</span>
+            <Tag :color="notificationStatusMap[currentNotification.status].status">
+              {{ notificationStatusMap[currentNotification.status].text() }}
+            </Tag>
           </div>
 
-          <!-- 内容区域 -->
-          <div class="detail-content space-y-6">
-            <div class="content-section">
-              <Typography.Title :level="5" class="mb-3">{{ $t('page.quartz.notificationPage.notificationContent') }}</Typography.Title>
-              <div class="content-card info-card rounded-lg p-4">
-                <div class="word-break-break-word text-sm" v-html="currentNotification.content"></div>
-              </div>
-            </div>
+          <!-- 元数据：Descriptions 组件统一展示 -->
+          <Descriptions :column="2" size="small" bordered class="detail-desc">
+            <DescriptionsItem :label="$t('page.quartz.notificationPage.triggeredBy')">
+              {{ currentNotification.triggeredBy || '—' }}
+            </DescriptionsItem>
+            <DescriptionsItem :label="$t('page.quartz.notificationPage.duration')">
+              {{ formatDuration(currentNotification.duration) }}
+            </DescriptionsItem>
+            <DescriptionsItem :label="$t('page.quartz.notificationPage.sendTime')">
+              {{ currentNotification.sendTime ? formatDateTime(currentNotification.sendTime) : '—' }}
+            </DescriptionsItem>
+            <DescriptionsItem :label="$t('page.quartz.notificationPage.createTime')">
+              {{ formatDateTime(currentNotification.createTime) }}
+            </DescriptionsItem>
+          </Descriptions>
 
-            <div v-if="currentNotification.errorMessage" class="content-section">
-              <Typography.Title :level="5" class="mb-3">{{ $t('page.quartz.notificationPage.errorInfo') }}</Typography.Title>
-              <div class="content-card error-card rounded-lg p-4">
-                <pre class="code-block word-break-break-word m-0 whitespace-pre-wrap text-sm">{{
-                  currentNotification.errorMessage }}</pre>
+          <!-- 内容区 -->
+          <div class="detail-body">
+            <section class="detail-section">
+              <div class="section-title">{{ $t('page.quartz.notificationPage.notificationContent') }}</div>
+              <div class="content-panel" v-html="currentNotification.content"></div>
+            </section>
+
+            <section v-if="currentNotification.errorMessage" class="detail-section">
+              <div class="section-title">
+                {{ $t('page.quartz.notificationPage.errorInfo') }}
+                <span class="section-tag section-tag--error">Error</span>
               </div>
-            </div>
+              <pre class="code-panel code-panel--error">{{ currentNotification.errorMessage }}</pre>
+            </section>
           </div>
-        </div>
 
-        <div class="mt-6 flex justify-end">
-          <Button @click="detailModalVisible = false" type="primary" size="large" class="px-6">
-            {{ $t('page.quartz.notificationPage.close') }}
-          </Button>
+          <!-- 底部按钮 -->
+          <div class="detail-footer">
+            <Button @click="detailModalVisible = false" type="primary">
+              {{ $t('page.quartz.notificationPage.close') }}
+            </Button>
+          </div>
         </div>
       </Modal>
     </template>
@@ -659,63 +691,128 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* ============ 详情对话框 ============ */
+.notification-detail {
+  --space-lg: 20px;
+}
+
+/* 顶部：标题 + 状态标签 */
 .detail-header {
-  background: var(--color-bg-container) !important;
-  border: 1px solid var(--color-border) !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: var(--space-lg);
 }
 
-.info-item {
-  background: rgba(var(--color-text-secondary-rgb), 0.05);
-  border-radius: 4px;
-  transition: all 0.3s ease;
+.header-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  line-height: 1.4;
+  word-break: break-word;
 }
 
-.info-item:hover {
-  background: rgba(var(--color-text-secondary-rgb), 0.1);
+/* Descriptions 元数据 */
+.detail-desc {
+  margin-bottom: var(--space-lg);
 }
 
-.detail-content {
-  :deep(.ant-typography) {
-    color: var(--color-text) !important;
-  }
+/* 内容区 */
+.detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
 }
 
-.content-card {
-  background: var(--color-bg-container) !important;
-  border: 1px solid var(--color-border) !important;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+.detail-section {
+  min-width: 0;
 }
 
-.content-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+/* section 标题 */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin-bottom: 8px;
 }
 
-.error-card {
-  background: rgba(var(--color-error-rgb), 0.1) !important;
-  border: 1px solid var(--color-error-light) !important;
+.section-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.5;
 }
 
-.info-card {
-  background: rgba(var(--color-success-rgb), 0.1) !important;
-  border: 1px solid var(--color-success-light) !important;
+.section-tag--error {
+  background: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
 }
 
-.code-block {
-  color: var(--color-text) !important;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  line-height: 1.6;
-  padding: 0.75rem;
-  border-radius: 4px;
-  background: rgba(var(--color-text-rgb), 0.03) !important;
+/* 通知内容：富文本面板 */
+.content-panel {
+  padding: 14px 16px;
+  background: hsl(var(--accent) / 0.5);
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  color: hsl(var(--foreground));
+  font-size: 14px;
+  line-height: 1.7;
+  word-break: break-word;
   overflow-x: auto;
-  max-height: 400px;
+  max-height: 420px;
+  overflow-y: auto;
 }
 
-.error-card :deep(.code-block) {
-  color: #ff4d4f !important;
+.content-panel :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.content-panel :deep(a) {
+  color: hsl(var(--primary));
+}
+
+.content-panel :deep(table) {
+  max-width: 100%;
+  border-collapse: collapse;
+}
+
+/* 代码面板 */
+.code-panel {
+  margin: 0;
+  padding: 12px 14px;
+  background: hsl(var(--accent) / 0.5);
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  color: hsl(var(--foreground));
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.code-panel--error {
+  border-left: 3px solid #ff4d4f;
+  background: rgba(255, 77, 79, 0.04);
+}
+
+/* 底部按钮 */
+.detail-footer {
+  margin-top: var(--space-lg);
+  display: flex;
+  justify-content: flex-end;
 }
 </style>
 
@@ -736,24 +833,18 @@ onMounted(() => {
   }
 
   .form-section {
-    padding: 12px;
-    background: var(--ant-color-fill-quaternary);
-    border-radius: 8px;
-    margin-bottom: 12px;
-    border: 1px solid var(--ant-color-border-secondary);
+    margin-bottom: 20px;
 
     .section-header {
       display: flex;
       align-items: center;
-      margin-bottom: 10px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--ant-color-border-split);
+      margin-bottom: 12px;
 
       .title {
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 600;
         flex: 1;
-        color: var(--ant-color-text);
+        color: hsl(var(--foreground));
       }
 
       .header-action {
@@ -763,7 +854,7 @@ onMounted(() => {
 
         .label {
           font-size: 12px;
-          color: var(--ant-color-text-description);
+          color: hsl(var(--muted-foreground));
         }
       }
     }
@@ -779,38 +870,29 @@ onMounted(() => {
   }
 
   .config-tip-alert {
-    margin-bottom: 12px;
+    margin-bottom: 16px;
   }
 
   .advanced-section {
-    margin-top: 12px;
-    background: var(--ant-color-fill-quaternary);
-    border-radius: 8px;
-    border: 1px solid var(--ant-color-border-secondary);
-    overflow: hidden;
+    margin-top: 4px;
 
     .section-header {
       display: flex;
       align-items: center;
-      padding: 8px 12px;
+      padding: 6px 0;
       cursor: pointer;
       user-select: none;
-      transition: background 0.2s;
-
-      &:hover {
-        background: var(--ant-color-fill-tertiary);
-      }
 
       .title {
         font-size: 13px;
         font-weight: 600;
-        color: var(--ant-color-text-description);
+        color: hsl(var(--muted-foreground));
       }
 
       .toggle-icon {
         margin-left: 6px;
-        font-size: 16px;
-        color: var(--ant-color-text-description);
+        font-size: 14px;
+        color: hsl(var(--muted-foreground));
         transition: transform 0.2s ease;
         display: inline-block;
         line-height: 1;
@@ -822,8 +904,7 @@ onMounted(() => {
     }
 
     .advanced-body {
-      padding: 0 12px 12px;
-      border-top: 1px solid var(--ant-color-border-secondary);
+      padding-top: 4px;
     }
   }
 
@@ -836,27 +917,21 @@ onMounted(() => {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px 10px;
-      background: var(--ant-component-background);
-      border: 1px solid var(--ant-color-border-secondary);
+      padding: 10px 12px;
+      background: hsl(var(--accent) / 0.5);
       border-radius: 6px;
-      transition: all 0.2s ease;
-
-      &:hover {
-        border-color: var(--ant-color-primary-border);
-      }
 
       .strategy-info {
         .name {
           font-size: 13px;
           font-weight: 500;
-          color: var(--ant-color-text);
+          color: hsl(var(--foreground));
         }
 
         .desc {
           font-size: 11px;
-          color: var(--ant-color-text-description);
-          margin-top: 1px;
+          color: hsl(var(--muted-foreground));
+          margin-top: 2px;
         }
       }
     }
@@ -868,29 +943,6 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-}
-
-::where(.dark) {
-  .config-modal-content {
-    .form-section {
-      background: rgba(255, 255, 255, 0.04);
-      border-color: #303030;
-    }
-
-    .advanced-section {
-      background: rgba(255, 255, 255, 0.04);
-      border-color: #303030;
-    }
-
-    .strategy-item {
-      background: #141414 !important;
-      border-color: #303030 !important;
-
-      &:hover {
-        border-color: var(--ant-color-primary) !important;
-      }
-    }
-  }
 }
 
 .mb-3 {

@@ -43,6 +43,16 @@ const routes: RouteRecordRaw[] = [
       title: $t('page.quartz.notification'),
     },
   },
+  {
+    name: 'SystemConfig',
+    path: '/system-config',
+    component: () => import('#/views/quartz/system-config.vue'),
+    meta: {
+      icon: 'lucide:settings',
+      keepAlive: true,
+      title: $t('page.quartz.systemConfig'),
+    },
+  },
 ];
 
 export default routes;

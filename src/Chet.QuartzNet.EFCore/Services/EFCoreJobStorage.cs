@@ -484,6 +484,28 @@ public class EFCoreJobStorage : IJobStorage
                 query = query.Where(l => l.StartTime <= queryDto.EndTime.Value);
             }
 
+            // 开始时间范围查询（针对 StartTime 字段）
+            if (queryDto.StartStartTime.HasValue)
+            {
+                query = query.Where(l => l.StartTime >= queryDto.StartStartTime.Value);
+            }
+
+            if (queryDto.EndStartTime.HasValue)
+            {
+                query = query.Where(l => l.StartTime <= queryDto.EndStartTime.Value);
+            }
+
+            // 结束时间范围查询（针对 EndTime 字段）
+            if (queryDto.StartEndTime.HasValue)
+            {
+                query = query.Where(l => l.EndTime.HasValue && l.EndTime.Value >= queryDto.StartEndTime.Value);
+            }
+
+            if (queryDto.EndEndTime.HasValue)
+            {
+                query = query.Where(l => l.EndTime.HasValue && l.EndTime.Value <= queryDto.EndEndTime.Value);
+            }
+
             // 应用排序
             if (!string.IsNullOrEmpty(queryDto.SortBy) && !string.IsNullOrEmpty(queryDto.SortOrder))
             {
@@ -637,6 +659,28 @@ public class EFCoreJobStorage : IJobStorage
             if (queryDto.EndTime.HasValue)
             {
                 query = query.Where(l => l.StartTime <= queryDto.EndTime.Value);
+            }
+
+            // 开始时间范围查询（针对 StartTime 字段）
+            if (queryDto.StartStartTime.HasValue)
+            {
+                query = query.Where(l => l.StartTime >= queryDto.StartStartTime.Value);
+            }
+
+            if (queryDto.EndStartTime.HasValue)
+            {
+                query = query.Where(l => l.StartTime <= queryDto.EndStartTime.Value);
+            }
+
+            // 结束时间范围查询（针对 EndTime 字段）
+            if (queryDto.StartEndTime.HasValue)
+            {
+                query = query.Where(l => l.EndTime.HasValue && l.EndTime.Value >= queryDto.StartEndTime.Value);
+            }
+
+            if (queryDto.EndEndTime.HasValue)
+            {
+                query = query.Where(l => l.EndTime.HasValue && l.EndTime.Value <= queryDto.EndEndTime.Value);
             }
 
             // 执行删除操作

@@ -1,4 +1,5 @@
 export {
+  Activity,
   ArrowDown,
   ArrowLeft,
   ArrowLeftToLine,
@@ -15,6 +16,7 @@ export {
   ChevronsLeft,
   ChevronsRight,
   Circle,
+  Clock,
   CircleAlert,
   CircleCheckBig,
   CircleHelp,
@@ -36,6 +38,7 @@ export {
   Info,
   InspectionPanel,
   Languages,
+  Layers,
   LoaderCircle,
   LockKeyhole,
   LogOut,
@@ -47,6 +50,7 @@ export {
   Minimize,
   Minimize2,
   MoonStar,
+  Package,
   Palette,
   PanelLeft,
   PanelRight,
@@ -66,4 +70,5 @@ export {
   SwatchBook,
   UserRoundPen,
   X,
+  Zap,
 } from 'lucide-vue-next';

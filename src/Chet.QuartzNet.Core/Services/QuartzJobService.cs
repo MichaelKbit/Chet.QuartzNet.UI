@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Quartz;
 using Quartz.Impl.Matchers;
+using System.Text.Json;
 
 namespace Chet.QuartzNet.Core.Services;
 
@@ -1915,6 +1916,107 @@ public class QuartzJobService : IQuartzJobService
             SendTime = notification.SendTime,
             Duration = notification.Duration,
         };
+    }
+
+    #endregion
+
+    #region 系统配置
+
+    /// <summary>
+    /// 系统配置存储键
+    /// </summary>
+    private const string SystemConfigSettingKey = "SystemConfig";
+
+    /// <summary>
+    /// 系统配置 JSON 序列化选项
+    /// </summary>
+    private static readonly JsonSerializerOptions SystemConfigJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
+
+    /// <summary>
+    /// 获取系统配置
+    /// 不存在时返回默认配置
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>系统配置</returns>
+    public async Task<ApiResponseDto<SystemConfigDto>> GetSystemConfigAsync(
+        CancellationToken cancellationToken = default
+    )
+    {
+        try
+        {
+            var setting = await _jobStorage.GetSettingAsync(
+                SystemConfigSettingKey,
+                cancellationToken
+            );
+
+            SystemConfigDto config;
+            if (setting != null && !string.IsNullOrWhiteSpace(setting.Value))
+            {
+                config =
+                    JsonSerializer.Deserialize<SystemConfigDto>(
+                        setting.Value,
+                        SystemConfigJsonOptions
+                    ) ?? new SystemConfigDto();
+            }
+            else
+            {
+                config = new SystemConfigDto();
+            }
+
+            return ApiResponseDto<SystemConfigDto>.SuccessResponse(config, "获取系统配置成功");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogFailure("GetSystemConfig", ex);
+            return ApiResponseDto<SystemConfigDto>.ErrorResponse(
+                $"获取系统配置失败: {ex.Message}"
+            );
+        }
+    }
+
+    /// <summary>
+    /// 保存系统配置
+    /// </summary>
+    /// <param name="config">系统配置</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>保存结果</returns>
+    public async Task<ApiResponseDto<bool>> SaveSystemConfigAsync(
+        SystemConfigDto config,
+        CancellationToken cancellationToken = default
+    )
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(config, SystemConfigJsonOptions);
+            var setting = new QuartzSetting
+            {
+                Key = SystemConfigSettingKey,
+                Value = json,
+                Description = "系统基础配置（服务名称、环境、描述）",
+                Enabled = true,
+                UpdateTime = DateTime.Now,
+            };
+
+            var result = await _jobStorage.SaveSettingAsync(setting, cancellationToken);
+            if (result)
+            {
+                _logger.LogSuccess("SaveSystemConfig", "保存系统配置成功");
+                return ApiResponseDto<bool>.SuccessResponse(true, "保存系统配置成功");
+            }
+            else
+            {
+                _logger.LogWarn("SaveSystemConfig", "保存系统配置失败");
+                return ApiResponseDto<bool>.ErrorResponse("保存系统配置失败");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogFailure("SaveSystemConfig", ex);
+            return ApiResponseDto<bool>.ErrorResponse($"保存系统配置失败: {ex.Message}");
+        }
     }
 
     #endregion
