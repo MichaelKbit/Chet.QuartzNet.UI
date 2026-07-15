@@ -659,14 +659,8 @@ onMounted(() => {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04);
-  transition: box-shadow 0.25s ease, transform 0.25s ease;
   overflow: hidden;
   min-height: 152px;
-}
-
-.stat-card:hover {
-  box-shadow: 0 6px 20px hsl(var(--foreground) / 0.08);
-  transform: translateY(-1px);
 }
 
 :deep(.stat-card .ant-card-body) {
