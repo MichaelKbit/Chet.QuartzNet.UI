@@ -2,7 +2,7 @@
 import { ref, shallowRef, onMounted, computed } from 'vue';
 import { Page } from '@vben/common-ui';
 import { Card, Row, Col, Skeleton, Tag } from 'ant-design-vue';
-import { Package, Zap, Clock, Layers } from '@vben/icons';
+import { CircleCheckBig, Package, RotateCw, Layers } from '@vben/icons';
 import type { EChartsOption } from 'echarts';
 
 // 导入Vben插件与组件
@@ -385,7 +385,7 @@ onMounted(() => {
     </template>
     <!-- 描述：服务描述（若有） -->
     <template #description>
-      <p v-if="hasServiceName && systemConfig.serviceDescription" class="text-muted-foreground">
+      <p v-if="hasServiceName && systemConfig.serviceDescription" class="service-desc">
         {{ systemConfig.serviceDescription }}
       </p>
     </template>
@@ -431,7 +431,7 @@ onMounted(() => {
               </span>
             </div>
             <div class="stat-icon stat-icon--green">
-              <Zap class="stat-icon__svg" />
+              <RotateCw class="stat-icon__svg" />
             </div>
           </div>
           <div class="stat-sub">
@@ -457,7 +457,7 @@ onMounted(() => {
               </span>
             </div>
             <div class="stat-icon stat-icon--orange">
-              <Clock class="stat-icon__svg" />
+              <CircleCheckBig class="stat-icon__svg" />
             </div>
           </div>
           <div class="stat-sub">
@@ -568,6 +568,15 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 280px;
+}
+
+.service-desc {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ====== KPI 卡片：保留质感，token 统一配色 ====== */
