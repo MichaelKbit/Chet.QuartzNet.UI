@@ -258,6 +258,8 @@ const columns = [
 
 // 排序持久化：读取上次排序列
 const SORT_KEY = 'quartz-job-sort';
+// 搜索条件持久化 key（仅保存表单输入值，不含分页/排序）
+const SEARCH_KEY = 'quartz-job-search';
 const savedSort = (() => {
   try {
     const raw = localStorage.getItem(SORT_KEY);
@@ -266,9 +268,18 @@ const savedSort = (() => {
     return undefined;
   }
 })();
+const savedSearch = (() => {
+  try {
+    const raw = localStorage.getItem(SEARCH_KEY);
+    return raw ? JSON.parse(raw) : undefined;
+  } catch {
+    return undefined;
+  }
+})();
 
 // 构造 Vxe Grid 配置
 const gridOptions: VxeTableGridOptions<QuartzJobResponseDto> = {
+  id: 'quartz-job-grid',
   columns: columns as any,
   height: 'auto',
   showOverflow: true,
@@ -278,12 +289,13 @@ const gridOptions: VxeTableGridOptions<QuartzJobResponseDto> = {
     remote: true,
     defaultSort: savedSort,
   },
+  customConfig: { storage: true },
   checkboxConfig: { highlight: true, range: false },
   columnConfig: { resizable: true },
   pagerConfig: { enabled: true },
   proxyConfig: {
     enabled: true,
-    autoLoad: true,
+    autoLoad: false,
     ajax: {
       query: async ({ page, sort }: any, formValues: any) => {
         // autoLoad 首次 query 时 defaultSort 可能未注入，从 localStorage 兜底
@@ -301,15 +313,33 @@ const gridOptions: VxeTableGridOptions<QuartzJobResponseDto> = {
         // 保持原有行为：sortOrder 使用 ascend/descend 形式
         const sortOrder =
           sortOrderRaw === 'asc' ? 'ascend' : sortOrderRaw === 'desc' ? 'descend' : '';
+        // 主动从 formApi 获取表单值（避开 vxe-table reload 路径下 wrapper 注入 formValues 为空的问题）
+        let currentValues: any = formValues || {};
+        try {
+          const formApiValues = await gridApi.formApi.getValues();
+          if (formApiValues && Object.keys(formApiValues).length > 0) {
+            currentValues = formApiValues;
+          }
+        } catch {}
         const params: QuartzJobQueryDto = {
           pageIndex: page.currentPage,
           pageSize: page.pageSize,
-          jobName: formValues?.jobName,
-          jobGroup: formValues?.jobGroup,
-          status: formValues?.status,
+          jobName: currentValues?.jobName,
+          jobGroup: currentValues?.jobGroup,
+          status: currentValues?.status,
           sortBy: sortField ?? '',
           sortOrder,
         };
+        // 持久化搜索条件（仅保存非空值，避免 localStorage 膨胀）
+        try {
+          const persisted: Record<string, any> = {};
+          for (const k of ['jobName', 'jobGroup', 'status']) {
+            if (currentValues[k] != null && currentValues[k] !== '') {
+              persisted[k] = currentValues[k];
+            }
+          }
+          localStorage.setItem(SEARCH_KEY, JSON.stringify(persisted));
+        } catch {}
         try {
           const response = await getJobs(params);
           const items = (response.data?.items || []).map((item) => ({
@@ -761,7 +791,15 @@ const formatJson = (property: keyof QuartzJobDto) => {
 // 生命周期
 onMounted(async () => {
   await getSchedulerStatusInfo();
-  // 等待 useVbenVxeGrid 的 init() 完成 commitProxy('query') 后再恢复排序视觉状态
+  // 恢复搜索条件到表单（autoLoad: false 时，需在 setValues 后手动触发查询）
+  if (savedSearch) {
+    try {
+      await gridApi.formApi.setValues(savedSearch);
+    } catch {}
+  }
+  // 手动触发首次查询（此时 formApi 已回填搜索条件，query 回调能拿到值）
+  await gridApi.query();
+  // 数据加载后恢复排序视觉状态
   await nextTick();
   try {
     const saved = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
@@ -945,9 +983,7 @@ onMounted(async () => {
                 },
               ]">
                 <div class="json-field">
-                  <Tooltip :title="$t('page.quartz.jobPage.jobDataTooltip')">
-                    <Input.TextArea v-model:value="editForm.jobData" :placeholder="$t('page.quartz.jobPage.placeholderJobData')" :rows="4" />
-                  </Tooltip>
+                  <Input.TextArea v-model:value="editForm.jobData" :placeholder="$t('page.quartz.jobPage.placeholderJobData')" :rows="4" />
                   <Tooltip :title="$t('page.quartz.jobPage.jsonFormat')">
                     <Button type="link" size="small" class="json-format-btn" @click="formatJson('jobData')">
                       {{ $t('page.quartz.jobPage.jsonFormat') }}
