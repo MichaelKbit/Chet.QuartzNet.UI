@@ -170,6 +170,18 @@ public class QuartzJobDto
     public int ApiTimeout { get; set; } = 60; // 默认60秒
 
     /// <summary>
+    /// 失败重试次数（0=不重试）
+    /// </summary>
+    [Range(0, 10, ErrorMessage = "重试次数必须在0到10之间")]
+    public int RetryCount { get; set; } = 0;
+
+    /// <summary>
+    /// 失败重试间隔（秒）
+    /// </summary>
+    [Range(1, 3600, ErrorMessage = "重试间隔必须在1秒到3600秒之间")]
+    public int RetryIntervalSeconds { get; set; } = 30;
+
+    /// <summary>
     /// 跳过SSL验证
     /// </summary>
     public bool SkipSslValidation { get; set; } = false;
@@ -305,6 +317,16 @@ public class QuartzJobResponseDto
     /// API请求超时时间（秒）
     /// </summary>
     public int ApiTimeout { get; set; }
+
+    /// <summary>
+    /// 失败重试次数（0=不重试）
+    /// </summary>
+    public int RetryCount { get; set; }
+
+    /// <summary>
+    /// 失败重试间隔（秒）
+    /// </summary>
+    public int RetryIntervalSeconds { get; set; }
 
     /// <summary>
     /// 是否跳过SSL验证

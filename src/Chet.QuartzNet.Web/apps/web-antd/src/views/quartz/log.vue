@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue';
 // 导入日期格式化工具
 import { formatDateTime } from '@vben/utils';
+import dayjs from 'dayjs';
 import { Page } from '@vben/common-ui';
 // 导入 vbenadmin 的 Vxe Table 适配器
 import { useVbenVxeGrid } from '@vben/plugins/vxe-table';
@@ -41,10 +42,44 @@ const logStatusMap = {
 const detailModalVisible = ref(false);
 const logDetail = ref<LogResponseDto | null>(null);
 
-// 执行时长格式化：毫秒转秒，去除多余小数位
+// 执行时长格式化：根据毫秒数自动选择合适单位（ms/s/min/h）
 const formatDuration = (ms?: number | null) => {
   if (ms == null) return '-';
-  return `${parseFloat((ms / 1000).toFixed(2))} s`;
+  if (ms < 1000) return `${ms} ms`;
+  if (ms < 60_000) return `${parseFloat((ms / 1000).toFixed(2))} s`;
+  if (ms < 3_600_000) return `${parseFloat((ms / 60_000).toFixed(2))} min`;
+  return `${parseFloat((ms / 3_600_000).toFixed(2))} h`;
+};
+
+// JSON 字段格式化：字符串可能是被转义过的 JSON 字符串，先 parse 一次解层转义，再美化输出
+const formatJsonField = (value: any): string => {
+  if (value == null) return '';
+  let result = value;
+  if (typeof value === 'string') {
+    try {
+      result = JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+  // 兼容历史日志格式：{ JobData: "<json字符串>", IsManualTrigger: "True" }，解包内层 JobData
+  if (
+    result &&
+    typeof result === 'object' &&
+    !Array.isArray(result) &&
+    typeof result.JobData === 'string'
+  ) {
+    try {
+      result = JSON.parse(result.JobData);
+    } catch {
+      // 内层不是合法 JSON 时保持原样
+    }
+  }
+  try {
+    return JSON.stringify(result, null, 2);
+  } catch {
+    return String(value);
+  }
 };
 
 // 搜索条件由 VbenForm 自动注入到 query 的 formValues
@@ -114,6 +149,8 @@ const columns = [
 
 // 排序持久化：读取上次排序列
 const SORT_KEY = 'quartz-log-sort';
+// 搜索条件持久化 key（保存表单输入值，日期范围用 ISO 字符串保存）
+const SEARCH_KEY = 'quartz-log-search';
 const savedSort = (() => {
   try {
     const raw = localStorage.getItem(SORT_KEY);
@@ -122,9 +159,18 @@ const savedSort = (() => {
     return undefined;
   }
 })();
+const savedSearch = (() => {
+  try {
+    const raw = localStorage.getItem(SEARCH_KEY);
+    return raw ? JSON.parse(raw) : undefined;
+  } catch {
+    return undefined;
+  }
+})();
 
 // 构造 Vxe Grid 配置
 const gridOptions: VxeTableGridOptions<LogResponseDto> = {
+  id: 'quartz-log-grid',
   columns: columns as any,
   height: 'auto',
   showOverflow: true,
@@ -134,11 +180,12 @@ const gridOptions: VxeTableGridOptions<LogResponseDto> = {
     remote: true,
     defaultSort: savedSort,
   },
+  customConfig: { storage: true },
   columnConfig: { resizable: true },
   pagerConfig: { enabled: true },
   proxyConfig: {
     enabled: true,
-    autoLoad: true,
+    autoLoad: false,
     ajax: {
       query: async ({ page, sort }: any, formValues: any) => {
         // autoLoad 首次 query 时 defaultSort 可能未注入，从 localStorage 兜底
@@ -156,14 +203,44 @@ const gridOptions: VxeTableGridOptions<LogResponseDto> = {
         // 保持原有行为：sortOrder 使用 asc/desc 形式
         const sortOrder =
           sortOrderRaw === 'asc' ? 'asc' : sortOrderRaw === 'desc' ? 'desc' : '';
+        // 主动从 formApi 获取表单值（避开 vxe-table reload 路径下 wrapper 注入 formValues 为空的问题）
+        let currentValues: any = formValues || {};
+        try {
+          const formApiValues = await gridApi.formApi.getValues();
+          if (formApiValues && Object.keys(formApiValues).length > 0) {
+            currentValues = formApiValues;
+          }
+        } catch {}
         // RangePicker 返回 Day.js 数组 [begin, end]，拆分为后端范围参数
         // startTimeRange 查 StartTime 字段范围，endTimeRange 查 EndTime 字段范围
-        const startTimeRange = formValues?.startTimeRange;
-        const endTimeRange = formValues?.endTimeRange;
+        const startTimeRange = currentValues?.startTimeRange;
+        const endTimeRange = currentValues?.endTimeRange;
+        // 持久化搜索条件（日期范围用 ISO 字符串保存，回填时用 dayjs 反序列化）
+        try {
+          const persisted: Record<string, any> = {};
+          for (const k of ['jobName', 'jobGroup', 'status']) {
+            if (currentValues[k] != null && currentValues[k] !== '') {
+              persisted[k] = currentValues[k];
+            }
+          }
+          if (Array.isArray(startTimeRange) && startTimeRange.length === 2) {
+            persisted.startTimeRange = [
+              startTimeRange[0]?.format('YYYY-MM-DDTHH:mm:ss') ?? null,
+              startTimeRange[1]?.format('YYYY-MM-DDTHH:mm:ss') ?? null,
+            ];
+          }
+          if (Array.isArray(endTimeRange) && endTimeRange.length === 2) {
+            persisted.endTimeRange = [
+              endTimeRange[0]?.format('YYYY-MM-DDTHH:mm:ss') ?? null,
+              endTimeRange[1]?.format('YYYY-MM-DDTHH:mm:ss') ?? null,
+            ];
+          }
+          localStorage.setItem(SEARCH_KEY, JSON.stringify(persisted));
+        } catch {}
         const params = {
-          jobName: formValues?.jobName,
-          jobGroup: formValues?.jobGroup,
-          status: formValues?.status,
+          jobName: currentValues?.jobName,
+          jobGroup: currentValues?.jobGroup,
+          status: currentValues?.status,
           startStartTime: startTimeRange?.[0]?.format('YYYY-MM-DDTHH:mm:ss'),
           endStartTime: startTimeRange?.[1]?.format('YYYY-MM-DDTHH:mm:ss'),
           startEndTime: endTimeRange?.[0]?.format('YYYY-MM-DDTHH:mm:ss'),
@@ -329,6 +406,26 @@ const handleDetail = (log: LogResponseDto) => {
 
 // 恢复表格排序视觉状态（列头箭头）
 onMounted(async () => {
+  // 恢复搜索条件到表单（日期范围从 ISO 字符串反序列化为 Day.js 对象）
+  if (savedSearch) {
+    try {
+      const restored: Record<string, any> = { ...savedSearch };
+      if (Array.isArray(savedSearch.startTimeRange)) {
+        restored.startTimeRange = savedSearch.startTimeRange.map((s: string) =>
+          s ? dayjs(s) : null,
+        );
+      }
+      if (Array.isArray(savedSearch.endTimeRange)) {
+        restored.endTimeRange = savedSearch.endTimeRange.map((s: string) =>
+          s ? dayjs(s) : null,
+        );
+      }
+      await gridApi.formApi.setValues(restored);
+    } catch {}
+  }
+  // 手动触发首次查询（autoLoad: false，此时 formApi 已回填搜索条件）
+  await gridApi.query();
+  // 数据加载后恢复排序视觉状态
   await nextTick();
   try {
     const saved = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');
@@ -431,12 +528,12 @@ onMounted(async () => {
                 {{ $t('page.quartz.logPage.executionResult') }}
                 <span class="section-tag section-tag--success">Result</span>
               </div>
-              <pre class="code-panel">{{ typeof logDetail.result === 'string' ? logDetail.result : JSON.stringify(logDetail.result, null, 2) }}</pre>
+              <pre class="code-panel">{{ formatJsonField(logDetail.result) }}</pre>
             </section>
 
             <section v-if="logDetail.jobData" class="detail-section">
               <div class="section-title">{{ $t('page.quartz.logPage.jobData') }}</div>
-              <pre class="code-panel">{{ typeof logDetail.jobData === 'string' ? logDetail.jobData : JSON.stringify(logDetail.jobData, null, 2) }}</pre>
+              <pre class="code-panel">{{ formatJsonField(logDetail.jobData) }}</pre>
             </section>
           </div>
 

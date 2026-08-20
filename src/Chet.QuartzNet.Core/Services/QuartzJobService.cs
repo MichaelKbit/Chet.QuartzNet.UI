@@ -363,6 +363,8 @@ public class QuartzJobService : IQuartzJobService
                 ApiHeaders = jobDto.ApiHeaders,
                 ApiBody = jobDto.ApiBody,
                 ApiTimeout = jobDto.ApiTimeout,
+                RetryCount = jobDto.RetryCount,
+                RetryIntervalSeconds = jobDto.RetryIntervalSeconds,
                 SkipSslValidation = jobDto.SkipSslValidation,
                 StartTime = jobDto.StartTime,
                 EndTime = jobDto.EndTime,
@@ -458,6 +460,8 @@ public class QuartzJobService : IQuartzJobService
             existingJob.ApiHeaders = jobDto.ApiHeaders;
             existingJob.ApiBody = jobDto.ApiBody;
             existingJob.ApiTimeout = jobDto.ApiTimeout;
+            existingJob.RetryCount = jobDto.RetryCount;
+            existingJob.RetryIntervalSeconds = jobDto.RetryIntervalSeconds;
             existingJob.SkipSslValidation = jobDto.SkipSslValidation;
             existingJob.StartTime = jobDto.StartTime;
             existingJob.EndTime = jobDto.EndTime;
@@ -844,23 +848,33 @@ public class QuartzJobService : IQuartzJobService
                     .WithDescription(jobInfo.Description ?? string.Empty)
                     .StoreDurably(true); // 没有触发器的作业必须设置为持久化
 
-                // 根据作业类型设置作业类
-                if (jobInfo.JobType == JobTypeEnum.API)
-                {
-                    // API作业使用ApiJob类
-                    jobBuilder.OfType<ApiJob>();
-                }
-                else
+                // 根据作业类型设置作业类（配置了重试的注册为重试包装器）
+                Type? realJobType = jobInfo.JobType == JobTypeEnum.API ? typeof(ApiJob) : null;
+                if (realJobType == null)
                 {
                     // DLL作业使用指定的作业类
-                    var jobType = GetJobType(jobInfo.JobClassOrApi);
-                    if (jobType == null || !typeof(IJob).IsAssignableFrom(jobType))
+                    realJobType = GetJobType(jobInfo.JobClassOrApi);
+                    if (realJobType == null || !typeof(IJob).IsAssignableFrom(realJobType))
                     {
                         return ApiResponseDto<bool>.ErrorResponse(
                             $"无效的作业类型: {jobInfo.JobClassOrApi}"
                         );
                     }
-                    jobBuilder.OfType(jobType);
+                }
+
+                if (jobInfo.RetryCount > 0)
+                {
+                    jobBuilder.OfType<RetryJobWrapper>();
+                    jobDataMap.Put(QuartzJobConst.RealJobType, realJobType.AssemblyQualifiedName!);
+                    jobDataMap.Put(QuartzJobConst.RetryCount, jobInfo.RetryCount);
+                    jobDataMap.Put(
+                        QuartzJobConst.RetryIntervalSeconds,
+                        jobInfo.RetryIntervalSeconds > 0 ? jobInfo.RetryIntervalSeconds : 30
+                    );
+                }
+                else
+                {
+                    jobBuilder.OfType(realJobType);
                 }
 
                 // 将作业数据添加到作业构建器
@@ -1303,9 +1317,14 @@ public class QuartzJobService : IQuartzJobService
             }
         }
 
+        // 配置了重试的作业注册为重试包装器，真实类型通过 JobDataMap 传递；
+        // 未配置重试（RetryCount=0，含旧版本数据）仍直接注册真实类型，行为与旧版一致
+        var useRetryWrapper = jobInfo.RetryCount > 0;
+        var registerType = useRetryWrapper ? typeof(RetryJobWrapper) : jobType;
+
         // 创建作业
         var jobBuilder = JobBuilder
-            .Create(jobType)
+            .Create(registerType)
             .WithIdentity(jobInfo.JobName, jobInfo.JobGroup)
             .WithDescription(jobInfo.Description ?? string.Empty)
             .StoreDurably();
@@ -1314,6 +1333,17 @@ public class QuartzJobService : IQuartzJobService
         if (!string.IsNullOrEmpty(jobInfo.JobData))
         {
             jobBuilder.UsingJobData(QuartzJobConst.JobData, jobInfo.JobData);
+        }
+
+        // 设置重试配置
+        if (useRetryWrapper)
+        {
+            jobBuilder.UsingJobData(QuartzJobConst.RealJobType, jobType.AssemblyQualifiedName!);
+            jobBuilder.UsingJobData(QuartzJobConst.RetryCount, jobInfo.RetryCount);
+            jobBuilder.UsingJobData(
+                QuartzJobConst.RetryIntervalSeconds,
+                jobInfo.RetryIntervalSeconds > 0 ? jobInfo.RetryIntervalSeconds : 30
+            );
         }
 
         var jobDetail = jobBuilder.Build();
@@ -1377,6 +1407,8 @@ public class QuartzJobService : IQuartzJobService
             ApiHeaders = jobInfo.ApiHeaders,
             ApiBody = jobInfo.ApiBody,
             ApiTimeout = jobInfo.ApiTimeout,
+            RetryCount = jobInfo.RetryCount,
+            RetryIntervalSeconds = jobInfo.RetryIntervalSeconds,
             SkipSslValidation = jobInfo.SkipSslValidation,
             StartTime = jobInfo.StartTime,
             EndTime = jobInfo.EndTime,
@@ -1480,12 +1512,12 @@ public class QuartzJobService : IQuartzJobService
     /// <param name="cronExpression">Cron表达式</param>
     /// <param name="count">获取的次数，默认5次</param>
     /// <returns>执行时间列表</returns>
-    public ApiResponseDto<List<DateTime>> GetNextRunTimes(string cronExpression, int count = 5)
+    public ApiResponseDto<List<DateTimeOffset>> GetNextRunTimes(string cronExpression, int count = 5)
     {
         try
         {
             var expression = new CronExpression(cronExpression);
-            var nextRunTimes = new List<DateTime>();
+            var nextRunTimes = new List<DateTimeOffset>();
             var currentTime = DateTimeOffset.Now;
 
             for (int i = 0; i < count; i++)
@@ -1493,7 +1525,7 @@ public class QuartzJobService : IQuartzJobService
                 var nextTime = expression.GetNextValidTimeAfter(currentTime);
                 if (nextTime.HasValue)
                 {
-                    nextRunTimes.Add(nextTime.Value.DateTime);
+                    nextRunTimes.Add(nextTime.Value);
                     currentTime = nextTime.Value;
                 }
                 else
@@ -1502,11 +1534,11 @@ public class QuartzJobService : IQuartzJobService
                 }
             }
 
-            return ApiResponseDto<List<DateTime>>.SuccessResponse(nextRunTimes);
+            return ApiResponseDto<List<DateTimeOffset>>.SuccessResponse(nextRunTimes);
         }
         catch (Exception ex)
         {
-            return ApiResponseDto<List<DateTime>>.ErrorResponse(
+            return ApiResponseDto<List<DateTimeOffset>>.ErrorResponse(
                 $"获取下次执行时间失败: {ex.Message}"
             );
         }

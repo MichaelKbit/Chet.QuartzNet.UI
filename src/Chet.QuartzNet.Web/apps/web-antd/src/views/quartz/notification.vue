@@ -60,10 +60,13 @@ const saveLoading = ref(false);
 const detailModalVisible = ref(false);
 const currentNotification = ref<QuartzNotificationDto | null>(null);
 
-// 发送耗时格式化：毫秒转秒，去除多余小数位
+// 发送耗时格式化：根据毫秒数自动选择合适单位（ms/s/min/h）
 const formatDuration = (ms?: number | null) => {
   if (ms == null) return '—';
-  return `${parseFloat((ms / 1000).toFixed(2))} s`;
+  if (ms < 1000) return `${ms} ms`;
+  if (ms < 60_000) return `${parseFloat((ms / 1000).toFixed(2))} s`;
+  if (ms < 3_600_000) return `${parseFloat((ms / 60_000).toFixed(2))} min`;
+  return `${parseFloat((ms / 3_600_000).toFixed(2))} h`;
 };
 
 // 搜索条件由 VbenForm 自动注入到 query 的 formValues
@@ -181,6 +184,8 @@ const columns = [
 
 // 排序持久化：读取上次排序列
 const SORT_KEY = 'quartz-notification-sort';
+// 搜索条件持久化 key（仅保存表单输入值，不含分页/排序）
+const SEARCH_KEY = 'quartz-notification-search';
 const savedSort = (() => {
   try {
     const raw = localStorage.getItem(SORT_KEY);
@@ -189,9 +194,18 @@ const savedSort = (() => {
     return undefined;
   }
 })();
+const savedSearch = (() => {
+  try {
+    const raw = localStorage.getItem(SEARCH_KEY);
+    return raw ? JSON.parse(raw) : undefined;
+  } catch {
+    return undefined;
+  }
+})();
 
 // 构造 Vxe Grid 配置
 const gridOptions: VxeTableGridOptions<QuartzNotificationDto> = {
+  id: 'quartz-notification-grid',
   columns: columns as any,
   height: 'auto',
   showOverflow: true,
@@ -201,11 +215,12 @@ const gridOptions: VxeTableGridOptions<QuartzNotificationDto> = {
     remote: true,
     defaultSort: savedSort,
   },
+  customConfig: { storage: true },
   columnConfig: { resizable: true },
   pagerConfig: { enabled: true },
   proxyConfig: {
     enabled: true,
-    autoLoad: true,
+    autoLoad: false,
     ajax: {
       query: async ({ page, sort }: any, formValues: any) => {
         // autoLoad 首次 query 时 defaultSort 可能未注入，从 localStorage 兜底
@@ -223,14 +238,32 @@ const gridOptions: VxeTableGridOptions<QuartzNotificationDto> = {
         // 保持原有行为：sortOrder 使用 ascend/descend 形式
         const sortOrder =
           sortOrderRaw === 'asc' ? 'ascend' : sortOrderRaw === 'desc' ? 'descend' : undefined;
+        // 主动从 formApi 获取表单值（避开 vxe-table reload 路径下 wrapper 注入 formValues 为空的问题）
+        let currentValues: any = formValues || {};
+        try {
+          const formApiValues = await gridApi.formApi.getValues();
+          if (formApiValues && Object.keys(formApiValues).length > 0) {
+            currentValues = formApiValues;
+          }
+        } catch {}
         const params: NotificationQueryDto = {
-          status: formValues?.status,
-          triggeredBy: formValues?.triggeredBy,
+          status: currentValues?.status,
+          triggeredBy: currentValues?.triggeredBy,
           pageIndex: page.currentPage || 1,
           pageSize: page.pageSize || 20,
           sortBy: sortField ?? '',
           sortOrder,
         };
+        // 持久化搜索条件（仅保存非空值，避免 localStorage 膨胀）
+        try {
+          const persisted: Record<string, any> = {};
+          for (const k of ['status', 'triggeredBy']) {
+            if (currentValues[k] != null && currentValues[k] !== '') {
+              persisted[k] = currentValues[k];
+            }
+          }
+          localStorage.setItem(SEARCH_KEY, JSON.stringify(persisted));
+        } catch {}
 
         try {
           const response = await getNotifications(params);
@@ -443,6 +476,15 @@ const handleClearNotifications = () => {
 
 // 恢复表格排序视觉状态（列头箭头）
 onMounted(async () => {
+  // 恢复搜索条件到表单
+  if (savedSearch) {
+    try {
+      await gridApi.formApi.setValues(savedSearch);
+    } catch {}
+  }
+  // 手动触发首次查询（autoLoad: false，此时 formApi 已回填搜索条件）
+  await gridApi.query();
+  // 数据加载后恢复排序视觉状态
   await nextTick();
   try {
     const saved = JSON.parse(localStorage.getItem(SORT_KEY) || 'null');

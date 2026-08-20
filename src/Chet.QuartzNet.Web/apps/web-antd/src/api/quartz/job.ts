@@ -126,6 +126,10 @@ export interface QuartzJobDto {
   apiBody?: string;
   /** API超时时间（毫秒） */
   apiTimeout?: number;
+  /** 失败重试次数（0=不重试） */
+  retryCount?: number;
+  /** 失败重试间隔（秒） */
+  retryIntervalSeconds?: number;
   /** 跳过SSL验证 */
   skipSslValidation?: boolean;
   /** 开始时间 */
@@ -164,6 +168,10 @@ export interface QuartzJobResponseDto {
   apiBody?: string;
   /** API请求超时时间（秒） */
   apiTimeout: number;
+  /** 失败重试次数（0=不重试） */
+  retryCount: number;
+  /** 失败重试间隔（秒） */
+  retryIntervalSeconds: number;
   /** 是否跳过SSL验证 */
   skipSslValidation: boolean;
   /** 开始时间 */
@@ -321,6 +329,19 @@ export async function triggerJob(jobName: string, jobGroup: string): Promise<Api
 export async function validateCronExpression(cronExpression: string): Promise<ApiResponse<boolean>> {
   const response = await requestClient.get('/api/quartz/ValidateCronExpression', {
     params: { cronExpression }
+  });
+  return response;
+}
+
+/**
+ * 获取Cron表达式未来N次执行时间
+ * @param cronExpression Cron表达式
+ * @param count 获取次数，默认10次
+ * @returns 执行时间列表
+ */
+export async function getNextRunTimes(cronExpression: string, count: number = 10): Promise<ApiResponse<string[]>> {
+  const response = await requestClient.get('/api/quartz/GetNextRunTimes', {
+    params: { cronExpression, count }
   });
   return response;
 }
