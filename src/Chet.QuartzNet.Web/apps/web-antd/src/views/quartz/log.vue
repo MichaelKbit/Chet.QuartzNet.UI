@@ -62,6 +62,19 @@ const formatJsonField = (value: any): string => {
       return value;
     }
   }
+  // 兼容历史日志格式：{ JobData: "<json字符串>", IsManualTrigger: "True" }，解包内层 JobData
+  if (
+    result &&
+    typeof result === 'object' &&
+    !Array.isArray(result) &&
+    typeof result.JobData === 'string'
+  ) {
+    try {
+      result = JSON.parse(result.JobData);
+    } catch {
+      // 内层不是合法 JSON 时保持原样
+    }
+  }
   try {
     return JSON.stringify(result, null, 2);
   } catch {
