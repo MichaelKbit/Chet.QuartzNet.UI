@@ -126,6 +126,10 @@ export interface QuartzJobDto {
   apiBody?: string;
   /** API超时时间（毫秒） */
   apiTimeout?: number;
+  /** 失败重试次数（0=不重试） */
+  retryCount?: number;
+  /** 失败重试间隔（秒） */
+  retryIntervalSeconds?: number;
   /** 跳过SSL验证 */
   skipSslValidation?: boolean;
   /** 开始时间 */
@@ -164,6 +168,10 @@ export interface QuartzJobResponseDto {
   apiBody?: string;
   /** API请求超时时间（秒） */
   apiTimeout: number;
+  /** 失败重试次数（0=不重试） */
+  retryCount: number;
+  /** 失败重试间隔（秒） */
+  retryIntervalSeconds: number;
   /** 是否跳过SSL验证 */
   skipSslValidation: boolean;
   /** 开始时间 */

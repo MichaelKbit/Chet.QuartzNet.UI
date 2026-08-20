@@ -142,6 +142,19 @@ public class QuartzJobInfoConfiguration : IEntityTypeConfiguration<QuartzJobInfo
             .HasDefaultValue(30000)
             .HasComment("API超时时间(毫秒)");
 
+        // 失败重试配置
+        builder
+            .Property(j => j.RetryCount)
+            .IsRequired()
+            .HasDefaultValue(0)
+            .HasComment("失败重试次数(0=不重试)");
+
+        builder
+            .Property(j => j.RetryIntervalSeconds)
+            .IsRequired()
+            .HasDefaultValue(30)
+            .HasComment("失败重试间隔(秒)");
+
         builder
             .Property(j => j.SkipSslValidation)
             .IsRequired()

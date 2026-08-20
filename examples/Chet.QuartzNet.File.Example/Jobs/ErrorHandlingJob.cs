@@ -6,7 +6,12 @@ namespace Chet.QuartzNet.File.Example.Jobs
     /// <summary>
     /// 错误处理作业
     /// </summary>
-    [QuartzJob("ErrorHandlingJob", "DEFAULT", "0 0/3 * * * ?", Description = "错误处理作业，每3分钟执行一次")]
+    [QuartzJob(
+        "ErrorHandlingJob",
+        "DEFAULT",
+        "0 0/3 * * * ?",
+        Description = "错误处理作业，每3分钟执行一次"
+    )]
     public class ErrorHandlingJob : IJob
     {
         private readonly ILogger<ErrorHandlingJob> _logger;
@@ -26,7 +31,8 @@ namespace Chet.QuartzNet.File.Example.Jobs
                 await Task.Delay(500);
 
                 // 模拟随机异常
-                if (DateTime.Now.Second % 2 == 0)
+                //if (DateTime.Now.Second % 2 == 0)
+                if (true)
                 {
                     throw new InvalidOperationException("模拟业务异常");
                 }

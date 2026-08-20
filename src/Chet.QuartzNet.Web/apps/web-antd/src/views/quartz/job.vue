@@ -9,6 +9,7 @@ import type { VxeTableGridOptions } from '@vben/plugins/vxe-table';
 import {
   Button,
   Input,
+  InputNumber,
   Select,
   Space,
   Modal,
@@ -110,6 +111,8 @@ const editForm = reactive<QuartzJobDto>({
   apiHeaders: '',
   apiBody: '',
   apiTimeout: 60,
+  retryCount: 0,
+  retryIntervalSeconds: 30,
   skipSslValidation: false,
   startTime: undefined,
   endTime: undefined,
@@ -443,6 +446,8 @@ const handleAdd = async () => {
     apiHeaders: '',
     apiBody: '',
     apiTimeout: 60,
+    retryCount: 0,
+    retryIntervalSeconds: 30,
     skipSslValidation: false,
     startTime: undefined,
     endTime: undefined,
@@ -481,6 +486,8 @@ const handleCopyJob = async (job: QuartzJobResponseDto) => {
       apiHeaders: response.data?.apiHeaders || '',
       apiBody: response.data?.apiBody || '',
       apiTimeout: response.data?.apiTimeout || 60,
+      retryCount: response.data?.retryCount ?? 0,
+      retryIntervalSeconds: response.data?.retryIntervalSeconds ?? 30,
       skipSslValidation: response.data?.skipSslValidation || false,
       startTime: response.data?.startTime || undefined,
       endTime: response.data?.endTime || undefined,
@@ -530,6 +537,8 @@ const handleEdit = async (job: QuartzJobResponseDto) => {
       apiHeaders: response.data?.apiHeaders || '',
       apiBody: response.data?.apiBody || '',
       apiTimeout: response.data?.apiTimeout || 60,
+      retryCount: response.data?.retryCount ?? 0,
+      retryIntervalSeconds: response.data?.retryIntervalSeconds ?? 30,
       skipSslValidation: response.data?.skipSslValidation || false,
       startTime: response.data?.startTime || undefined,
       endTime: response.data?.endTime || undefined,
@@ -573,6 +582,8 @@ const handleSave = async () => {
       apiHeaders: editForm.apiHeaders,
       apiBody: editForm.apiBody,
       apiTimeout: editForm.apiTimeout,
+      retryCount: editForm.retryCount ?? 0,
+      retryIntervalSeconds: editForm.retryIntervalSeconds ?? 30,
       skipSslValidation: editForm.skipSslValidation,
       startTime: editForm.startTime,
       endTime: editForm.endTime,
@@ -949,6 +960,26 @@ onMounted(async () => {
                 </Space.Compact>
               </Form.Item>
             </Col>
+            <!-- 失败重试配置：紧凑组合控件，次数为 0 时间隔置灰，避免布局跳动 -->
+            <Col :xs="24">
+              <Form.Item :label="$t('page.quartz.jobPage.retryLabel')" name="retryCount" :rules="[
+                { type: 'number', min: 0, max: 10, message: $t('page.quartz.jobPage.retryCountRange') },
+              ]">
+                <div class="retry-group">
+                  <InputNumber v-model:value="editForm.retryCount" :min="0" :max="10" class="retry-group__input"
+                    :placeholder="$t('page.quartz.jobPage.placeholderRetryCount')" />
+                  <span class="retry-group__unit">{{ $t('page.quartz.jobPage.retryTimesUnit') }}</span>
+                  <span class="retry-group__sep" aria-hidden="true"></span>
+                  <span class="retry-group__inline-label">{{ $t('page.quartz.jobPage.retryIntervalInline') }}</span>
+                  <InputNumber v-model:value="editForm.retryIntervalSeconds" :min="1" :max="3600"
+                    class="retry-group__input retry-group__input--interval"
+                    :placeholder="$t('page.quartz.jobPage.placeholderRetryInterval')"
+                    :disabled="!editForm.retryCount" />
+                  <span class="retry-group__unit">{{ $t('page.quartz.jobPage.retrySecondsUnit') }}</span>
+                </div>
+                <div class="field-hint">{{ $t('page.quartz.jobPage.retryCountHint') }}</div>
+              </Form.Item>
+            </Col>
           </Row>
 
           <!-- 作业配置 -->
@@ -1153,6 +1184,49 @@ onMounted(async () => {
 
 .form-section-title:not(:first-child) {
   margin-top: 8px;
+}
+
+/* ====== 表单字段辅助提示 ====== */
+.field-hint {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ====== 失败重试紧凑配置组 ====== */
+.retry-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.retry-group__input {
+  width: 96px;
+}
+
+.retry-group__input--interval {
+  width: 104px;
+}
+
+.retry-group__unit,
+.retry-group__inline-label {
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+  color: hsl(var(--muted-foreground));
+}
+
+.retry-group__inline-label {
+  color: hsl(var(--foreground));
+}
+
+.retry-group__sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: hsl(var(--border));
 }
 
 /* ====== JSON 字段格式化按钮 ====== */
