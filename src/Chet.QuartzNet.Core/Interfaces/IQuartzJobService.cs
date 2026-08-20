@@ -182,7 +182,7 @@ public interface IQuartzJobService
     /// <param name="cronExpression">Cron表达式</param>
     /// <param name="count">获取次数</param>
     /// <returns>执行时间列表</returns>
-    ApiResponseDto<List<DateTime>> GetNextRunTimes(string cronExpression, int count = 5);
+    ApiResponseDto<List<DateTimeOffset>> GetNextRunTimes(string cronExpression, int count = 5);
 
     /// <summary>
     /// 更新作业执行时间

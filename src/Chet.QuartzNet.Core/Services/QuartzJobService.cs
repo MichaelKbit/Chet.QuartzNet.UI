@@ -1480,12 +1480,12 @@ public class QuartzJobService : IQuartzJobService
     /// <param name="cronExpression">Cron表达式</param>
     /// <param name="count">获取的次数，默认5次</param>
     /// <returns>执行时间列表</returns>
-    public ApiResponseDto<List<DateTime>> GetNextRunTimes(string cronExpression, int count = 5)
+    public ApiResponseDto<List<DateTimeOffset>> GetNextRunTimes(string cronExpression, int count = 5)
     {
         try
         {
             var expression = new CronExpression(cronExpression);
-            var nextRunTimes = new List<DateTime>();
+            var nextRunTimes = new List<DateTimeOffset>();
             var currentTime = DateTimeOffset.Now;
 
             for (int i = 0; i < count; i++)
@@ -1493,7 +1493,7 @@ public class QuartzJobService : IQuartzJobService
                 var nextTime = expression.GetNextValidTimeAfter(currentTime);
                 if (nextTime.HasValue)
                 {
-                    nextRunTimes.Add(nextTime.Value.DateTime);
+                    nextRunTimes.Add(nextTime.Value);
                     currentTime = nextTime.Value;
                 }
                 else
@@ -1502,11 +1502,11 @@ public class QuartzJobService : IQuartzJobService
                 }
             }
 
-            return ApiResponseDto<List<DateTime>>.SuccessResponse(nextRunTimes);
+            return ApiResponseDto<List<DateTimeOffset>>.SuccessResponse(nextRunTimes);
         }
         catch (Exception ex)
         {
-            return ApiResponseDto<List<DateTime>>.ErrorResponse(
+            return ApiResponseDto<List<DateTimeOffset>>.ErrorResponse(
                 $"获取下次执行时间失败: {ex.Message}"
             );
         }
