@@ -137,3 +137,51 @@
 ### 1️⃣ 更新 NuGet 包
 
 ```bash
+dotnet add package Chet.QuartzNet.UI --version 2.5.1
+```
+
+如果使用数据库存储，同步更新对应的扩展包：
+
+```bash
+dotnet add package Chet.QuartzNet.EFCore.MySql --version 2.5.1
+dotnet add package Chet.QuartzNet.EFCore.PostgreSql --version 2.5.1
+dotnet add package Chet.QuartzNet.EFCore.SqlServer --version 2.5.1
+dotnet add package Chet.QuartzNet.EFCore.SQLite --version 2.5.1
+```
+
+### 2️⃣ 数据库迁移（如使用数据库存储模式）
+
+v2.5.0 新增了 `DisallowConcurrentExecution` 字段，需要执行 EF Core 数据库迁移：
+
+```bash
+dotnet ef database update
+```
+
+> ⚠️ **注意**：如果你从 v2.4.0 及更早版本升级到 v2.5.x，务必同步更新 EFCore 扩展包，否则新增字段会导致迁移失败。
+
+### 3️⃣ 启动应用
+
+更新包后直接启动即可，所有新功能自动生效！
+
+---
+
+## 🎉 总结
+
+从 v2.4.0 到 v2.5.1，这三个版本的核心升级脉络：
+
+| 版本 | 核心方向 | 关键能力 |
+|------|---------|---------|
+| 🎯 v2.4.0 | 🛡️ 运维安全 | 失败重试、Cron 校验、条件持久化 |
+| 💥 v2.5.0 | 📊 洞察 + 🔒 并发 | 分析页重构、象限图、热力图、禁止并发、启用/禁用开关 |
+| 🎁 v2.5.1 | 🚀 性能体验 | 数据库侧聚合、迁移可视化、象限图交互修复 |
+
+如果你对新功能有任何建议或反馈，欢迎在 GitHub 上提出 Issue 或提交 PR，我们期待你的参与！😊
+
+#dotnet #任务调度 #QuartzNet #可视化管理 #开发者工具 #效率神器
+
+---
+
+**⭐ 如果你觉得这篇文章对你有帮助，记得点赞收藏关注哦！**
+
+**📌 项目地址**：[https://github.com/qiect/Chet.QuartzNet.UI](https://github.com/qiect/Chet.QuartzNet.UI)
+**📌 NuGet**：[https://www.nuget.org/packages/Chet.QuartzNet.UI](https://www.nuget.org/packages/Chet.QuartzNet.UI)
