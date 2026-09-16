@@ -14,7 +14,7 @@
 - 支持设置重试间隔，避免密集重试拖垮服务
 - 数据库存储模式需同步更新 EFCore 扩展包
 
-![v2.4.0-失败重试配置](../images/v240-retry-config.png)
+![v2.4.0-失败重试配置](../images/i18n-job-zh.png)
 
 ### ⏰ Cron 表达式生成器
 
@@ -24,16 +24,15 @@
 - **预览近 10 次执行时间**：生成前先看看下次什么时候跑，心里有数
 - **实时校验**：表达式写错立即提示，告别无效 Cron
 
-![v2.4.0-Cron生成器](../images/v240-cron-generator.png)
+![v2.4.0-Cron生成器](../images/cron-helper.png)
 
-![v2.4.0-Cron预览执行时间](../images/v240-cron-preview.png)
 
 ### 💾 搜索条件 & 列设置持久化
 
 - 搜索条件自动保存，刷新页面不丢失
 - 列显示/隐藏设置持久化，个性化配置一次到位
 
-![v2.4.0-搜索条件持久化](../images/v240-search-persist.png)
+![v2.4.0-搜索条件持久化](../images/job.png)
 
 ### 🛡️ 其他优化
 
@@ -52,13 +51,7 @@
 - **时段分布热力图**：哪个时段作业最密集？热力图告诉你，帮你优化调度策略
 - **耗时 Top 排名**：最耗时的作业 Top 榜，性能优化有方向
 
-![v2.5.0-分析页KPI卡片](../images/v250-analytics-kpi.png)
-
-![v2.5.0-作业健康象限图](../images/v250-quadrant.png)
-
-![v2.5.0-时段分布热力图](../images/v250-heatmap.png)
-
-![v2.5.0-耗时Top排名](../images/v250-top-duration.png)
+![v2.5.0-分析页](../images/analytices.png)
 
 ### 🔀 作业启用 / 禁用开关
 
@@ -66,8 +59,6 @@
 
 - **Switch 交互切换**：点击开关直接切换状态
 - **操作前确认对话框**：防止误操作，安全第一
-
-![v2.5.0-作业启用禁用开关](../images/v250-job-switch.png)
 
 ### 🚫 作业禁止并发执行
 
@@ -79,7 +70,7 @@
 
 > ⚠️ **注意**：数据库存储模式需同步更新 EFCore 扩展包（新增字段迁移）
 
-![v2.5.0-禁止并发执行配置](../images/v250-disallow-concurrent.png)
+![v2.5.0-禁止并发执行配置](../images/i18n-job-zh.png)
 
 ### 🔧 作业对话框功能调整
 
@@ -87,7 +78,7 @@
 - 优化作业编辑表单布局与交互体验
 - 统一所有对话框宽度为 **800px**，视觉更整齐
 
-![v2.5.0-API请求头编辑器](../images/v250-api-headers.png)
+![v2.5.0-API请求头编辑器](../images/job-api-headers.png)
 
 ### 🛡️ Bug 修复
 
@@ -109,9 +100,7 @@
 - **时间线 + 进度条**：每一步迁移进度实时展示，不用盲等
 - **实时状态反馈**：成功 / 失败 / 进行中，状态一目了然
 
-![v2.5.1-数据迁移可视化](../images/v251-migration-ui.png)
-
-![v2.5.1-迁移进度](../images/v251-migration-progress.png)
+![v2.5.1-数据迁移可视化](../images/migration-ui.png)
 
 ### ⚡ 分析页性能优化
 
@@ -121,14 +110,10 @@
 - 禁用 EF Core 变更跟踪（**AsNoTracking**），减少内存开销
 - 彻底消除全量加载日志导致的性能问题
 
-![v2.5.1-分析页性能优化](../images/v251-analytics-perf.png)
-
 ### 🎯 象限图交互修复
 
 - 修复健康象限图**大气泡覆盖小气泡无法选中**的问题
 - 优化象限图 UI 交互，点击更精准
-
-![v2.5.1-象限图交互修复](../images/v251-quadrant-fix.png)
 
 ### 🛡️ 数据聚合修复
 
